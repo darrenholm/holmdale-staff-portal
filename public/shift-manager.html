@@ -460,15 +460,13 @@
                 start_time: startTime + ':00',
                 end_time: endTime + ':00',
                 role: role,
-                notes: notes,
-                staff_name: 'Available',
-                staff_id: ''
+                notes: notes
             };
             
             try {
                 let r;
                 if (editingShiftId) {
-                    // Update existing shift
+                    // Update existing shift - only send fields for update
                     r = await fetch(API + '/shifts/' + editingShiftId, {
                         method: 'PUT',
                         headers: {
@@ -478,24 +476,32 @@
                         body: JSON.stringify(shiftData)
                     });
                 } else {
-                    // Create new shift
+                    // Create new shift - add extra fields needed for creation
+                    const createData = {
+                        ...shiftData,
+                        staff_name: 'Available',
+                        staff_id: ''
+                    };
                     r = await fetch(API + '/shifts', {
                         method: 'POST',
                         headers: {
                             'Authorization': 'Bearer ' + token,
                             'Content-Type': 'application/json'
                         },
-                        body: JSON.stringify(shiftData)
+                        body: JSON.stringify(createData)
                     });
                 }
                 
                 const d = await r.json();
+                
+                console.log('Save response:', r.status, d);
                 
                 if (r.ok) {
                     showMessage(editingShiftId ? '✅ Shift updated!' : '✅ Shift created!', 'success');
                     closeModal();
                     await loadShifts();
                 } else {
+                    console.error('Save failed:', d);
                     showMessage('❌ ' + (d.error || 'Failed to save shift'), 'error');
                 }
                 
