@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Entry Scanner - Holmdale Pro Rodeo</title>
+    <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
@@ -106,15 +107,31 @@
             border-left: 4px solid #ed8936;
         }
         .hidden { display: none; }
-        .status-badge {
-            display: inline-block;
-            padding: 5px 12px;
-            border-radius: 20px;
-            font-size: 12px;
-            font-weight: 600;
+        #qr-reader {
+            border: 3px solid #00B74A;
+            border-radius: 10px;
+            overflow: hidden;
+            margin-bottom: 20px;
         }
-        .status-confirmed { background: #c6f6d5; color: #22543d; }
-        .status-pending { background: #feebc8; color: #7c2d12; }
+        .scan-mode-toggle {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        .scan-mode-toggle button {
+            flex: 1;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            background: white;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        .scan-mode-toggle button.active {
+            background: #00B74A;
+            color: white;
+            border-color: #00B74A;
+        }
     </style>
 </head>
 <body>
@@ -127,11 +144,24 @@
         <div id="alertContainer"></div>
         <div id="scanTicketCard" class="card">
             <h2 style="margin-bottom: 20px;">Scan Ticket</h2>
-            <div class="input-group">
-                <label for="ticketCode">Confirmation Code</label>
-                <input type="text" id="ticketCode" placeholder="WW-ABC123" autofocus>
+            
+            <div class="scan-mode-toggle">
+                <button id="cameraBtn" class="active" onclick="switchToCamera()">📷 Camera</button>
+                <button id="manualBtn" onclick="switchToManual()">⌨️ Manual</button>
             </div>
-            <button class="btn btn-primary" id="lookupBtn">🔍 Look Up Ticket</button>
+
+            <div id="cameraMode">
+                <div id="qr-reader"></div>
+                <p style="text-align: center; color: #666; font-size: 14px;">Position QR code in camera view</p>
+            </div>
+
+            <div id="manualMode" class="hidden">
+                <div class="input-group">
+                    <label for="ticketCode">Confirmation Code</label>
+                    <input type="text" id="ticketCode" placeholder="WW-ABC123">
+                </div>
+                <button class="btn btn-primary" id="lookupBtn">🔍 Look Up Ticket</button>
+            </div>
         </div>
         <div id="ticketDetailsCard" class="card hidden">
             <h2 style="margin-bottom: 20px;">Ticket Details</h2>
@@ -152,6 +182,7 @@
         let token = '';
         let ticket = null;
         let bands = [];
+        let html5QrcodeScanner = null;
 
         window.onload = async () => {
             const r = await fetch(API + '/auth/login', {
@@ -162,12 +193,68 @@
             const d = await r.json();
             token = d.token;
             console.log('Logged in');
+            
+            // Start QR scanner
+            startQRScanner();
         };
+
+        function startQRScanner() {
+            html5QrcodeScanner = new Html5Qrcode("qr-reader");
+            
+            html5QrcodeScanner.start(
+                { facingMode: "environment" },
+                {
+                    fps: 10,
+                    qrbox: { width: 250, height: 250 }
+                },
+                onScanSuccess,
+                onScanError
+            ).catch(err => {
+                console.error("Camera error:", err);
+                showMessage('❌ Camera not available. Use manual mode.', 'error');
+                switchToManual();
+            });
+        }
+
+        function onScanSuccess(decodedText) {
+            console.log("QR Code detected:", decodedText);
+            // Stop scanning
+            if (html5QrcodeScanner) {
+                html5QrcodeScanner.stop();
+            }
+            // Look up the ticket
+            lookupTicket(decodedText);
+        }
+
+        function onScanError(errorMessage) {
+            // Ignore scanning errors (constant while scanning)
+        }
+
+        function switchToCamera() {
+            document.getElementById('cameraMode').classList.remove('hidden');
+            document.getElementById('manualMode').classList.add('hidden');
+            document.getElementById('cameraBtn').classList.add('active');
+            document.getElementById('manualBtn').classList.remove('active');
+            if (!html5QrcodeScanner || !html5QrcodeScanner.getState()) {
+                startQRScanner();
+            }
+        }
+
+        function switchToManual() {
+            document.getElementById('cameraMode').classList.add('hidden');
+            document.getElementById('manualMode').classList.remove('hidden');
+            document.getElementById('cameraBtn').classList.remove('active');
+            document.getElementById('manualBtn').classList.add('active');
+            if (html5QrcodeScanner) {
+                html5QrcodeScanner.stop().catch(err => console.log(err));
+            }
+            document.getElementById('ticketCode').focus();
+        }
 
         function showMessage(msg, type) {
             const alertDiv = document.getElementById('alertContainer');
             alertDiv.innerHTML = `<div class="alert alert-${type}">${msg}</div>`;
-            setTimeout(() => alertDiv.innerHTML = '', 3000);
+            setTimeout(() => alertDiv.innerHTML = '', 5000);
         }
 
         document.getElementById('lookupBtn').onclick = async () => {
@@ -176,7 +263,12 @@
                 showMessage('⚠️ Please enter a confirmation code', 'warning');
                 return; 
             }
+            await lookupTicket(code);
+        };
 
+        async function lookupTicket(code) {
+            code = code.trim().toUpperCase();
+            
             const r = await fetch(API + '/ticket-orders', {
                 headers: {'Authorization': 'Bearer ' + token}
             });
@@ -215,7 +307,7 @@
 
             document.getElementById('scanTicketCard').classList.add('hidden');
             document.getElementById('ticketDetailsCard').classList.remove('hidden');
-        };
+        }
 
         async function assignBand(num, uid, type) {
             if (!uid) return;
@@ -279,6 +371,7 @@
             document.getElementById('scanTicketCard').classList.remove('hidden');
             document.getElementById('ticketDetailsCard').classList.add('hidden');
             document.getElementById('completeBtn').disabled = true;
+            switchToCamera();
         }
 
         document.getElementById('ticketCode').onkeypress = (e) => {
