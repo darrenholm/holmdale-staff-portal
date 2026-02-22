@@ -352,10 +352,10 @@
                 html += `<div class="day-section">
                     <div class="day-header">${date}</div>`;
                 
-                // Gate shifts
+                // Ticket/Gate shifts
                 if (byDate[date].gate.length > 0) {
                     html += `<div class="role-section">
-                        <div class="role-header gate">🚪 Gate Shifts</div>`;
+                        <div class="role-header gate">🎫 Ticket Shifts</div>`;
                     
                     byDate[date].gate.forEach(shift => {
                         html += renderShiftCard(shift, false);
@@ -415,10 +415,10 @@
                 html += `<div class="day-section">
                     <div class="day-header">${date}</div>`;
                 
-                // Gate shifts
+                // Ticket/Gate shifts
                 if (byDate[date].gate && byDate[date].gate.length > 0) {
                     html += `<div class="role-section">
-                        <div class="role-header gate">🚪 Gate Shifts</div>`;
+                        <div class="role-header gate">🎫 Ticket Shifts</div>`;
                     
                     byDate[date].gate.forEach(shift => {
                         html += renderShiftCard(shift, true);
