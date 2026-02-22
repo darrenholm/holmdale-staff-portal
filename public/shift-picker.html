@@ -1,0 +1,543 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pick Your Shifts - Holmdale Pro Rodeo</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #00B74A 0%, #2A2A2A 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container { max-width: 900px; margin: 0 auto; }
+        .header {
+            background: white;
+            padding: 25px;
+            border-radius: 15px;
+            margin-bottom: 25px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            text-align: center;
+        }
+        .header h1 { color: #00B74A; font-size: 32px; font-weight: bold; margin-bottom: 10px; }
+        .header p { color: #666; font-size: 16px; }
+        .welcome {
+            background: #f0fdf4;
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 25px;
+            border-left: 5px solid #00B74A;
+        }
+        .welcome h2 { color: #00B74A; font-size: 24px; margin-bottom: 10px; }
+        .welcome p { color: #166534; font-size: 16px; }
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        .tab {
+            flex: 1;
+            padding: 15px;
+            background: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .tab.active {
+            background: #00B74A;
+            color: white;
+        }
+        .tab:hover:not(.active) {
+            background: #f0f0f0;
+        }
+        .day-section {
+            margin-bottom: 30px;
+        }
+        .day-header {
+            background: white;
+            padding: 15px 20px;
+            border-radius: 10px;
+            margin-bottom: 15px;
+            font-size: 20px;
+            font-weight: bold;
+            color: #333;
+        }
+        .shift-card {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 15px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            transition: all 0.2s;
+        }
+        .shift-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(0,0,0,0.15);
+        }
+        .shift-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        .shift-time {
+            font-size: 20px;
+            font-weight: bold;
+            color: #333;
+        }
+        .shift-role {
+            display: inline-block;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 600;
+        }
+        .shift-role.gate {
+            background: #dbeafe;
+            color: #1e40af;
+        }
+        .shift-role.bar {
+            background: #f3e8ff;
+            color: #6b21a8;
+        }
+        .shift-capacity {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        .capacity-bar {
+            flex: 1;
+            height: 8px;
+            background: #e0e0e0;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        .capacity-fill {
+            height: 100%;
+            transition: width 0.3s;
+        }
+        .capacity-ok { background: #00B74A; }
+        .capacity-filling { background: #f59e0b; }
+        .capacity-full { background: #dc2626; }
+        .capacity-text {
+            font-size: 14px;
+            font-weight: 600;
+            color: #666;
+        }
+        .staff-list {
+            background: #f9fafb;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+        }
+        .staff-list h4 {
+            font-size: 14px;
+            color: #666;
+            margin-bottom: 10px;
+        }
+        .staff-names {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        .staff-badge {
+            background: white;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 500;
+            color: #333;
+            border: 1px solid #e0e0e0;
+        }
+        .btn {
+            width: 100%;
+            padding: 12px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .btn-claim {
+            background: #00B74A;
+            color: white;
+        }
+        .btn-claim:hover {
+            background: #009639;
+        }
+        .btn-drop {
+            background: #dc2626;
+            color: white;
+        }
+        .btn-drop:hover {
+            background: #b91c1c;
+        }
+        .btn-full {
+            background: #ccc;
+            color: #666;
+            cursor: not-allowed;
+        }
+        .alert {
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            font-weight: 500;
+        }
+        .alert-success { background: #c6f6d5; color: #22543d; }
+        .alert-error { background: #fed7d7; color: #742a2a; }
+        .hidden { display: none; }
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #666;
+        }
+        .empty-state-icon {
+            font-size: 64px;
+            margin-bottom: 20px;
+        }
+        .my-shift-card {
+            border-left: 5px solid #00B74A;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>HOLMDALE PRO RODEO</h1>
+            <p>Volunteer Shift Picker</p>
+        </div>
+
+        <div class="welcome">
+            <h2>Welcome, <span id="staffName">Volunteer</span>! 👋</h2>
+            <p>Pick shifts that work for you and see who you'll be working with!</p>
+        </div>
+
+        <div id="alertContainer"></div>
+
+        <div class="tabs">
+            <button class="tab active" id="availableTab" onclick="showTab('available')">📋 Available Shifts</button>
+            <button class="tab" id="myShiftsTab" onclick="showTab('myshifts')">✅ My Shifts (<span id="myShiftCount">0</span>)</button>
+        </div>
+
+        <div id="availableShiftsView">
+            <div id="availableShiftsList"></div>
+        </div>
+
+        <div id="myShiftsView" class="hidden">
+            <div id="myShiftsList"></div>
+        </div>
+    </div>
+
+    <script>
+        const API = 'https://rodeo-fresh-production-7348.up.railway.app/api';
+        let token = '';
+        let currentStaff = null;
+        let allShifts = [];
+        let myAssignments = [];
+        let allStaff = [];
+
+        window.onload = async function() {
+            console.log('Shift picker starting...');
+            
+            // For demo, use Darren's account
+            // In production, this would be actual login
+            try {
+                const r = await fetch(API + '/auth/login', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({email: 'darren@holmgraphics.ca', password: 'changeme123'})
+                });
+                const d = await r.json();
+                token = d.token;
+                console.log('Logged in');
+                
+                // Get staff info
+                await loadStaffInfo();
+                await loadAllStaff();
+                await loadShifts();
+                await loadMyShifts();
+                
+            } catch(err) {
+                console.error('Startup error:', err);
+                showMessage('❌ Failed to connect', 'error');
+            }
+        };
+
+        async function loadStaffInfo() {
+            try {
+                const r = await fetch(API + '/staff', {
+                    headers: {'Authorization': 'Bearer ' + token}
+                });
+                const staff = await r.json();
+                
+                // For demo, use first staff member (Darren)
+                currentStaff = staff.find(s => s.email === 'darren@holmgraphics.ca') || staff[0];
+                
+                document.getElementById('staffName').textContent = currentStaff.fullname;
+                
+            } catch(err) {
+                console.error('Error loading staff info:', err);
+            }
+        }
+
+        async function loadAllStaff() {
+            try {
+                const r = await fetch(API + '/staff', {
+                    headers: {'Authorization': 'Bearer ' + token}
+                });
+                allStaff = await r.json();
+                console.log('Loaded', allStaff.length, 'staff members');
+            } catch(err) {
+                console.error('Error loading staff:', err);
+            }
+        }
+
+        async function loadShifts() {
+            try {
+                const r = await fetch(API + '/shifts-manage', {
+                    headers: {'Authorization': 'Bearer ' + token}
+                });
+                allShifts = await r.json();
+                console.log('Loaded', allShifts.length, 'shifts');
+                
+                displayAvailableShifts();
+                
+            } catch(err) {
+                console.error('Error loading shifts:', err);
+                showMessage('❌ Failed to load shifts', 'error');
+            }
+        }
+
+        async function loadMyShifts() {
+            try {
+                const r = await fetch(API + `/shifts-manage/staff/${currentStaff.id}`, {
+                    headers: {'Authorization': 'Bearer ' + token}
+                });
+                myAssignments = await r.json();
+                
+                document.getElementById('myShiftCount').textContent = myAssignments.length;
+                displayMyShifts();
+                
+            } catch(err) {
+                console.error('Error loading my shifts:', err);
+            }
+        }
+
+        function displayAvailableShifts() {
+            const container = document.getElementById('availableShiftsList');
+            
+            // Group by date
+            const byDate = {};
+            allShifts.forEach(shift => {
+                const date = new Date(shift.date).toLocaleDateString('en-US', {
+                    weekday: 'long',
+                    month: 'long',
+                    day: 'numeric',
+                    year: 'numeric'
+                });
+                
+                if (!byDate[date]) byDate[date] = [];
+                byDate[date].push(shift);
+            });
+            
+            let html = '';
+            
+            Object.keys(byDate).forEach(date => {
+                html += `<div class="day-section">
+                    <div class="day-header">${date}</div>`;
+                
+                byDate[date].forEach(shift => {
+                    html += renderShiftCard(shift, false);
+                });
+                
+                html += '</div>';
+            });
+            
+            container.innerHTML = html || '<div class="empty-state"><div class="empty-state-icon">📭</div><p>No shifts available</p></div>';
+        }
+
+        function displayMyShifts() {
+            const container = document.getElementById('myShiftsList');
+            
+            if (myAssignments.length === 0) {
+                container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📅</div><p>You haven\'t picked any shifts yet!</p><p style="margin-top:10px; color:#999;">Check the Available Shifts tab to get started.</p></div>';
+                return;
+            }
+            
+            // Group by date
+            const byDate = {};
+            myAssignments.forEach(shift => {
+                const date = new Date(shift.date).toLocaleDateString('en-US', {
+                    weekday: 'long',
+                    month: 'long',
+                    day: 'numeric',
+                    year: 'numeric'
+                });
+                
+                if (!byDate[date]) byDate[date] = [];
+                byDate[date].push(shift);
+            });
+            
+            let html = '';
+            
+            Object.keys(byDate).forEach(date => {
+                html += `<div class="day-section">
+                    <div class="day-header">${date}</div>`;
+                
+                byDate[date].forEach(shift => {
+                    html += renderShiftCard(shift, true);
+                });
+                
+                html += '</div>';
+            });
+            
+            container.innerHTML = html;
+        }
+
+        function renderShiftCard(shift, isMine) {
+            const startTime = formatTime(shift.start_time);
+            const endTime = formatTime(shift.end_time);
+            const percentage = (shift.assigned_count / 6) * 100;
+            const isFull = shift.assigned_count >= 6;
+            
+            let capacityClass = 'capacity-ok';
+            if (percentage >= 100) capacityClass = 'capacity-full';
+            else if (percentage >= 66) capacityClass = 'capacity-filling';
+            
+            const isAssigned = myAssignments.some(s => s.id === shift.id);
+            
+            let staffList = '';
+            if (shift.assigned_staff && shift.assigned_staff.length > 0) {
+                staffList = `
+                    <div class="staff-list">
+                        <h4>Working with you (${shift.assigned_count}/6):</h4>
+                        <div class="staff-names">
+                            ${shift.assigned_staff.map(s => `<span class="staff-badge">${s.staff_name}</span>`).join('')}
+                        </div>
+                    </div>
+                `;
+            } else if (!isMine) {
+                staffList = '<div class="staff-list"><h4>Be the first to claim this shift! 🎉</h4></div>';
+            }
+            
+            let actionButton = '';
+            if (isMine) {
+                actionButton = `<button class="btn btn-drop" onclick="dropShift('${shift.id}')">Drop This Shift</button>`;
+            } else if (isAssigned) {
+                actionButton = `<button class="btn btn-full" disabled>✓ You're Assigned</button>`;
+            } else if (isFull) {
+                actionButton = `<button class="btn btn-full" disabled>🔒 Shift Full</button>`;
+            } else {
+                actionButton = `<button class="btn btn-claim" onclick="claimShift('${shift.id}')">🎉 Pick This Shift!</button>`;
+            }
+            
+            return `
+                <div class="shift-card ${isMine ? 'my-shift-card' : ''}">
+                    <div class="shift-header">
+                        <div class="shift-time">${startTime} - ${endTime}</div>
+                        <span class="shift-role ${shift.role}">${shift.role === 'gate' ? '🚪' : '🍺'} ${shift.role.toUpperCase()}</span>
+                    </div>
+                    <div class="shift-capacity">
+                        <div class="capacity-bar">
+                            <div class="capacity-fill ${capacityClass}" style="width: ${percentage}%"></div>
+                        </div>
+                        <div class="capacity-text">${shift.assigned_count}/6</div>
+                    </div>
+                    ${staffList}
+                    ${actionButton}
+                </div>
+            `;
+        }
+
+        function formatTime(timeStr) {
+            const [hours, minutes] = timeStr.split(':');
+            const hour = parseInt(hours);
+            const ampm = hour >= 12 ? 'PM' : 'AM';
+            const displayHour = hour === 0 ? 12 : hour > 12 ? hour - 12 : hour;
+            return `${displayHour}:${minutes} ${ampm}`;
+        }
+
+        async function claimShift(shiftId) {
+            try {
+                const r = await fetch(API + `/shifts-manage/${shiftId}/assign`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': 'Bearer ' + token,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        staff_id: currentStaff.id,
+                        staff_name: currentStaff.fullname
+                    })
+                });
+                
+                const d = await r.json();
+                
+                if (r.ok) {
+                    showMessage('✅ Shift claimed! Check "My Shifts" to see it.', 'success');
+                    await loadShifts();
+                    await loadMyShifts();
+                } else {
+                    showMessage('❌ ' + d.error, 'error');
+                }
+                
+            } catch(err) {
+                console.error('Error claiming shift:', err);
+                showMessage('❌ Failed to claim shift', 'error');
+            }
+        }
+
+        async function dropShift(shiftId) {
+            if (!confirm('Are you sure you want to drop this shift?')) return;
+            
+            try {
+                const r = await fetch(API + `/shifts-manage/${shiftId}/assign/${currentStaff.id}`, {
+                    method: 'DELETE',
+                    headers: {'Authorization': 'Bearer ' + token}
+                });
+                
+                const d = await r.json();
+                
+                if (r.ok) {
+                    showMessage('✅ Shift dropped successfully', 'success');
+                    await loadShifts();
+                    await loadMyShifts();
+                } else {
+                    showMessage('❌ ' + d.error, 'error');
+                }
+                
+            } catch(err) {
+                console.error('Error dropping shift:', err);
+                showMessage('❌ Failed to drop shift', 'error');
+            }
+        }
+
+        function showTab(tab) {
+            if (tab === 'available') {
+                document.getElementById('availableShiftsView').classList.remove('hidden');
+                document.getElementById('myShiftsView').classList.add('hidden');
+                document.getElementById('availableTab').classList.add('active');
+                document.getElementById('myShiftsTab').classList.remove('active');
+            } else {
+                document.getElementById('availableShiftsView').classList.add('hidden');
+                document.getElementById('myShiftsView').classList.remove('hidden');
+                document.getElementById('availableTab').classList.remove('active');
+                document.getElementById('myShiftsTab').classList.add('active');
+            }
+        }
+
+        function showMessage(msg, type) {
+            const alertDiv = document.getElementById('alertContainer');
+            alertDiv.innerHTML = `<div class="alert alert-${type}">${msg}</div>`;
+            setTimeout(() => alertDiv.innerHTML = '', 4000);
+        }
+    </script>
+</body>
+</html>
