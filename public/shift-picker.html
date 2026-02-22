@@ -78,9 +78,13 @@
             font-weight: 600;
             margin-bottom: 12px;
         }
-        .role-header.gate {
+        .role-header.ticket {
             background: #dbeafe;
             color: #1e40af;
+        }
+        .role-header.gate {
+            background: #d1fae5;
+            color: #065f46;
         }
         .role-header.bar {
             background: #f3e8ff;
@@ -342,7 +346,7 @@
                     year: 'numeric'
                 });
                 
-                if (!byDate[date]) byDate[date] = { gate: [], bar: [] };
+                if (!byDate[date]) byDate[date] = { ticket: [], gate: [], bar: [] };
                 byDate[date][shift.role].push(shift);
             });
             
@@ -352,10 +356,22 @@
                 html += `<div class="day-section">
                     <div class="day-header">${date}</div>`;
                 
-                // Ticket/Gate shifts
-                if (byDate[date].gate.length > 0) {
+                // Ticket shifts
+                if (byDate[date].ticket && byDate[date].ticket.length > 0) {
                     html += `<div class="role-section">
-                        <div class="role-header gate">🎫 Ticket Shifts</div>`;
+                        <div class="role-header ticket">🎫 Ticket Sales Shifts</div>`;
+                    
+                    byDate[date].ticket.forEach(shift => {
+                        html += renderShiftCard(shift, false);
+                    });
+                    
+                    html += '</div>';
+                }
+                
+                // Gate shifts
+                if (byDate[date].gate && byDate[date].gate.length > 0) {
+                    html += `<div class="role-section">
+                        <div class="role-header gate">🚪 Gate/Entry Shifts</div>`;
                     
                     byDate[date].gate.forEach(shift => {
                         html += renderShiftCard(shift, false);
@@ -365,7 +381,7 @@
                 }
                 
                 // Bar shifts
-                if (byDate[date].bar.length > 0) {
+                if (byDate[date].bar && byDate[date].bar.length > 0) {
                     html += `<div class="role-section">
                         <div class="role-header bar">🍺 Bar Shifts</div>`;
                     
@@ -405,7 +421,7 @@
                     year: 'numeric'
                 });
                 
-                if (!byDate[date]) byDate[date] = { gate: [], bar: [] };
+                if (!byDate[date]) byDate[date] = { ticket: [], gate: [], bar: [] };
                 byDate[date][shift.role].push(shift);
             });
             
@@ -415,10 +431,22 @@
                 html += `<div class="day-section">
                     <div class="day-header">${date}</div>`;
                 
-                // Ticket/Gate shifts
+                // Ticket shifts
+                if (byDate[date].ticket && byDate[date].ticket.length > 0) {
+                    html += `<div class="role-section">
+                        <div class="role-header ticket">🎫 Ticket Sales Shifts</div>`;
+                    
+                    byDate[date].ticket.forEach(shift => {
+                        html += renderShiftCard(shift, true);
+                    });
+                    
+                    html += '</div>';
+                }
+                
+                // Gate shifts
                 if (byDate[date].gate && byDate[date].gate.length > 0) {
                     html += `<div class="role-section">
-                        <div class="role-header gate">🎫 Ticket Shifts</div>`;
+                        <div class="role-header gate">🚪 Gate/Entry Shifts</div>`;
                     
                     byDate[date].gate.forEach(shift => {
                         html += renderShiftCard(shift, true);
