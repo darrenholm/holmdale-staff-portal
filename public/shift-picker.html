@@ -67,6 +67,25 @@
             font-weight: bold;
             color: #333;
         }
+        .role-section {
+            margin-bottom: 20px;
+        }
+        .role-header {
+            display: inline-block;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 12px;
+        }
+        .role-header.gate {
+            background: #dbeafe;
+            color: #1e40af;
+        }
+        .role-header.bar {
+            background: #f3e8ff;
+            color: #6b21a8;
+        }
         .shift-card {
             background: white;
             padding: 20px;
@@ -89,21 +108,6 @@
             font-size: 20px;
             font-weight: bold;
             color: #333;
-        }
-        .shift-role {
-            display: inline-block;
-            padding: 6px 12px;
-            border-radius: 20px;
-            font-size: 14px;
-            font-weight: 600;
-        }
-        .shift-role.gate {
-            background: #dbeafe;
-            color: #1e40af;
-        }
-        .shift-role.bar {
-            background: #f3e8ff;
-            color: #6b21a8;
         }
         .shift-capacity {
             display: flex;
@@ -241,13 +245,10 @@
         let currentStaff = null;
         let allShifts = [];
         let myAssignments = [];
-        let allStaff = [];
 
         window.onload = async function() {
             console.log('Shift picker starting...');
             
-            // For demo, use Darren's account
-            // In production, this would be actual login
             try {
                 const r = await fetch(API + '/auth/login', {
                     method: 'POST',
@@ -258,9 +259,7 @@
                 token = d.token;
                 console.log('Logged in');
                 
-                // Get staff info
                 await loadStaffInfo();
-                await loadAllStaff();
                 await loadShifts();
                 await loadMyShifts();
                 
@@ -277,25 +276,11 @@
                 });
                 const staff = await r.json();
                 
-                // For demo, use first staff member (Darren)
                 currentStaff = staff.find(s => s.email === 'darren@holmgraphics.ca') || staff[0];
-                
                 document.getElementById('staffName').textContent = currentStaff.fullname;
                 
             } catch(err) {
                 console.error('Error loading staff info:', err);
-            }
-        }
-
-        async function loadAllStaff() {
-            try {
-                const r = await fetch(API + '/staff', {
-                    headers: {'Authorization': 'Bearer ' + token}
-                });
-                allStaff = await r.json();
-                console.log('Loaded', allStaff.length, 'staff members');
-            } catch(err) {
-                console.error('Error loading staff:', err);
             }
         }
 
@@ -306,6 +291,15 @@
                 });
                 allShifts = await r.json();
                 console.log('Loaded', allShifts.length, 'shifts');
+                
+                // Load details for each shift
+                for (let shift of allShifts) {
+                    const detailsR = await fetch(API + '/shifts-manage/' + shift.id, {
+                        headers: {'Authorization': 'Bearer ' + token}
+                    });
+                    const details = await detailsR.json();
+                    shift.assigned_staff = details.assigned_staff || [];
+                }
                 
                 displayAvailableShifts();
                 
@@ -333,18 +327,23 @@
         function displayAvailableShifts() {
             const container = document.getElementById('availableShiftsList');
             
-            // Group by date
+            // Group by date, then by role
             const byDate = {};
             allShifts.forEach(shift => {
-                const date = new Date(shift.date).toLocaleDateString('en-US', {
+                // Parse date without timezone conversion
+                const dateStr = shift.date.split('T')[0]; // Get YYYY-MM-DD
+                const [year, month, day] = dateStr.split('-');
+                const dateObj = new Date(year, month - 1, day); // Month is 0-indexed
+                
+                const date = dateObj.toLocaleDateString('en-US', {
                     weekday: 'long',
                     month: 'long',
                     day: 'numeric',
                     year: 'numeric'
                 });
                 
-                if (!byDate[date]) byDate[date] = [];
-                byDate[date].push(shift);
+                if (!byDate[date]) byDate[date] = { gate: [], bar: [] };
+                byDate[date][shift.role].push(shift);
             });
             
             let html = '';
@@ -353,9 +352,29 @@
                 html += `<div class="day-section">
                     <div class="day-header">${date}</div>`;
                 
-                byDate[date].forEach(shift => {
-                    html += renderShiftCard(shift, false);
-                });
+                // Gate shifts
+                if (byDate[date].gate.length > 0) {
+                    html += `<div class="role-section">
+                        <div class="role-header gate">🚪 Gate Shifts</div>`;
+                    
+                    byDate[date].gate.forEach(shift => {
+                        html += renderShiftCard(shift, false);
+                    });
+                    
+                    html += '</div>';
+                }
+                
+                // Bar shifts
+                if (byDate[date].bar.length > 0) {
+                    html += `<div class="role-section">
+                        <div class="role-header bar">🍺 Bar Shifts</div>`;
+                    
+                    byDate[date].bar.forEach(shift => {
+                        html += renderShiftCard(shift, false);
+                    });
+                    
+                    html += '</div>';
+                }
                 
                 html += '</div>';
             });
@@ -371,18 +390,23 @@
                 return;
             }
             
-            // Group by date
+            // Group by date, then by role
             const byDate = {};
             myAssignments.forEach(shift => {
-                const date = new Date(shift.date).toLocaleDateString('en-US', {
+                // Parse date without timezone conversion
+                const dateStr = shift.date.split('T')[0]; // Get YYYY-MM-DD
+                const [year, month, day] = dateStr.split('-');
+                const dateObj = new Date(year, month - 1, day); // Month is 0-indexed
+                
+                const date = dateObj.toLocaleDateString('en-US', {
                     weekday: 'long',
                     month: 'long',
                     day: 'numeric',
                     year: 'numeric'
                 });
                 
-                if (!byDate[date]) byDate[date] = [];
-                byDate[date].push(shift);
+                if (!byDate[date]) byDate[date] = { gate: [], bar: [] };
+                byDate[date][shift.role].push(shift);
             });
             
             let html = '';
@@ -391,9 +415,29 @@
                 html += `<div class="day-section">
                     <div class="day-header">${date}</div>`;
                 
-                byDate[date].forEach(shift => {
-                    html += renderShiftCard(shift, true);
-                });
+                // Gate shifts
+                if (byDate[date].gate && byDate[date].gate.length > 0) {
+                    html += `<div class="role-section">
+                        <div class="role-header gate">🚪 Gate Shifts</div>`;
+                    
+                    byDate[date].gate.forEach(shift => {
+                        html += renderShiftCard(shift, true);
+                    });
+                    
+                    html += '</div>';
+                }
+                
+                // Bar shifts
+                if (byDate[date].bar && byDate[date].bar.length > 0) {
+                    html += `<div class="role-section">
+                        <div class="role-header bar">🍺 Bar Shifts</div>`;
+                    
+                    byDate[date].bar.forEach(shift => {
+                        html += renderShiftCard(shift, true);
+                    });
+                    
+                    html += '</div>';
+                }
                 
                 html += '</div>';
             });
@@ -442,7 +486,6 @@
                 <div class="shift-card ${isMine ? 'my-shift-card' : ''}">
                     <div class="shift-header">
                         <div class="shift-time">${startTime} - ${endTime}</div>
-                        <span class="shift-role ${shift.role}">${shift.role === 'gate' ? '🚪' : '🍺'} ${shift.role.toUpperCase()}</span>
                     </div>
                     <div class="shift-capacity">
                         <div class="capacity-bar">
