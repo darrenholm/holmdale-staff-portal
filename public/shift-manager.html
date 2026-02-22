@@ -237,7 +237,8 @@
             <div class="form-group">
                 <label for="shiftRole">Role</label>
                 <select id="shiftRole" required>
-                    <option value="gate">Ticket/Gate</option>
+                    <option value="ticket">Ticket Sales</option>
+                    <option value="gate">Gate/Entry</option>
                     <option value="bar">Bar</option>
                 </select>
             </div>
@@ -323,7 +324,7 @@
                     year: 'numeric'
                 });
                 
-                if (!byDate[date]) byDate[date] = { gate: [], bar: [] };
+                if (!byDate[date]) byDate[date] = { ticket: [], gate: [], bar: [] };
                 byDate[date][shift.role].push(shift);
             });
             
@@ -334,9 +335,21 @@
                     <div class="day-header">${date}</div>`;
                 
                 // Ticket shifts
-                if (byDate[date].gate.length > 0) {
+                if (byDate[date].ticket && byDate[date].ticket.length > 0) {
                     html += `<div class="role-section">
-                        <div class="role-header">🎫 Ticket Shifts</div>`;
+                        <div class="role-header">🎫 Ticket Sales Shifts</div>`;
+                    
+                    byDate[date].ticket.forEach(shift => {
+                        html += renderShiftRow(shift);
+                    });
+                    
+                    html += '</div>';
+                }
+                
+                // Gate shifts
+                if (byDate[date].gate && byDate[date].gate.length > 0) {
+                    html += `<div class="role-section">
+                        <div class="role-header">🚪 Gate/Entry Shifts</div>`;
                     
                     byDate[date].gate.forEach(shift => {
                         html += renderShiftRow(shift);
@@ -346,7 +359,7 @@
                 }
                 
                 // Bar shifts
-                if (byDate[date].bar.length > 0) {
+                if (byDate[date].bar && byDate[date].bar.length > 0) {
                     html += `<div class="role-section">
                         <div class="role-header">🍺 Bar Shifts</div>`;
                     
