@@ -32,105 +32,114 @@
             margin-bottom: 20px;
             box-shadow: 0 10px 30px rgba(0,0,0,0.2);
         }
-        .input-group { margin-bottom: 20px; }
-        .input-group label {
-            display: block;
-            margin-bottom: 8px;
-            color: #333;
-            font-weight: 600;
-            font-size: 14px;
-        }
-        .input-group input {
-            width: 100%;
-            padding: 15px;
-            border: 2px solid #e0e0e0;
-            border-radius: 10px;
-            font-size: 16px;
-        }
-        .input-group input:focus { outline: none; border-color: #00B74A; }
-        .btn {
-            width: 100%;
-            padding: 15px;
-            border: none;
-            border-radius: 10px;
-            font-size: 16px;
-            font-weight: 600;
-            cursor: pointer;
-            margin-bottom: 10px;
-        }
-        .btn-primary { background: #00B74A; color: white; }
-        .btn-primary:hover { background: #009639; }
-        .btn-success { background: #48bb78; color: white; }
-        .btn-secondary { background: #3A3A3A; color: white; }
         .ticket-info {
-            background: #f7fafc;
+            background: #f0fdf4;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            border-left: 5px solid #00B74A;
+        }
+        .ticket-info h3 { color: #00B74A; margin-bottom: 15px; font-size: 22px; }
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 12px 0;
+            border-bottom: 1px solid #d1fae5;
+            font-size: 16px;
+        }
+        .info-row:last-child { border-bottom: none; }
+        .info-label { color: #166534; font-weight: 600; }
+        .info-value { color: #14532d; font-weight: bold; }
+        .wristband-status {
+            background: #fffbeb;
+            padding: 25px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            text-align: center;
+            border-left: 5px solid #f59e0b;
+        }
+        .wristband-status h3 {
+            color: #92400e;
+            font-size: 24px;
+            margin-bottom: 15px;
+        }
+        .wristband-status .count {
+            font-size: 48px;
+            font-weight: bold;
+            color: #f59e0b;
+        }
+        .wristband-list {
+            background: #e6fffa;
             padding: 20px;
             border-radius: 10px;
             margin-bottom: 20px;
         }
-        .ticket-info h3 { color: #00B74A; margin-bottom: 15px; }
-        .info-row {
-            display: flex;
-            justify-content: space-between;
-            padding: 10px 0;
-            border-bottom: 1px solid #e0e0e0;
-        }
-        .info-row:last-child { border-bottom: none; }
-        .info-label { color: #666; font-weight: 600; }
-        .info-value { color: #333; }
         .wristband-item {
-            background: #e6fffa;
+            background: white;
             padding: 15px;
-            border-radius: 10px;
+            border-radius: 8px;
             margin-bottom: 10px;
             border-left: 4px solid #48bb78;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .wristband-item:last-child { margin-bottom: 0; }
+        .success-screen {
+            background: #c6f6d5;
+            padding: 40px;
+            border-radius: 15px;
+            text-align: center;
+            border: 5px solid #48bb78;
+        }
+        .success-screen .icon {
+            font-size: 80px;
+            margin-bottom: 20px;
+        }
+        .success-screen h2 {
+            color: #22543d;
+            font-size: 32px;
+            margin-bottom: 10px;
+        }
+        .success-screen .countdown {
+            color: #166534;
+            font-size: 18px;
+            font-weight: 600;
         }
         .alert {
             padding: 15px;
             border-radius: 10px;
             margin-bottom: 20px;
             font-weight: 500;
-        }
-        .alert-success {
-            background: #c6f6d5;
-            color: #22543d;
-            border-left: 4px solid #48bb78;
+            font-size: 16px;
         }
         .alert-error {
             background: #fed7d7;
             color: #742a2a;
             border-left: 4px solid #f56565;
         }
-        .alert-warning {
-            background: #feebc8;
-            color: #7c2d12;
-            border-left: 4px solid #ed8936;
-        }
         .hidden { display: none; }
         #qr-reader {
-            border: 3px solid #00B74A;
-            border-radius: 10px;
+            border: 5px solid #00B74A;
+            border-radius: 15px;
             overflow: hidden;
             margin-bottom: 20px;
         }
-        .scan-mode-toggle {
-            display: flex;
-            gap: 10px;
+        .scanning-prompt {
+            text-align: center;
+            padding: 30px;
+            background: #f0fdf4;
+            border-radius: 10px;
             margin-bottom: 20px;
         }
-        .scan-mode-toggle button {
-            flex: 1;
-            padding: 12px;
-            border: 2px solid #e0e0e0;
-            background: white;
-            border-radius: 8px;
-            font-weight: 600;
-            cursor: pointer;
+        .scanning-prompt h3 {
+            color: #00B74A;
+            font-size: 24px;
+            margin-bottom: 10px;
         }
-        .scan-mode-toggle button.active {
-            background: #00B74A;
-            color: white;
-            border-color: #00B74A;
+        .scanning-prompt p {
+            color: #166534;
+            font-size: 16px;
         }
     </style>
 </head>
@@ -139,50 +148,53 @@
         <div class="header">
             <h1>HOLMDALE PRO RODEO</h1>
             <h2>🎫 Entry Scanner</h2>
-            <p>Walkerton, Ontario</p>
+            <p>Automated Check-In</p>
         </div>
+        
         <div id="alertContainer"></div>
-        <div id="scanTicketCard" class="card">
-            <h2 style="margin-bottom: 20px;">Scan Ticket</h2>
-            
-            <div class="scan-mode-toggle">
-                <button id="cameraBtn" class="active" onclick="switchToCamera()">📷 Camera</button>
-                <button id="manualBtn" onclick="switchToManual()">⌨️ Manual</button>
-            </div>
 
-            <div id="cameraMode">
-                <div id="qr-reader"></div>
-                <p style="text-align: center; color: #666; font-size: 14px;">Position QR code in camera view</p>
-            </div>
-
-            <div id="manualMode" class="hidden">
-                <div class="input-group">
-                    <label for="ticketCode">Confirmation Code</label>
-                    <input type="text" id="ticketCode" placeholder="WW-ABC123">
+        <!-- QR Scanning Screen -->
+        <div id="scanningScreen">
+            <div class="card">
+                <div class="scanning-prompt">
+                    <h3>📷 Ready to Scan</h3>
+                    <p>Point camera at ticket QR code</p>
                 </div>
-                <button class="btn btn-primary" id="lookupBtn">🔍 Look Up Ticket</button>
+                <div id="qr-reader"></div>
             </div>
         </div>
-        <div id="ticketDetailsCard" class="card hidden">
-            <h2 style="margin-bottom: 20px;">Ticket Details</h2>
+
+        <!-- Ticket Details & Wristband Assignment -->
+        <div id="assignmentScreen" class="card hidden">
             <div class="ticket-info" id="ticketInfo"></div>
-            <h3 style="margin-bottom: 15px;">Assign Wristbands</h3>
-            <p style="margin-bottom: 20px;">Scan <strong id="wristbandsNeeded">0</strong> wristband(s)</p>
-            <div id="wristbandInputs"></div>
-            <div id="assignedWristbands" class="hidden" style="margin-top: 20px;">
-                <h4 style="color: #48bb78; margin-bottom: 10px;">✅ Assigned:</h4>
-                <div id="wristbandList"></div>
+            
+            <div class="wristband-status">
+                <h3>Scan Wristbands</h3>
+                <div class="count"><span id="assignedCount">0</span> / <span id="totalCount">0</span></div>
+                <p style="color: #92400e; margin-top: 10px;">Tap or scan wristband NFC tags</p>
             </div>
-            <button class="btn btn-success" id="completeBtn" disabled>✅ Complete Entry</button>
-            <button class="btn btn-secondary" id="resetBtn">🔄 Scan Another</button>
+
+            <div id="wristbandList" class="wristband-list hidden"></div>
+        </div>
+
+        <!-- Success Screen -->
+        <div id="successScreen" class="card hidden">
+            <div class="success-screen">
+                <div class="icon">✅</div>
+                <h2>Entry Complete!</h2>
+                <p class="countdown">Next scan in <span id="countdown">4</span> seconds...</p>
+            </div>
         </div>
     </div>
+    
     <script>
         const API = 'https://rodeo-fresh-production-7348.up.railway.app/api';
         let token = '';
         let ticket = null;
         let bands = [];
         let html5QrcodeScanner = null;
+        let totalNeeded = 0;
+        let wristbandInputActive = false;
 
         window.onload = async () => {
             const r = await fetch(API + '/auth/login', {
@@ -194,7 +206,6 @@
             token = d.token;
             console.log('Logged in');
             
-            // Start QR scanner
             startQRScanner();
         };
 
@@ -207,48 +218,173 @@
                     fps: 10,
                     qrbox: { width: 250, height: 250 }
                 },
-                onScanSuccess,
+                onQRScanSuccess,
                 onScanError
             ).catch(err => {
                 console.error("Camera error:", err);
-                showMessage('❌ Camera not available. Use manual mode.', 'error');
-                switchToManual();
+                showMessage('❌ Camera not available', 'error');
             });
         }
 
-        function onScanSuccess(decodedText) {
+        function onQRScanSuccess(decodedText) {
             console.log("QR Code detected:", decodedText);
-            // Stop scanning
             if (html5QrcodeScanner) {
                 html5QrcodeScanner.stop();
             }
-            // Look up the ticket
             lookupTicket(decodedText);
         }
 
         function onScanError(errorMessage) {
-            // Ignore scanning errors (constant while scanning)
+            // Ignore constant scanning errors
         }
 
-        function switchToCamera() {
-            document.getElementById('cameraMode').classList.remove('hidden');
-            document.getElementById('manualMode').classList.add('hidden');
-            document.getElementById('cameraBtn').classList.add('active');
-            document.getElementById('manualBtn').classList.remove('active');
-            if (!html5QrcodeScanner || !html5QrcodeScanner.getState()) {
-                startQRScanner();
+        async function lookupTicket(code) {
+            code = code.trim().toUpperCase();
+            
+            try {
+                const r = await fetch(API + '/ticket-orders', {
+                    headers: {'Authorization': 'Bearer ' + token}
+                });
+                const tickets = await r.json();
+                ticket = tickets.find(t => t.confirmation_code === code);
+
+                if (!ticket) { 
+                    showMessage('❌ Ticket not found: ' + code, 'error');
+                    setTimeout(reset, 3000);
+                    return; 
+                }
+
+                totalNeeded = (ticket.quantity_adult || 0) + (ticket.quantity_child || 0);
+                
+                document.getElementById('ticketInfo').innerHTML = `
+                    <h3>✓ Ticket Found</h3>
+                    <div class="info-row"><span class="info-label">Customer:</span><span class="info-value">${ticket.customer_name}</span></div>
+                    <div class="info-row"><span class="info-label">Code:</span><span class="info-value">${ticket.confirmation_code}</span></div>
+                    <div class="info-row"><span class="info-label">Adults:</span><span class="info-value">${ticket.quantity_adult || 0}</span></div>
+                    <div class="info-row"><span class="info-label">Children:</span><span class="info-value">${ticket.quantity_child || 0}</span></div>
+                `;
+                
+                document.getElementById('totalCount').textContent = totalNeeded;
+                document.getElementById('assignedCount').textContent = '0';
+
+                document.getElementById('scanningScreen').classList.add('hidden');
+                document.getElementById('assignmentScreen').classList.remove('hidden');
+                
+                // Activate wristband input mode
+                wristbandInputActive = true;
+                listenForWristbands();
+                
+            } catch(err) {
+                console.error('Lookup error:', err);
+                showMessage('❌ Error looking up ticket', 'error');
+                setTimeout(reset, 3000);
             }
         }
 
-        function switchToManual() {
-            document.getElementById('cameraMode').classList.add('hidden');
-            document.getElementById('manualMode').classList.remove('hidden');
-            document.getElementById('cameraBtn').classList.remove('active');
-            document.getElementById('manualBtn').classList.add('active');
-            if (html5QrcodeScanner) {
-                html5QrcodeScanner.stop().catch(err => console.log(err));
+        function listenForWristbands() {
+            // Create invisible input to capture scanned wristbands
+            let wristbandInput = document.getElementById('hiddenWristbandInput');
+            if (!wristbandInput) {
+                wristbandInput = document.createElement('input');
+                wristbandInput.id = 'hiddenWristbandInput';
+                wristbandInput.style.position = 'absolute';
+                wristbandInput.style.left = '-9999px';
+                document.body.appendChild(wristbandInput);
             }
-            document.getElementById('ticketCode').focus();
+            
+            wristbandInput.value = '';
+            wristbandInput.focus();
+            
+            wristbandInput.onchange = async function() {
+                if (!wristbandInputActive) return;
+                
+                const uid = this.value.trim();
+                if (uid) {
+                    await assignBand(uid);
+                    this.value = '';
+                }
+                this.focus();
+            };
+        }
+
+        async function assignBand(uid) {
+            if (bands.length >= totalNeeded) {
+                return;
+            }
+            
+            const bandNum = bands.length + 1;
+            const type = bandNum <= (ticket.quantity_adult || 0) ? 'adult' : 'child';
+            
+            try {
+                const r = await fetch(API + '/wristbands/link', {
+                    method: 'POST',
+                    headers: {'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json'},
+                    body: JSON.stringify({rfid_uid: uid, ticket_order_id: ticket.id, ticket_type: type})
+                });
+                
+                const d = await r.json();
+                
+                if (r.ok) {
+                    bands.push({uid, type});
+                    updateWristbandDisplay();
+                    
+                    if (bands.length === totalNeeded) {
+                        completeEntry();
+                    }
+                } else {
+                    showMessage('❌ Error: ' + d.error, 'error');
+                }
+            } catch(err) {
+                console.error('Assignment error:', err);
+                showMessage('❌ Error assigning wristband', 'error');
+            }
+        }
+
+        function updateWristbandDisplay() {
+            document.getElementById('assignedCount').textContent = bands.length;
+            
+            const list = document.getElementById('wristbandList');
+            list.classList.remove('hidden');
+            list.innerHTML = bands.map((b, i) => 
+                `<div class="wristband-item">
+                    <span><strong>Wristband #${i + 1}</strong> (${b.type})</span>
+                    <span style="color: #48bb78; font-weight: bold;">✓ ${b.uid}</span>
+                </div>`
+            ).join('');
+        }
+
+        function completeEntry() {
+            wristbandInputActive = false;
+            
+            document.getElementById('assignmentScreen').classList.add('hidden');
+            document.getElementById('successScreen').classList.remove('hidden');
+            
+            let countdown = 4;
+            document.getElementById('countdown').textContent = countdown;
+            
+            const timer = setInterval(() => {
+                countdown--;
+                document.getElementById('countdown').textContent = countdown;
+                
+                if (countdown <= 0) {
+                    clearInterval(timer);
+                    reset();
+                }
+            }, 1000);
+        }
+
+        function reset() {
+            ticket = null;
+            bands = [];
+            totalNeeded = 0;
+            wristbandInputActive = false;
+            
+            document.getElementById('scanningScreen').classList.remove('hidden');
+            document.getElementById('assignmentScreen').classList.add('hidden');
+            document.getElementById('successScreen').classList.add('hidden');
+            document.getElementById('wristbandList').classList.add('hidden');
+            
+            startQRScanner();
         }
 
         function showMessage(msg, type) {
@@ -256,127 +392,6 @@
             alertDiv.innerHTML = `<div class="alert alert-${type}">${msg}</div>`;
             setTimeout(() => alertDiv.innerHTML = '', 5000);
         }
-
-        document.getElementById('lookupBtn').onclick = async () => {
-            const code = document.getElementById('ticketCode').value.trim().toUpperCase();
-            if (!code) { 
-                showMessage('⚠️ Please enter a confirmation code', 'warning');
-                return; 
-            }
-            await lookupTicket(code);
-        };
-
-        async function lookupTicket(code) {
-            code = code.trim().toUpperCase();
-            
-            const r = await fetch(API + '/ticket-orders', {
-                headers: {'Authorization': 'Bearer ' + token}
-            });
-            const tickets = await r.json();
-            ticket = tickets.find(t => t.confirmation_code === code);
-
-            if (!ticket) { 
-                showMessage('❌ Ticket not found: ' + code, 'error');
-                return; 
-            }
-
-            const total = (ticket.quantity_adult || 0) + (ticket.quantity_child || 0);
-            document.getElementById('ticketInfo').innerHTML = `
-                <div class="info-row"><span class="info-label">Customer:</span><span>${ticket.customer_name}</span></div>
-                <div class="info-row"><span class="info-label">Code:</span><span>${ticket.confirmation_code}</span></div>
-                <div class="info-row"><span class="info-label">Adults:</span><span>${ticket.quantity_adult || 0}</span></div>
-                <div class="info-row"><span class="info-label">Children:</span><span>${ticket.quantity_child || 0}</span></div>
-            `;
-            document.getElementById('wristbandsNeeded').textContent = total;
-
-            let html = '';
-            for (let i = 1; i <= total; i++) {
-                const type = i <= (ticket.quantity_adult || 0) ? 'adult' : 'child';
-                html += `<div class="input-group">
-                    <label>Wristband #${i} (${type})</label>
-                    <input type="text" id="band${i}" data-type="${type}" placeholder="Scan or enter ID">
-                </div>`;
-            }
-            document.getElementById('wristbandInputs').innerHTML = html;
-
-            for (let i = 1; i <= total; i++) {
-                document.getElementById('band' + i).onchange = function() {
-                    assignBand(i, this.value, this.dataset.type);
-                };
-            }
-
-            document.getElementById('scanTicketCard').classList.add('hidden');
-            document.getElementById('ticketDetailsCard').classList.remove('hidden');
-        }
-
-        async function assignBand(num, uid, type) {
-            if (!uid) return;
-            
-            if (bands.find(b => b.num === num)) {
-                showMessage('⚠️ This wristband slot is already assigned!', 'warning');
-                return;
-            }
-            
-            const totalNeeded = (ticket.quantity_adult || 0) + (ticket.quantity_child || 0);
-            
-            if (bands.length >= totalNeeded) {
-                showMessage('⚠️ All wristbands for this ticket have been assigned!', 'warning');
-                document.getElementById('band' + num).value = '';
-                return;
-            }
-            
-            const r = await fetch(API + '/wristbands/link', {
-                method: 'POST',
-                headers: {'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json'},
-                body: JSON.stringify({rfid_uid: uid, ticket_order_id: ticket.id, ticket_type: type})
-            });
-            const d = await r.json();
-            if (r.ok) {
-                bands.push({num, uid, type});
-                document.getElementById('assignedWristbands').classList.remove('hidden');
-                document.getElementById('wristbandList').innerHTML = bands.map(b => 
-                    `<div class="wristband-item"><strong>#${b.num}</strong> (${b.type}) - ${b.uid}</div>`
-                ).join('');
-                
-                document.getElementById('band' + num).disabled = true;
-                
-                if (bands.length === totalNeeded) {
-                    document.getElementById('completeBtn').disabled = false;
-                    for (let i = 1; i <= totalNeeded; i++) {
-                        document.getElementById('band' + i).disabled = true;
-                    }
-                    showMessage('✅ All wristbands assigned! Click Complete Entry.', 'success');
-                } else {
-                    showMessage(`✅ Wristband #${num} assigned! ${totalNeeded - bands.length} remaining.`, 'success');
-                    const nextInput = document.getElementById('band' + (num + 1));
-                    if (nextInput && !nextInput.disabled) nextInput.focus();
-                }
-            } else {
-                showMessage('❌ Error: ' + d.error, 'error');
-                document.getElementById('band' + num).value = '';
-            }
-        }
-
-        document.getElementById('completeBtn').onclick = () => {
-            showMessage('🎉 Entry complete!', 'success');
-            setTimeout(reset, 2000);
-        };
-
-        document.getElementById('resetBtn').onclick = reset;
-
-        function reset() {
-            ticket = null;
-            bands = [];
-            document.getElementById('ticketCode').value = '';
-            document.getElementById('scanTicketCard').classList.remove('hidden');
-            document.getElementById('ticketDetailsCard').classList.add('hidden');
-            document.getElementById('completeBtn').disabled = true;
-            switchToCamera();
-        }
-
-        document.getElementById('ticketCode').onkeypress = (e) => {
-            if (e.key === 'Enter') document.getElementById('lookupBtn').click();
-        };
     </script>
 </body>
 </html>
