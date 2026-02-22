@@ -31,6 +31,26 @@
             margin-bottom: 20px;
             box-shadow: 0 10px 30px rgba(0,0,0,0.2);
         }
+        .scan-mode-toggle {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        .scan-mode-toggle button {
+            flex: 1;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            background: white;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        .scan-mode-toggle button.active {
+            background: #00B74A;
+            color: white;
+            border-color: #00B74A;
+        }
         .input-group { margin-bottom: 20px; }
         .input-group label {
             display: block;
@@ -214,6 +234,21 @@
             font-weight: bold;
             margin-top: 10px;
         }
+        .nfc-status {
+            text-align: center;
+            padding: 20px;
+            background: #f0fdf4;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            border: 2px solid #00B74A;
+        }
+        .nfc-status.scanning {
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
     </style>
 </head>
 <body>
@@ -228,15 +263,23 @@
         <div id="alertContainer"></div>
 
         <div id="scanCard" class="card">
-            <div class="input-group">
-                <label for="wristbandId">Scan Customer Wristband</label>
-                <input 
-                    type="text" 
-                    id="wristbandId" 
-                    placeholder="Scan or enter wristband ID"
-                    autocomplete="off"
-                    autofocus
-                >
+            <div class="scan-mode-toggle">
+                <button id="nfcBtn" class="active" onclick="switchToNFC()">📱 NFC Scan</button>
+                <button id="manualBtn" onclick="switchToManual()">⌨️ Manual</button>
+            </div>
+
+            <div id="nfcMode">
+                <div class="nfc-status scanning">
+                    <h3 style="color: #00B74A; margin-bottom: 10px;">📱 NFC Ready</h3>
+                    <p style="color: #166534;">Tap wristband to scan</p>
+                </div>
+            </div>
+
+            <div id="manualMode" class="hidden">
+                <div class="input-group">
+                    <label for="wristbandId">Wristband ID</label>
+                    <input type="text" id="wristbandId" placeholder="Enter wristband ID" autocomplete="off">
+                </div>
             </div>
         </div>
 
@@ -259,7 +302,7 @@
             </div>
 
             <div id="transactionsContainer" class="transactions hidden">
-                <h4>Recent Orders (tap to refund):</h4>
+                <h4>Recent Orders (tap to cancel):</h4>
                 <div id="transactionsList"></div>
             </div>
 
@@ -277,6 +320,9 @@
         let drinks = [];
         let servedCount = 0;
         let recentTransactions = [];
+        let nfcReader = null;
+        let isProcessing = false;
+        let currentMode = 'nfc';
 
         window.onload = async function() {
             console.log('Bar app starting...');
@@ -292,11 +338,106 @@
                 
                 await loadDrinks();
                 loadServedCount();
+                
+                // Start NFC if supported
+                if ('NDEFReader' in window) {
+                    startNFC();
+                } else {
+                    switchToManual();
+                    showMessage('⚠️ NFC not supported - using manual mode', 'warning');
+                }
             } catch(err) {
                 console.error('Login failed:', err);
                 showMessage('❌ Failed to connect. Check internet.', 'error');
             }
         };
+
+        async function startNFC() {
+            if (isProcessing || currentMode !== 'nfc') return;
+            
+            try {
+                nfcReader = new NDEFReader();
+                
+                // Use onreading instead of addEventListener
+                nfcReader.onreading = async (event) => {
+                    if (isProcessing) return;
+                    isProcessing = true;
+                    
+                    const uid = event.serialNumber;
+                    console.log('NFC read:', uid);
+                    
+                    await lookupWristband(uid);
+                    
+                    // Wait before allowing next scan
+                    setTimeout(() => {
+                        isProcessing = false;
+                    }, 1000);
+                };
+
+                await nfcReader.scan();
+                console.log('NFC scanning started');
+                
+            } catch(err) {
+                console.error('NFC error:', err);
+                switchToManual();
+                showMessage('⚠️ NFC failed - switched to manual mode', 'warning');
+            }
+        }
+
+        function stopNFC() {
+            if (nfcReader) {
+                try {
+                    nfcReader.onreading = null;
+                    nfcReader = null;
+                } catch(err) {
+                    console.error('Error stopping NFC:', err);
+                }
+            }
+            isProcessing = false;
+        }
+
+        function switchToNFC() {
+            if (!('NDEFReader' in window)) {
+                showMessage('❌ NFC not supported on this device', 'error');
+                return;
+            }
+            
+            currentMode = 'nfc';
+            document.getElementById('nfcMode').classList.remove('hidden');
+            document.getElementById('manualMode').classList.add('hidden');
+            document.getElementById('nfcBtn').classList.add('active');
+            document.getElementById('manualBtn').classList.remove('active');
+            
+            stopNFC();
+            setTimeout(() => startNFC(), 100);
+        }
+
+        function switchToManual() {
+            currentMode = 'manual';
+            document.getElementById('nfcMode').classList.add('hidden');
+            document.getElementById('manualMode').classList.remove('hidden');
+            document.getElementById('nfcBtn').classList.remove('active');
+            document.getElementById('manualBtn').classList.add('active');
+            
+            stopNFC();
+            document.getElementById('wristbandId').focus();
+        }
+
+        // Manual input handler
+        document.addEventListener('DOMContentLoaded', () => {
+            const input = document.getElementById('wristbandId');
+            if (input) {
+                input.addEventListener('change', async function() {
+                    const uid = this.value.trim();
+                    if (uid && !isProcessing) {
+                        isProcessing = true;
+                        await lookupWristband(uid);
+                        this.value = '';
+                        isProcessing = false;
+                    }
+                });
+            }
+        });
 
         async function loadDrinks() {
             try {
@@ -335,10 +476,7 @@
             document.getElementById('servedCount').textContent = Math.floor(servedCount) + ' Served Today';
         }
 
-        document.getElementById('wristbandId').addEventListener('change', async function() {
-            const uid = this.value.trim();
-            if (!uid) return;
-
+        async function lookupWristband(uid) {
             console.log('Looking up wristband:', uid);
 
             try {
@@ -348,40 +486,23 @@
 
                 if (!r.ok) {
                     showMessage('❌ Wristband not found', 'error');
-                    this.value = '';
-                    this.focus();
                     return;
                 }
 
                 const band = await r.json();
                 currentBand = band;
                 
-                // Load recent transactions for this wristband
                 await loadRecentTransactions(band.id);
-                
                 displayCustomer(band);
 
             } catch(err) {
                 console.error('Lookup error:', err);
                 showMessage('❌ Error looking up wristband', 'error');
-                this.value = '';
-                this.focus();
             }
-        });
+        }
 
         async function loadRecentTransactions(wristbandId) {
-            try {
-                // Get all transactions
-                const r = await fetch(API + '/wristbands', {
-                    headers: {'Authorization': 'Bearer ' + token}
-                });
-                
-                // For now, we'll track transactions in memory
-                // In production, you'd query the bar_transactions table
-                recentTransactions = [];
-            } catch(err) {
-                console.error('Error loading transactions:', err);
-            }
+            recentTransactions = [];
         }
 
         function displayCustomer(band) {
@@ -399,10 +520,8 @@
             const ticketCount = Math.floor(balance / 7);
             document.getElementById('balanceAmount').textContent = ticketCount + (ticketCount === 1 ? ' Ticket' : ' Tickets');
 
-            // Show recent transactions if any
             displayTransactions();
 
-            // Build drink menu
             const drinkGrid = document.getElementById('drinkGrid');
             drinkGrid.innerHTML = '';
 
@@ -420,7 +539,6 @@
                     const drinkPrice = parseFloat(drink.price);
                     const outOfStock = drink.stock_remaining < 1;
                     
-                    // Count how many of this drink they ordered
                     const orderCount = recentTransactions.filter(t => t.drink === drink.name).length;
                     
                     if (outOfStock) {
@@ -451,6 +569,9 @@
 
             document.getElementById('scanCard').classList.add('hidden');
             document.getElementById('customerCard').classList.remove('hidden');
+            
+            // Stop NFC while serving
+            stopNFC();
         }
 
         function displayTransactions() {
@@ -473,7 +594,7 @@
                         <strong>${trans.drink}</strong>
                         <div class="transaction-time">${trans.time}</div>
                     </div>
-                    <button class="btn-refund" onclick="refundDrink('${trans.id}')">Refund</button>
+                    <button class="btn-refund" onclick="cancelDrink('${trans.id}')">Cancel</button>
                 `;
                 list.appendChild(item);
             });
@@ -507,7 +628,6 @@
                         showMessage(`✅ ${drink.name} served! No tickets remaining`, 'success');
                     }
                     
-                    // Add to recent transactions (in memory for this session)
                     const now = new Date();
                     recentTransactions.unshift({
                         id: 'trans_' + Date.now(),
@@ -517,7 +637,6 @@
                         timestamp: now
                     });
                     
-                    // Keep only last 5 transactions
                     if (recentTransactions.length > 5) {
                         recentTransactions = recentTransactions.slice(0, 5);
                     }
@@ -525,10 +644,7 @@
                     servedCount++;
                     updateCount();
 
-                    // Reload drinks to update stock
                     await loadDrinks();
-                    
-                    // Refresh display
                     displayCustomer(currentBand);
                     
                 } else {
@@ -541,16 +657,13 @@
             }
         }
 
-        async function refundDrink(transId) {
-            if (!confirm('Refund this drink?')) return;
-            
+        async function cancelDrink(transId) {
             const trans = recentTransactions.find(t => t.id === transId);
             if (!trans) return;
 
-            console.log('Refunding:', trans.drink);
+            console.log('Canceling:', trans.drink);
 
             try {
-                // Add credits back
                 const r = await fetch(API + '/wristbands/add-credits', {
                     method: 'POST',
                     headers: {
@@ -568,26 +681,22 @@
                 if (r.ok) {
                     currentBand.credits = d.new_balance;
                     
-                    // Remove from recent transactions
                     recentTransactions = recentTransactions.filter(t => t.id !== transId);
                     
                     servedCount--;
                     updateCount();
                     
-                    showMessage(`✅ ${trans.drink} refunded! 1 ticket returned`, 'success');
+                    showMessage(`✅ ${trans.drink} canceled! 1 ticket returned`, 'success');
                     
-                    // Reload drinks to update stock
                     await loadDrinks();
-                    
-                    // Refresh display
                     displayCustomer(currentBand);
                 } else {
-                    showMessage('❌ Refund failed: ' + d.error, 'error');
+                    showMessage('❌ Cancel failed: ' + d.error, 'error');
                 }
 
             } catch(err) {
-                console.error('Refund error:', err);
-                showMessage('❌ Error refunding drink', 'error');
+                console.error('Cancel error:', err);
+                showMessage('❌ Error canceling drink', 'error');
             }
         }
 
@@ -597,8 +706,14 @@
             document.getElementById('scanCard').classList.remove('hidden');
             document.getElementById('customerCard').classList.add('hidden');
             document.getElementById('wristbandId').value = '';
-            document.getElementById('wristbandId').focus();
             clearMessage();
+            
+            // Restart NFC if in NFC mode
+            if (currentMode === 'nfc') {
+                setTimeout(() => startNFC(), 100);
+            } else {
+                document.getElementById('wristbandId').focus();
+            }
         }
 
         function showMessage(msg, type) {
