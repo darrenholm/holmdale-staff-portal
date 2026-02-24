@@ -1,0 +1,1187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=800, height=1280, initial-scale=1.0, user-scalable=no">
+<title>Rodeo Bar Tickets</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Barlow:wght@400;500;600;700;800&family=Barlow+Condensed:wght@600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --rust: #C45B28;
+    --rust-dark: #9E3F14;
+    --rust-glow: #E8764A;
+    --gold: #D4A843;
+    --gold-light: #F0D078;
+    --cream: #F5EBD8;
+    --leather: #3B2414;
+    --leather-mid: #5C3A22;
+    --denim: #1A2744;
+    --denim-dark: #0F1A2E;
+    --white: #FEFCF7;
+    --success: #3D8B37;
+    --success-glow: #5BC454;
+    --error: #C43B3B;
+  }
+
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    -webkit-tap-highlight-color: transparent;
+    user-select: none;
+  }
+
+  html, body {
+    width: 800px;
+    height: 1280px;
+    overflow: hidden;
+    font-family: 'Barlow', sans-serif;
+    background: var(--denim-dark);
+  }
+
+  /* ===== BACKGROUND TEXTURE ===== */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: 
+      radial-gradient(ellipse at 50% 0%, rgba(196,91,40,0.15) 0%, transparent 60%),
+      radial-gradient(ellipse at 50% 100%, rgba(212,168,67,0.08) 0%, transparent 50%),
+      repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 2px,
+        rgba(255,255,255,0.01) 2px,
+        rgba(255,255,255,0.01) 4px
+      );
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* ===== SCREEN CONTAINER ===== */
+  .screen {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 40px;
+    opacity: 0;
+    transform: scale(0.96);
+    transition: opacity 0.5s ease, transform 0.5s ease;
+    pointer-events: none;
+    z-index: 1;
+  }
+
+  .screen.active {
+    opacity: 1;
+    transform: scale(1);
+    pointer-events: auto;
+  }
+
+  /* ===== ROPE BORDER DECORATION ===== */
+  .rope-border {
+    position: absolute;
+    top: 20px;
+    left: 20px;
+    right: 20px;
+    bottom: 20px;
+    border: 3px solid rgba(212,168,67,0.2);
+    border-radius: 24px;
+    pointer-events: none;
+  }
+
+  .rope-border::before {
+    content: '';
+    position: absolute;
+    top: 8px;
+    left: 8px;
+    right: 8px;
+    bottom: 8px;
+    border: 1px dashed rgba(212,168,67,0.12);
+    border-radius: 18px;
+  }
+
+  /* ===== CORNER STARS ===== */
+  .corner-star {
+    position: absolute;
+    width: 28px;
+    height: 28px;
+    color: var(--gold);
+    opacity: 0.3;
+    font-size: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .corner-star.tl { top: 28px; left: 28px; }
+  .corner-star.tr { top: 28px; right: 28px; }
+  .corner-star.bl { bottom: 28px; left: 28px; }
+  .corner-star.br { bottom: 28px; right: 28px; }
+
+  /* ===== WELCOME SCREEN ===== */
+  .brand-bar {
+    text-align: center;
+    margin-bottom: 20px;
+  }
+
+  .brand-bar h3 {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 600;
+    font-size: 22px;
+    letter-spacing: 6px;
+    text-transform: uppercase;
+    color: var(--gold);
+    opacity: 0.6;
+  }
+
+  .welcome-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 86px;
+    color: var(--cream);
+    text-align: center;
+    line-height: 0.95;
+    letter-spacing: 3px;
+    margin-bottom: 8px;
+    text-shadow: 0 4px 20px rgba(196,91,40,0.3);
+  }
+
+  .welcome-subtitle {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 28px;
+    font-weight: 600;
+    color: var(--rust-glow);
+    text-align: center;
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    margin-bottom: 60px;
+  }
+
+  /* NFC Animation */
+  .nfc-zone {
+    position: relative;
+    width: 280px;
+    height: 280px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 50px;
+  }
+
+  .nfc-ring {
+    position: absolute;
+    border-radius: 50%;
+    border: 2px solid var(--gold);
+    opacity: 0;
+    animation: nfcPulse 3s ease-out infinite;
+  }
+
+  .nfc-ring:nth-child(1) { width: 120px; height: 120px; animation-delay: 0s; }
+  .nfc-ring:nth-child(2) { width: 180px; height: 180px; animation-delay: 0.6s; }
+  .nfc-ring:nth-child(3) { width: 240px; height: 240px; animation-delay: 1.2s; }
+
+  @keyframes nfcPulse {
+    0% { opacity: 0.6; transform: scale(0.8); }
+    100% { opacity: 0; transform: scale(1.2); }
+  }
+
+  .nfc-icon {
+    position: relative;
+    z-index: 2;
+    width: 80px;
+    height: 80px;
+  }
+
+  .nfc-icon svg {
+    width: 100%;
+    height: 100%;
+    fill: var(--gold-light);
+    filter: drop-shadow(0 0 20px rgba(212,168,67,0.4));
+  }
+
+  .nfc-label {
+    font-family: 'Barlow', sans-serif;
+    font-size: 26px;
+    font-weight: 700;
+    color: var(--cream);
+    text-align: center;
+    letter-spacing: 1px;
+    line-height: 1.4;
+  }
+
+  .nfc-label span {
+    display: block;
+    font-size: 18px;
+    font-weight: 500;
+    color: rgba(245,235,216,0.5);
+    margin-top: 8px;
+  }
+
+  /* Decorative divider */
+  .divider {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin: 30px 0;
+    width: 60%;
+  }
+
+  .divider::before, .divider::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: linear-gradient(to right, transparent, var(--gold), transparent);
+    opacity: 0.3;
+  }
+
+  .divider-star {
+    color: var(--gold);
+    font-size: 16px;
+    opacity: 0.4;
+  }
+
+  /* ===== TICKET SELECTION SCREEN ===== */
+  .customer-header {
+    text-align: center;
+    margin-bottom: 10px;
+  }
+
+  .customer-name {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 52px;
+    color: var(--cream);
+    letter-spacing: 2px;
+  }
+
+  .customer-balance {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    background: rgba(212,168,67,0.12);
+    border: 1px solid rgba(212,168,67,0.25);
+    border-radius: 40px;
+    padding: 10px 28px;
+    margin-top: 8px;
+  }
+
+  .customer-balance .label {
+    font-size: 16px;
+    font-weight: 600;
+    color: rgba(245,235,216,0.6);
+    text-transform: uppercase;
+    letter-spacing: 2px;
+  }
+
+  .customer-balance .count {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 36px;
+    color: var(--gold-light);
+    line-height: 1;
+  }
+
+  .customer-balance .ticket-icon {
+    font-size: 24px;
+  }
+
+  .section-title {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 24px;
+    font-weight: 700;
+    color: var(--rust-glow);
+    text-transform: uppercase;
+    letter-spacing: 5px;
+    margin: 24px 0 20px;
+    text-align: center;
+  }
+
+  /* Ticket Options */
+  .ticket-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    width: 100%;
+    max-width: 680px;
+    padding: 0 10px;
+  }
+
+  .ticket-option {
+    position: relative;
+    background: linear-gradient(145deg, rgba(92,58,34,0.6), rgba(59,36,20,0.8));
+    border: 2px solid rgba(212,168,67,0.15);
+    border-radius: 20px;
+    padding: 28px 20px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.25s ease;
+    overflow: hidden;
+  }
+
+  .ticket-option::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(145deg, rgba(196,91,40,0.2), rgba(212,168,67,0.1));
+    opacity: 0;
+    transition: opacity 0.25s;
+    border-radius: 18px;
+  }
+
+  .ticket-option:active, .ticket-option.selected {
+    border-color: var(--gold);
+    transform: scale(0.97);
+  }
+
+  .ticket-option:active::before, .ticket-option.selected::before {
+    opacity: 1;
+  }
+
+  .ticket-qty {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 64px;
+    color: var(--cream);
+    line-height: 1;
+    position: relative;
+    z-index: 1;
+  }
+
+  .ticket-label {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 20px;
+    font-weight: 600;
+    color: rgba(245,235,216,0.5);
+    text-transform: uppercase;
+    letter-spacing: 3px;
+    margin: 4px 0 12px;
+    position: relative;
+    z-index: 1;
+  }
+
+  .ticket-price {
+    font-family: 'Barlow', sans-serif;
+    font-size: 28px;
+    font-weight: 800;
+    color: var(--gold-light);
+    position: relative;
+    z-index: 1;
+  }
+
+  .ticket-savings {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--success-glow);
+    margin-top: 6px;
+    position: relative;
+    z-index: 1;
+  }
+
+  .ticket-option.best-value {
+    border-color: rgba(196,91,40,0.4);
+  }
+
+  .best-value-badge {
+    position: absolute;
+    top: 0;
+    right: 0;
+    background: var(--rust);
+    color: var(--cream);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    padding: 6px 14px;
+    border-radius: 0 18px 0 14px;
+    z-index: 2;
+  }
+
+  /* Bottom actions */
+  .bottom-actions {
+    position: absolute;
+    bottom: 40px;
+    left: 40px;
+    right: 40px;
+    display: flex;
+    gap: 16px;
+  }
+
+  .btn {
+    flex: 1;
+    padding: 22px;
+    border: none;
+    border-radius: 16px;
+    font-family: 'Barlow', sans-serif;
+    font-size: 20px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .btn:active {
+    transform: scale(0.97);
+  }
+
+  .btn-cancel {
+    background: rgba(255,255,255,0.06);
+    color: rgba(245,235,216,0.5);
+    border: 1px solid rgba(255,255,255,0.1);
+    flex: 0.4;
+  }
+
+  .btn-confirm {
+    background: linear-gradient(135deg, var(--rust), var(--rust-dark));
+    color: var(--cream);
+    box-shadow: 0 8px 30px rgba(196,91,40,0.3);
+  }
+
+  .btn-confirm:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+    box-shadow: none;
+  }
+
+  /* ===== PAYMENT SCREEN ===== */
+  .payment-amount {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 96px;
+    color: var(--cream);
+    text-align: center;
+    line-height: 1;
+    margin-bottom: 8px;
+  }
+
+  .payment-detail {
+    font-size: 22px;
+    font-weight: 600;
+    color: rgba(245,235,216,0.5);
+    text-align: center;
+    margin-bottom: 50px;
+  }
+
+  .moneris-prompt {
+    text-align: center;
+    margin-bottom: 40px;
+  }
+
+  .moneris-prompt p {
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--gold-light);
+    line-height: 1.4;
+  }
+
+  .moneris-prompt span {
+    display: block;
+    font-size: 18px;
+    font-weight: 500;
+    color: rgba(245,235,216,0.4);
+    margin-top: 12px;
+  }
+
+  /* Payment spinner */
+  .payment-spinner {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    border: 4px solid rgba(212,168,67,0.15);
+    border-top-color: var(--gold);
+    animation: spin 1.2s linear infinite;
+    margin-bottom: 30px;
+  }
+
+  @keyframes spin {
+    to { transform: rotate(360deg); }
+  }
+
+  .payment-status {
+    font-size: 18px;
+    font-weight: 600;
+    color: rgba(245,235,216,0.4);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    animation: statusPulse 2s ease-in-out infinite;
+  }
+
+  @keyframes statusPulse {
+    0%, 100% { opacity: 0.4; }
+    50% { opacity: 1; }
+  }
+
+  /* ===== SUCCESS SCREEN ===== */
+  .success-check {
+    width: 120px;
+    height: 120px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--success), #2D6B28);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 30px;
+    box-shadow: 0 8px 40px rgba(61,139,55,0.3);
+    animation: successPop 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  }
+
+  @keyframes successPop {
+    0% { transform: scale(0); }
+    100% { transform: scale(1); }
+  }
+
+  .success-check svg {
+    width: 60px;
+    height: 60px;
+    fill: none;
+    stroke: white;
+    stroke-width: 4;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  .success-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 72px;
+    color: var(--success-glow);
+    letter-spacing: 4px;
+    margin-bottom: 10px;
+  }
+
+  .success-detail {
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--cream);
+    text-align: center;
+    margin-bottom: 6px;
+  }
+
+  .success-balance {
+    font-size: 20px;
+    color: rgba(245,235,216,0.5);
+    margin-bottom: 50px;
+  }
+
+  .success-balance strong {
+    color: var(--gold-light);
+    font-size: 24px;
+  }
+
+  .countdown-bar {
+    width: 400px;
+    height: 6px;
+    background: rgba(255,255,255,0.1);
+    border-radius: 3px;
+    overflow: hidden;
+    margin-top: 20px;
+  }
+
+  .countdown-fill {
+    height: 100%;
+    background: var(--gold);
+    border-radius: 3px;
+    animation: countdown 5s linear forwards;
+  }
+
+  @keyframes countdown {
+    from { width: 100%; }
+    to { width: 0%; }
+  }
+
+  .countdown-text {
+    font-size: 14px;
+    color: rgba(245,235,216,0.3);
+    margin-top: 10px;
+    letter-spacing: 1px;
+  }
+
+  /* ===== ERROR SCREEN ===== */
+  .error-icon {
+    width: 120px;
+    height: 120px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--error), #8B2020);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 30px;
+    box-shadow: 0 8px 40px rgba(196,59,59,0.3);
+  }
+
+  .error-icon svg {
+    width: 60px;
+    height: 60px;
+    fill: none;
+    stroke: white;
+    stroke-width: 4;
+    stroke-linecap: round;
+  }
+
+  .error-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 64px;
+    color: var(--error);
+    letter-spacing: 3px;
+    margin-bottom: 10px;
+  }
+
+  .error-detail {
+    font-size: 22px;
+    color: rgba(245,235,216,0.6);
+    text-align: center;
+    max-width: 500px;
+    line-height: 1.5;
+    margin-bottom: 40px;
+  }
+
+  .btn-retry {
+    background: linear-gradient(135deg, var(--rust), var(--rust-dark));
+    color: var(--cream);
+    padding: 20px 60px;
+    border: none;
+    border-radius: 16px;
+    font-family: 'Barlow', sans-serif;
+    font-size: 20px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    cursor: pointer;
+  }
+
+  /* ===== ADMIN CORNER ===== */
+  .admin-tap {
+    position: fixed;
+    top: 0;
+    right: 0;
+    width: 60px;
+    height: 60px;
+    z-index: 100;
+    cursor: pointer;
+  }
+
+  /* ===== DEMO CONTROLS ===== */
+  .demo-bar {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: rgba(0,0,0,0.85);
+    padding: 12px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    z-index: 200;
+    border-top: 1px solid rgba(255,255,255,0.1);
+  }
+
+  .demo-bar button {
+    padding: 8px 18px;
+    border: 1px solid rgba(255,255,255,0.2);
+    border-radius: 8px;
+    background: rgba(255,255,255,0.08);
+    color: #ccc;
+    font-family: 'Barlow', sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .demo-bar button:hover {
+    background: rgba(255,255,255,0.15);
+    color: white;
+  }
+
+  .demo-bar button.active-demo {
+    background: var(--rust);
+    border-color: var(--rust);
+    color: white;
+  }
+
+  .demo-label {
+    font-size: 11px;
+    color: rgba(255,255,255,0.3);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-right: 8px;
+  }
+</style>
+</head>
+<body>
+
+<!-- Decorative elements -->
+<div class="rope-border"></div>
+<div class="corner-star tl">★</div>
+<div class="corner-star tr">★</div>
+<div class="corner-star bl">★</div>
+<div class="corner-star br">★</div>
+
+<!-- ===== SCREEN 1: WELCOME / TAP WRISTBAND ===== -->
+<div class="screen active" id="screen-welcome">
+  <div class="brand-bar">
+    <h3>Annual Rodeo</h3>
+  </div>
+  <h1 class="welcome-title">BAR<br>TICKETS</h1>
+  <p class="welcome-subtitle">Tap • Select • Enjoy</p>
+
+  <div class="nfc-zone">
+    <div class="nfc-ring"></div>
+    <div class="nfc-ring"></div>
+    <div class="nfc-ring"></div>
+    <div class="nfc-icon">
+      <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8z"/>
+        <path d="M8.46 14.45l-1.36-.62C8.42 11.27 10.08 10 12 10c1.92 0 3.58 1.27 4.9 3.83l-1.36.62C14.46 12.5 13.18 11.5 12 11.5s-2.46 1-3.54 2.95z"/>
+        <path d="M10.24 13.47l-1.34-.67C9.72 11.28 10.78 10.5 12 10.5c1.22 0 2.28.78 3.1 2.3l-1.34.67C13.1 12.33 12.54 12 12 12s-1.1.33-1.76 1.47z"/>
+        <circle cx="12" cy="14" r="1.5"/>
+      </svg>
+    </div>
+  </div>
+
+  <p class="nfc-label">
+    Tap Your Wristband
+    <span>Hold wristband against the screen to begin</span>
+  </p>
+
+  <div class="divider">
+    <span class="divider-star">★</span>
+  </div>
+</div>
+
+<!-- ===== SCREEN 2: TICKET SELECTION ===== -->
+<div class="screen" id="screen-tickets">
+  <div class="customer-header">
+    <h2 class="customer-name" id="customerName">Welcome, Guest</h2>
+    <div class="customer-balance">
+      <span class="label">Current Balance</span>
+      <span class="ticket-icon">🎫</span>
+      <span class="count" id="customerBalance">0</span>
+    </div>
+  </div>
+
+  <p class="section-title">Select Your Tickets</p>
+
+  <div class="ticket-grid">
+    <div class="ticket-option" data-qty="1" data-price="500" onclick="selectTicket(this)">
+      <div class="ticket-qty">1</div>
+      <div class="ticket-label">Ticket</div>
+      <div class="ticket-price">$5.00</div>
+    </div>
+
+    <div class="ticket-option" data-qty="5" data-price="2000" onclick="selectTicket(this)">
+      <div class="ticket-qty">5</div>
+      <div class="ticket-label">Tickets</div>
+      <div class="ticket-price">$20.00</div>
+      <div class="ticket-savings">Save $5.00</div>
+    </div>
+
+    <div class="ticket-option" data-qty="10" data-price="3500" onclick="selectTicket(this)">
+      <div class="ticket-qty">10</div>
+      <div class="ticket-label">Tickets</div>
+      <div class="ticket-price">$35.00</div>
+      <div class="ticket-savings">Save $15.00</div>
+    </div>
+
+    <div class="ticket-option best-value" data-qty="20" data-price="6000" onclick="selectTicket(this)">
+      <div class="best-value-badge">Best Value</div>
+      <div class="ticket-qty">20</div>
+      <div class="ticket-label">Tickets</div>
+      <div class="ticket-price">$60.00</div>
+      <div class="ticket-savings">Save $40.00</div>
+    </div>
+  </div>
+
+  <div class="bottom-actions">
+    <button class="btn btn-cancel" onclick="goToScreen('welcome')">Cancel</button>
+    <button class="btn btn-confirm" id="btnConfirm" disabled onclick="confirmPurchase()">
+      Confirm Purchase
+    </button>
+  </div>
+</div>
+
+<!-- ===== SCREEN 3: PAYMENT PROCESSING ===== -->
+<div class="screen" id="screen-payment">
+  <div class="brand-bar">
+    <h3>Processing Payment</h3>
+  </div>
+
+  <div class="payment-amount" id="paymentAmount">$0.00</div>
+  <p class="payment-detail" id="paymentDetail">0 Tickets</p>
+
+  <div class="divider" style="margin-bottom: 50px;">
+    <span class="divider-star">★</span>
+  </div>
+
+  <div class="moneris-prompt">
+    <p>Tap or Insert Your<br>Payment Card</p>
+    <span>on the Moneris terminal →</span>
+  </div>
+
+  <div class="payment-spinner"></div>
+  <p class="payment-status">Waiting for payment...</p>
+
+  <div class="bottom-actions">
+    <button class="btn btn-cancel" style="flex:1" onclick="cancelPayment()">Cancel</button>
+  </div>
+</div>
+
+<!-- ===== SCREEN 4: SUCCESS ===== -->
+<div class="screen" id="screen-success">
+  <div class="success-check">
+    <svg viewBox="0 0 24 24">
+      <polyline points="20 6 9 17 4 12"/>
+    </svg>
+  </div>
+
+  <h2 class="success-title">Success!</h2>
+  <p class="success-detail" id="successDetail">5 tickets added</p>
+  <p class="success-balance">
+    New Balance: <strong id="newBalance">0</strong> 🎫
+  </p>
+
+  <div class="divider">
+    <span class="divider-star">★</span>
+  </div>
+
+  <p style="font-size: 32px; color: var(--cream); font-weight: 700; margin-top: 20px; text-align: center;">
+    Enjoy the Rodeo! 🤠
+  </p>
+
+  <div class="countdown-bar">
+    <div class="countdown-fill" id="countdownFill"></div>
+  </div>
+  <p class="countdown-text">Returning to start...</p>
+</div>
+
+<!-- ===== SCREEN 5: ERROR ===== -->
+<div class="screen" id="screen-error">
+  <div class="error-icon">
+    <svg viewBox="0 0 24 24">
+      <line x1="18" y1="6" x2="6" y2="18"/>
+      <line x1="6" y1="6" x2="18" y2="18"/>
+    </svg>
+  </div>
+
+  <h2 class="error-title">Payment Failed</h2>
+  <p class="error-detail" id="errorDetail">
+    The payment was declined. Please try again or use a different payment method.
+  </p>
+
+  <button class="btn-retry" onclick="retryPayment()">Try Again</button>
+
+  <div style="margin-top: 20px;">
+    <button class="btn btn-cancel" style="padding: 14px 40px;" onclick="goToScreen('welcome')">
+      Cancel
+    </button>
+  </div>
+</div>
+
+<!-- Admin tap zone (triple tap to access admin) -->
+<div class="admin-tap" id="adminTap"></div>
+
+<!-- Demo Controls (remove in production) -->
+<div class="demo-bar" id="demoBar">
+  <span class="demo-label">Demo:</span>
+  <button onclick="simulateNfcTap()">Tap Wristband</button>
+  <button onclick="simulatePaymentSuccess()">Payment ✓</button>
+  <button onclick="simulatePaymentFail()">Payment ✗</button>
+  <button onclick="goToScreen('welcome')">Reset</button>
+</div>
+
+<script>
+// ===== APPLICATION STATE =====
+const state = {
+  currentScreen: 'welcome',
+  customer: null,
+  selectedTickets: null,
+  selectedPrice: null,
+  transactionId: null,
+  successTimeout: null,
+};
+
+// ===== MOCK DATA (replace with API calls) =====
+const mockCustomers = {
+  'NFC_001': { id: 1, name: 'John', balance: 3 },
+  'NFC_002': { id: 2, name: 'Sarah', balance: 12 },
+  'NFC_003': { id: 3, name: 'Mike', balance: 0 },
+};
+
+// ===== SCREEN NAVIGATION =====
+function goToScreen(screenId) {
+  // Clear any pending timeouts
+  if (state.successTimeout) {
+    clearTimeout(state.successTimeout);
+    state.successTimeout = null;
+  }
+
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  
+  const target = document.getElementById('screen-' + screenId);
+  if (target) {
+    // Small delay for transition
+    setTimeout(() => target.classList.add('active'), 50);
+  }
+
+  state.currentScreen = screenId;
+
+  // Reset selections when going back to welcome
+  if (screenId === 'welcome') {
+    resetState();
+  }
+
+  // Restart countdown animation on success
+  if (screenId === 'success') {
+    const fill = document.getElementById('countdownFill');
+    fill.style.animation = 'none';
+    fill.offsetHeight; // trigger reflow
+    fill.style.animation = 'countdown 5s linear forwards';
+
+    state.successTimeout = setTimeout(() => {
+      goToScreen('welcome');
+    }, 5000);
+  }
+}
+
+function resetState() {
+  state.customer = null;
+  state.selectedTickets = null;
+  state.selectedPrice = null;
+  state.transactionId = null;
+
+  document.querySelectorAll('.ticket-option').forEach(opt => {
+    opt.classList.remove('selected');
+  });
+  document.getElementById('btnConfirm').disabled = true;
+}
+
+// ===== NFC HANDLING =====
+// In production, this would hook into the Android NFC API via a JS bridge
+function onNfcRead(nfcUid) {
+  console.log('[NFC] Wristband scanned:', nfcUid);
+
+  // Look up customer by NFC UID
+  // In production: API call to your backend
+  const customer = mockCustomers[nfcUid];
+  
+  if (!customer) {
+    // Unknown wristband - could show registration prompt
+    alert('Wristband not registered. Please visit the registration desk.');
+    return;
+  }
+
+  state.customer = customer;
+
+  // Update UI
+  document.getElementById('customerName').textContent = `Welcome, ${customer.name}!`;
+  document.getElementById('customerBalance').textContent = customer.balance;
+
+  goToScreen('tickets');
+}
+
+// ===== TICKET SELECTION =====
+function selectTicket(element) {
+  document.querySelectorAll('.ticket-option').forEach(opt => {
+    opt.classList.remove('selected');
+  });
+
+  element.classList.add('selected');
+
+  state.selectedTickets = parseInt(element.dataset.qty);
+  state.selectedPrice = parseInt(element.dataset.price);
+
+  document.getElementById('btnConfirm').disabled = false;
+}
+
+// ===== PAYMENT FLOW =====
+function confirmPurchase() {
+  if (!state.selectedTickets || !state.selectedPrice) return;
+
+  const dollars = (state.selectedPrice / 100).toFixed(2);
+  document.getElementById('paymentAmount').textContent = `$${dollars}`;
+  document.getElementById('paymentDetail').textContent = 
+    `${state.selectedTickets} Ticket${state.selectedTickets > 1 ? 's' : ''}`;
+
+  goToScreen('payment');
+
+  // In production: Send purchase request to Moneris Go Cloud API
+  sendToMoneris(state.selectedPrice);
+}
+
+function cancelPayment() {
+  // In production: Send cancel command to Moneris terminal
+  // cancelMonerisTransaction(state.transactionId);
+  goToScreen('tickets');
+}
+
+function retryPayment() {
+  goToScreen('payment');
+  sendToMoneris(state.selectedPrice);
+}
+
+// ===== MONERIS INTEGRATION =====
+/*
+ * Moneris Go Cloud Integration
+ * 
+ * Your POS app sends a purchase request to Moneris Cloud API.
+ * Moneris routes it to the paired terminal.
+ * Customer taps/inserts card on terminal.
+ * Terminal processes payment and returns result via cloud.
+ * 
+ * CLOUD API FLOW:
+ * 1. POST purchase request to Moneris Go Cloud endpoint
+ * 2. Include: totalAmount (in cents), ecr_no, order_id
+ * 3. Poll or wait for async response
+ * 4. Handle approval/decline
+ * 
+ * Prerequisites:
+ * - Moneris Go terminal in Cloud integration mode
+ * - Merchant ID, Store ID, API token from Moneris
+ * - Terminal paired to your store in Moneris Go Portal
+ */
+
+async function sendToMoneris(amountInCents) {
+  // Generate unique order ID
+  const orderId = `RODEO-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`;
+  state.transactionId = orderId;
+
+  console.log(`[Moneris] Sending purchase: $${(amountInCents/100).toFixed(2)} | Order: ${orderId}`);
+
+  /*
+  // ===== PRODUCTION CODE =====
+  // Moneris Go Cloud API Purchase Request
+  
+  const MONERIS_CLOUD_URL = 'https://gatewayt.moneris.com/gocloud/api'; // Test URL
+  // Production: https://gateway.moneris.com/gocloud/api
+  
+  const requestBody = {
+    "request": {
+      "command": "purchase",
+      "totalAmount": amountInCents.toString(),
+      "orderId": orderId,
+      "ecrNo": "1", // Your ECR identifier
+      "storeId": "YOUR_STORE_ID",
+      "apiToken": "YOUR_API_TOKEN",
+      "terminalId": "YOUR_TERMINAL_ID"
+    }
+  };
+
+  try {
+    const response = await fetch(MONERIS_CLOUD_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(requestBody)
+    });
+
+    const data = await response.json();
+    
+    if (data.response && data.response.responseCode === '000') {
+      // Payment approved
+      onPaymentSuccess(data.response);
+    } else {
+      // Payment declined or error
+      onPaymentFailed(data.response?.message || 'Transaction declined');
+    }
+  } catch (error) {
+    console.error('[Moneris] Error:', error);
+    onPaymentFailed('Connection error. Please try again.');
+  }
+  */
+
+  // Demo: simulate 3-second payment processing
+  console.log('[Demo] Simulating payment processing...');
+}
+
+function onPaymentSuccess(response) {
+  console.log('[Payment] Success:', response);
+
+  const newBalance = state.customer.balance + state.selectedTickets;
+  state.customer.balance = newBalance;
+
+  document.getElementById('successDetail').textContent = 
+    `${state.selectedTickets} ticket${state.selectedTickets > 1 ? 's' : ''} added!`;
+  document.getElementById('newBalance').textContent = newBalance;
+
+  goToScreen('success');
+
+  // In production: Update backend database
+  // updateCustomerBalance(state.customer.id, state.selectedTickets, state.transactionId);
+}
+
+function onPaymentFailed(message) {
+  console.log('[Payment] Failed:', message);
+  document.getElementById('errorDetail').textContent = message;
+  goToScreen('error');
+}
+
+// ===== BACKEND API CALLS (Production) =====
+/*
+async function lookupCustomerByNfc(nfcUid) {
+  const response = await fetch('/api/customers/nfc/' + nfcUid);
+  return await response.json();
+}
+
+async function updateCustomerBalance(customerId, ticketsAdded, transactionId) {
+  await fetch('/api/customers/' + customerId + '/tickets', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      tickets: ticketsAdded,
+      transactionId: transactionId,
+      source: 'kiosk'
+    })
+  });
+}
+*/
+
+// ===== ANDROID NFC BRIDGE =====
+/*
+ * On the Android terminal, a thin native wrapper reads NFC and calls:
+ * window.onNfcRead('NFC_UID_STRING')
+ * 
+ * The native Android code would look like:
+ * 
+ * webView.evaluateJavascript(
+ *   "onNfcRead('" + nfcUid + "')", null
+ * );
+ * 
+ * The Android app needs:
+ * - NFC permission in AndroidManifest.xml
+ * - NfcAdapter to read tag UIDs
+ * - WebView running this page in kiosk/fullscreen mode
+ */
+
+// ===== DEMO FUNCTIONS (remove in production) =====
+function simulateNfcTap() {
+  const uids = Object.keys(mockCustomers);
+  const randomUid = uids[Math.floor(Math.random() * uids.length)];
+  onNfcRead(randomUid);
+}
+
+function simulatePaymentSuccess() {
+  if (state.currentScreen === 'payment') {
+    onPaymentSuccess({ responseCode: '000', message: 'APPROVED' });
+  }
+}
+
+function simulatePaymentFail() {
+  if (state.currentScreen === 'payment') {
+    onPaymentFailed('Payment declined. Insufficient funds or card error.');
+  }
+}
+
+// Admin triple-tap
+let adminTaps = 0;
+let adminTimer = null;
+document.getElementById('adminTap').addEventListener('click', () => {
+  adminTaps++;
+  if (adminTaps >= 3) {
+    adminTaps = 0;
+    document.getElementById('demoBar').style.display = 
+      document.getElementById('demoBar').style.display === 'none' ? 'flex' : 'none';
+  }
+  clearTimeout(adminTimer);
+  adminTimer = setTimeout(() => adminTaps = 0, 1000);
+});
+</script>
+</body>
+</html>
