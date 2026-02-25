@@ -160,7 +160,7 @@
 
   // If already logged in, skip to index
   if (localStorage.getItem('rodeo_token')) {
-    window.location.href = '/index.html';
+    window.location.href = '/bar-service.html';
   }
 
   // Allow Enter key to submit
@@ -195,7 +195,7 @@
 
       if (data.success && data.token) {
         localStorage.setItem('rodeo_token', data.token);
-        window.location.href = '/index.html';
+        window.location.href = '/bar-service.html';
       } else {
         showError(data.error || 'Login failed. Check your email and password.');
       }
