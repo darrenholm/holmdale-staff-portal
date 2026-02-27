@@ -293,7 +293,9 @@
             wristbandInput.value = '';
             wristbandInput.focus();
             
-            wristbandInput.onchange = async function() {
+            wristbandInput.onkeydown = async function(e) {
+                if (e.key !== 'Enter') return;
+                e.preventDefault();
                 if (!wristbandInputActive) return;
                 
                 const uid = this.value.trim();
