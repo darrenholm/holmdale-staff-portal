@@ -1,173 +1,11 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Age Verification - Holmdale Pro Rodeo</title>
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: linear-gradient(135deg, #00B74A 0%, #2A2A2A 100%);
-            min-height: 100vh;
-            padding: 20px;
-        }
-        .container { max-width: 600px; margin: 0 auto; }
-        .header {
-            background: white;
-            padding: 20px;
-            border-radius: 15px;
-            margin-bottom: 20px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
-            text-align: center;
-        }
-        .header h1 { color: #00B74A; font-size: 28px; font-weight: bold; margin-bottom: 5px; }
-        .header h2 { color: #3A3A3A; font-size: 20px; margin-bottom: 5px; }
-        .header p { color: #666; font-size: 14px; }
-        .card {
-            background: white;
-            padding: 25px;
-            border-radius: 15px;
-            margin-bottom: 20px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
-        }
-        .input-group { margin-bottom: 20px; }
-        .input-group label {
-            display: block;
-            margin-bottom: 8px;
-            color: #333;
-            font-weight: 600;
-            font-size: 14px;
-        }
-        .input-group input {
-            width: 100%;
-            padding: 20px;
-            border: 3px solid #e0e0e0;
-            border-radius: 10px;
-            font-size: 24px;
-            text-align: center;
-            font-weight: bold;
-        }
-        .input-group input:focus { outline: none; border-color: #00B74A; }
-        .alert {
-            padding: 20px;
-            border-radius: 10px;
-            margin-bottom: 20px;
-            font-weight: 600;
-            font-size: 18px;
-            text-align: center;
-        }
-        .alert-success {
-            background: #c6f6d5;
-            color: #22543d;
-            border: 3px solid #48bb78;
-        }
-        .alert-error {
-            background: #fed7d7;
-            color: #742a2a;
-            border: 3px solid #f56565;
-        }
-        .alert-warning {
-            background: #feebc8;
-            color: #7c2d12;
-            border: 3px solid #ed8936;
-        }
-        .person-info {
-            background: #f0fdf4;
-            padding: 25px;
-            border-radius: 10px;
-            margin-bottom: 20px;
-            border-left: 5px solid #00B74A;
-        }
-        .person-info h3 {
-            color: #00B74A;
-            font-size: 24px;
-            margin-bottom: 15px;
-        }
-        .info-row {
-            display: flex;
-            justify-content: space-between;
-            padding: 12px 0;
-            border-bottom: 1px solid #d1fae5;
-            font-size: 16px;
-        }
-        .info-row:last-child { border-bottom: none; }
-        .info-label { color: #166534; font-weight: 600; }
-        .info-value { color: #14532d; font-weight: bold; }
-        .hidden { display: none; }
-        .big-check {
-            font-size: 80px;
-            text-align: center;
-            margin: 20px 0;
-        }
-        .instructions {
-            background: #fef3c7;
-            padding: 15px;
-            border-radius: 10px;
-            border-left: 4px solid #f59e0b;
-            margin-bottom: 20px;
-        }
-        .instructions p {
-            color: #78350f;
-            font-weight: 600;
-            margin-bottom: 8px;
-        }
-        .instructions ul {
-            color: #92400e;
-            margin-left: 20px;
-        }
-        .stat-box {
-            display: inline-block;
-            background: #00B74A;
-            color: white;
-            padding: 10px 20px;
-            border-radius: 8px;
-            font-size: 14px;
-            font-weight: bold;
-            margin-top: 10px;
-        }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <div class="header">
-            <h1>HOLMDALE PRO RODEO</h1>
-            <h2>🔒 Age Verification Gate</h2>
-            <p>Alcohol Approval - 19+ Only</p>
-            <div class="stat-box" id="approvedCount">0 Approved Today</div>
-        </div>
+const fs = require("fs");
+let content = fs.readFileSync("public/age-verification.html", "utf8");
 
-        <div class="instructions">
-            <p><strong>Security Instructions:</strong></p>
-            <ul>
-                <li>Check ID to verify person is 19+</li>
-                <li>If approved, scan their wristband</li>
-                <li>System automatically approves for alcohol</li>
-            </ul>
-        </div>
+// Replace everything from <script> to </script>
+const scriptStart = content.indexOf("<script>");
+const scriptEnd = content.indexOf("</script>") + 9;
 
-        <div id="alertContainer"></div>
-
-        <div id="scanCard" class="card">
-            <div class="input-group">
-                <label for="wristbandId">Scan Wristband to Approve</label>
-                <input 
-                    type="text" 
-                    id="wristbandId" 
-                    placeholder="Scan or enter wristband ID"
-                    autocomplete="off"
-                    autofocus
-                >
-            </div>
-        </div>
-
-        <div id="approvedCard" class="card hidden">
-            <div class="big-check">✅</div>
-            <div class="person-info" id="personInfo"></div>
-        </div>
-    </div>
-
-    <script>
+const newScript = `<script>
         const API = 'https://rodeo-fresh-production-7348.up.railway.app/api';
         let token = '';
         let approvedCount = 0;
@@ -301,6 +139,8 @@
         function clearMessage() {
             document.getElementById('alertContainer').innerHTML = '';
         }
-    </script>
-</body>
-</html>
+    </script>`;
+
+content = content.substring(0, scriptStart) + newScript + content.substring(scriptEnd);
+fs.writeFileSync("public/age-verification.html", content, "utf8");
+console.log("Done - full script replaced");
