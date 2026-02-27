@@ -285,8 +285,8 @@
             if (!wristbandInput) {
                 wristbandInput = document.createElement('input');
                 wristbandInput.id = 'hiddenWristbandInput';
-                wristbandInput.style.position = 'relative';
-                wristbandInput.style.width = '100%'; wristbandInput.style.padding = '15px'; wristbandInput.style.fontSize = '18px'; wristbandInput.style.border = '2px solid #00B74A'; wristbandInput.style.borderRadius = '10px'; wristbandInput.style.marginTop = '10px'; wristbandInput.placeholder = 'Tap wristband or type UID and press Enter';
+                wristbandInput.style.position = 'absolute';
+                wristbandInput.style.left = '-9999px';
                 document.body.appendChild(wristbandInput);
             }
             
