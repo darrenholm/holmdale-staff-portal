@@ -325,13 +325,11 @@
         window.onload = async function() {
             console.log('Inventory Manager starting...');
             try {
-                const r = await fetch(API + '/auth/login', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({email: 'darren@holmgraphics.ca', password: 'changeme123'})
-                });
-                const d = await r.json();
-                token = d.token;
+                token = localStorage.getItem('auth_token');
+    if (!token) {
+        window.location.href = 'login.html';
+        return;
+    }
                 console.log('Logged in');
                 
                 await loadInventory();
