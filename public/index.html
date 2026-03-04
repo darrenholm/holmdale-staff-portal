@@ -236,7 +236,13 @@
 
     <script>
         (function() {
-            var ADMIN_NAMES = ['Darren Holm', 'Todd Holm', 'Admin User'];
+         var token = localStorage.getItem('auth_token');
+    if (!token) {
+        window.location.href = 'login.html';
+        return;
+    }
+
+    var ADMIN_NAMES = ['Darren Holm', 'Todd Holm', 'Admin User'];
             var MANAGER_NAMES = ['Darren Holm', 'Todd Holm', 'Brady Yzerman', 'Keaton Holm', 'Chapman Holm', 'Admin User'];
 
             var staffName = localStorage.getItem('staff_name');
