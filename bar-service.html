@@ -365,14 +365,19 @@ async function cancelDrink(transId) {
   const trans = recentTransactions.find(t => t.id === transId);
   if (!trans) return;
   try {
-    const r = await fetch(API + '/wristbands/add-credits', {
+    // Use new cancel-drink endpoint which reverses both credits AND credits_spent
+    const r = await fetch(API + '/wristbands/cancel-drink', {
       method: 'POST',
       headers: {'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json'},
-      body: JSON.stringify({ rfid_uid: currentBand.rfid_uid, amount: 7 })
+      body: JSON.stringify({ rfid_uid: currentBand.rfid_uid })
     });
     const d = await r.json();
     if (r.ok) {
-      currentBand.credits = d.new_balance;
+      // Re-fetch wristband to get accurate balance
+      const refreshR = await fetch(API + '/wristbands/rfid/' + currentBand.rfid_uid, {
+        headers: {'Authorization': 'Bearer ' + token}
+      });
+      if (refreshR.ok) currentBand = await refreshR.json();
       recentTransactions = recentTransactions.filter(t => t.id !== transId);
       servedCount--;
       updateCount();
