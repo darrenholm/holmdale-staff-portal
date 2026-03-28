@@ -516,6 +516,8 @@
 
   <!-- ALERTS -->
   <div id="alertContainer"></div>
+  <!-- DEV MODE BANNER -->
+  <div id="devBanner" style="display:none;align-items:center;justify-content:center;gap:8px;background:rgba(255,77,77,0.15);border:1px solid rgba(255,77,77,0.4);color:#ff8c8c;font-size:12px;font-weight:700;letter-spacing:1px;padding:8px 14px;border-radius:8px;margin-bottom:12px;text-transform:uppercase;">⚠️ Dev Mode — Duplicate wristbands allowed</div>
 
   <!-- SCANNING SCREEN -->
   <div id="scanningScreen">
@@ -590,6 +592,7 @@
 
 <script>
 const API = 'https://rodeo-fresh-production-7348.up.railway.app/api';
+const DEV_MODE = true; // ⚠️ SET TO false BEFORE RODEO — allows duplicate wristbands for testing
 let token = '';
 let ticket = null;
 let bands = [];
@@ -600,6 +603,7 @@ let wristbandInputActive = false;
 window.onload = async () => {
   token = localStorage.getItem('auth_token');
   if (!token) { window.location.href = 'login.html'; return; }
+  if (DEV_MODE) document.getElementById('devBanner').style.display = 'flex';
   startQRScanner();
 };
 
@@ -710,16 +714,17 @@ async function assignBand(uid) {
   if (bands.length >= totalNeeded) return;
   const bandNum = bands.length + 1;
   const type = bandNum <= (ticket.quantity_adult || 0) ? 'adult' : 'child';
+  const sendUid = DEV_MODE ? uid + '_TEST' + Math.random().toString(36).slice(2,6).toUpperCase() : uid;
 
   try {
     const r = await fetch(API + '/wristbands/link', {
       method: 'POST',
       headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ rfid_uid: uid, ticket_order_id: ticket.id, ticket_type: type })
+      body: JSON.stringify({ rfid_uid: sendUid, ticket_order_id: ticket.id, ticket_type: type })
     });
     const d = await r.json();
     if (r.ok) {
-      bands.push({ uid, type });
+      bands.push({ uid, sendUid, type });
       updateWristbandDisplay();
       if (bands.length === totalNeeded) completeEntry();
     } else {
@@ -785,28 +790,28 @@ function updateWristbandDisplay() {
 
 async function toggle19Plus(index) {
   const b = bands[index];
+  if (b.of_age) return; // already approved — approve-age is one-way
   const btn = document.querySelector(`#wb-row-${index} .toggle-19`);
   if (!btn) return;
 
   btn.classList.add('loading');
-  const newVal = !b.of_age;
 
   try {
-    const r = await fetch(API + '/wristbands/set-age', {
+    const r = await fetch(API + '/wristbands/approve-age', {
       method: 'POST',
       headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ rfid_uid: b.uid, of_age: newVal })
+      body: JSON.stringify({ rfid_uid: b.sendUid || b.uid })
     });
     if (r.ok) {
-      b.of_age = newVal;
-      btn.classList.toggle('on', newVal);
-      btn.textContent = newVal ? '🍺 19+ VERIFIED' : '🍺 TAP TO FLAG 19+';
+      b.of_age = true;
+      btn.classList.add('on');
+      btn.textContent = '🍺 19+ VERIFIED';
     } else {
       const d = await r.json();
-      showMessage('❌ ' + (d.error || 'Could not update age flag'), 'error');
+      showMessage('❌ ' + (d.error || 'Could not approve age'), 'error');
     }
   } catch(err) {
-    showMessage('❌ Error updating 19+ flag', 'error');
+    showMessage('❌ Error approving 19+ flag', 'error');
   } finally {
     btn.classList.remove('loading');
   }
