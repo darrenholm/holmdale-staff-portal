@@ -173,52 +173,27 @@
   .info-label { color: var(--txt-dim); font-weight: 500; }
   .info-value { color: var(--txt); font-weight: 600; }
 
-  /* ── WRISTBAND STATUS ── */
-  .wristband-status {
-    background: var(--surface);
-    border-radius: 12px;
-    padding: 20px;
-    margin-bottom: 18px;
-    text-align: center;
-    border: 1px solid var(--line);
-  }
-  .wristband-status h3 {
-    font-family: 'Bebas Neue', sans-serif;
-    font-size: 14px;
-    letter-spacing: 3px;
-    color: var(--txt-dim);
-    text-transform: uppercase;
+  /* ── COMPACT PROGRESS CHIP ── */
+  .progress-chip {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
     margin-bottom: 10px;
   }
-  .band-counter {
-    display: flex;
-    align-items: baseline;
-    justify-content: center;
-    gap: 6px;
-    margin-bottom: 8px;
-  }
-  .band-counter .current {
+  .progress-chip .chip-label {
     font-family: 'Bebas Neue', sans-serif;
-    font-size: 64px;
-    color: var(--gold);
-    line-height: 1;
-  }
-  .band-counter .sep {
-    font-family: 'Bebas Neue', sans-serif;
-    font-size: 32px;
+    font-size: 13px;
+    letter-spacing: 2px;
     color: var(--txt-dim);
-  }
-  .band-counter .total {
-    font-family: 'Bebas Neue', sans-serif;
-    font-size: 32px;
-    color: var(--txt-dim);
+    white-space: nowrap;
   }
   .progress-track {
-    height: 6px;
+    flex: 1;
+    height: 5px;
     background: rgba(255,255,255,0.08);
     border-radius: 3px;
     overflow: hidden;
-    margin: 8px 0 12px;
   }
   .progress-fill {
     height: 100%;
@@ -227,10 +202,17 @@
     transition: width 0.4s ease;
     width: 0%;
   }
+  .progress-chip .chip-count {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 16px;
+    color: var(--green);
+    white-space: nowrap;
+  }
   .nfc-status-line {
-    font-size: 13px;
+    font-size: 12px;
     font-weight: 600;
     color: var(--green);
+    margin-bottom: 10px;
   }
 
   /* NFC button */
@@ -258,74 +240,141 @@
     color: white;
   }
 
-  /* Manual input */
-  .manual-wrap { margin-top: 14px; }
-  .manual-label {
-    font-size: 11px;
-    letter-spacing: 2px;
-    color: var(--txt-dim);
-    text-transform: uppercase;
-    margin-bottom: 6px;
-    display: block;
+  /* ── TYPE SELECTOR ── */
+  .type-selector {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 10px;
   }
-  .manual-input {
-    width: 100%;
-    padding: 14px 16px;
-    font-family: 'DM Sans', sans-serif;
-    font-size: 16px;
-    font-weight: 600;
-    letter-spacing: 2px;
-    background: var(--surface);
-    color: var(--txt);
+  .type-selector.single {
+    grid-template-columns: 1fr;
+  }
+  .type-btn {
+    padding: 18px 10px;
+    border-radius: 12px;
     border: 2px solid var(--line);
-    border-radius: 10px;
-    outline: none;
-    text-align: center;
-    transition: border-color 0.2s;
+    background: var(--surface);
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 22px;
+    letter-spacing: 2px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    color: var(--txt-dim);
   }
-  .manual-input:focus {
+  .type-btn .tb-icon { font-size: 28px; }
+  .type-btn .tb-remaining {
+    font-size: 12px;
+    letter-spacing: 1px;
+    font-family: 'DM Sans', sans-serif;
+    font-weight: 600;
+    color: var(--txt-dim);
+  }
+  .type-btn.adult-btn:hover, .type-btn.adult-btn.selected {
     border-color: var(--green);
-    background: rgba(0,201,87,0.05);
+    background: rgba(0,201,87,0.1);
+    color: var(--green);
   }
-  .manual-input::placeholder { color: var(--txt-dim); font-weight: 400; letter-spacing: 0; }
+  .type-btn.adult-btn.selected .tb-remaining { color: var(--green); }
+  .type-btn.child-btn:hover, .type-btn.child-btn.selected {
+    border-color: var(--gold);
+    background: rgba(245,166,35,0.1);
+    color: var(--gold);
+  }
+  .type-btn.child-btn.selected .tb-remaining { color: var(--gold); }
+  .type-btn:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+    pointer-events: none;
+  }
+  .type-btn.selected { transform: scale(0.98); }
 
-  /* ── WRISTBAND LIST ── */
-  .wristband-list { margin-top: 4px; }
+  /* ── WRISTBAND LIST — vertical scroll, one row per band ── */
+  .wristband-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    max-height: 320px;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .wristband-list::-webkit-scrollbar { width: 3px; }
+  .wristband-list::-webkit-scrollbar-track { background: transparent; }
+  .wristband-list::-webkit-scrollbar-thumb { background: var(--line); border-radius: 2px; }
+
   .wristband-item {
     display: flex;
-    justify-content: space-between;
     align-items: center;
-    padding: 12px 14px;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 16px 16px;
     background: var(--surface);
-    border-radius: 8px;
-    margin-bottom: 8px;
-    border-left: 3px solid var(--green);
-    animation: slideIn 0.25s ease;
+    border-radius: 10px;
+    border-left: 4px solid var(--green);
+    animation: slideIn 0.2s ease;
+    flex-shrink: 0;
   }
+  .wristband-item.child { border-left-color: var(--gold); }
   @keyframes slideIn {
-    from { opacity: 0; transform: translateY(-6px); }
+    from { opacity: 0; transform: translateY(-4px); }
     to   { opacity: 1; transform: translateY(0); }
   }
-  .wristband-item:last-child { margin-bottom: 0; }
-  .wb-left { display: flex; flex-direction: column; gap: 2px; }
-  .wb-name {
-    font-weight: 700;
-    font-size: 14px;
+
+  .wb-label {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 28px;
+    letter-spacing: 1px;
     color: var(--txt);
+    white-space: nowrap;
   }
-  .wb-type {
-    font-size: 11px;
-    text-transform: uppercase;
-    letter-spacing: 1px;
+  .wb-label.child-label { color: var(--gold); }
+
+  /* 19+ toggle — right side of row */
+  .toggle-19 {
+    flex-shrink: 0;
+    padding: 12px 22px;
+    border-radius: 8px;
+    border: 2px dashed rgba(255,255,255,0.2);
+    background: transparent;
     color: var(--txt-dim);
-  }
-  .wb-uid {
-    font-size: 12px;
-    font-weight: 600;
-    color: var(--green);
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 22px;
     letter-spacing: 1px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    white-space: nowrap;
   }
-  .wb-check { font-size: 20px; }
+  .toggle-19:active { transform: scale(0.96); }
+  .toggle-19.on {
+    background: rgba(245,166,35,0.15);
+    border-color: var(--gold);
+    border-style: solid;
+    color: var(--gold);
+  }
+  .toggle-19.loading { opacity: 0.4; pointer-events: none; }
+
+  /* Complete entry button */
+  .complete-btn {
+    width: 100%;
+    padding: 18px;
+    margin-top: 12px;
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 22px;
+    letter-spacing: 2px;
+    background: var(--green);
+    color: var(--dark);
+    border: none;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: background 0.2s, transform 0.1s;
+    display: none;
+  }
+  .complete-btn:active { transform: scale(0.98); }
+  .complete-btn.visible { display: block; }
 
   /* ── SUCCESS ── */
   .success-screen {
@@ -435,6 +484,8 @@
 
   <!-- ALERTS -->
   <div id="alertContainer"></div>
+  <!-- DEV MODE BANNER -->
+  <div id="devBanner" style="display:none;align-items:center;justify-content:center;gap:8px;background:rgba(255,77,77,0.15);border:1px solid rgba(255,77,77,0.4);color:#ff8c8c;font-size:12px;font-weight:700;letter-spacing:1px;padding:8px 14px;border-radius:8px;margin-bottom:12px;text-transform:uppercase;">⚠️ Dev Mode — Duplicate wristbands allowed</div>
 
   <!-- SCANNING SCREEN -->
   <div id="scanningScreen">
@@ -459,24 +510,26 @@
 
     <!-- Wristband Assignment -->
     <div class="card">
-      <div class="section-label">Wristband Assignment</div>
-
-      <div class="wristband-status">
-        <h3>Wristbands Assigned</h3>
-        <div class="band-counter">
-          <div class="current" id="assignedCount">0</div>
-          <div class="sep">/</div>
-          <div class="total" id="totalCount">0</div>
-        </div>
-        <div class="progress-track">
-          <div class="progress-fill" id="progressFill"></div>
-        </div>
-        <div class="nfc-status-line" id="nfcStatus">Initializing…</div>
+      <div class="progress-chip">
+        <span class="chip-label">Wristbands</span>
+        <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+        <span class="chip-count"><span id="assignedCount">0</span> / <span id="totalCount">0</span></span>
       </div>
-
+      <div id="typeSelector" class="type-selector hidden">
+        <button class="type-btn adult-btn" id="adultBtn" onclick="selectType('adult')">
+          <span class="tb-icon">👤</span>
+          ADULT
+          <span class="tb-remaining" id="adultRemaining"></span>
+        </button>
+        <button class="type-btn child-btn" id="childBtn" onclick="selectType('child')">
+          <span class="tb-icon">🧒</span>
+          CHILD
+          <span class="tb-remaining" id="childRemaining"></span>
+        </button>
+      </div>
+      <div class="nfc-status-line" id="nfcStatus">Initializing…</div>
       <div id="wristbandList" class="wristband-list hidden"></div>
-
-      <!-- NFC button & manual input injected here by JS -->
+      <button class="complete-btn" id="completeBtn" onclick="completeEntry()">✓ Complete Entry</button>
     </div>
   </div>
 
@@ -496,16 +549,19 @@
 
 <script>
 const API = 'https://rodeo-fresh-production-7348.up.railway.app/api';
+const DEV_MODE = true; // ⚠️ SET TO false BEFORE RODEO — allows duplicate wristbands for testing
 let token = '';
 let ticket = null;
 let bands = [];
 let html5QrcodeScanner = null;
 let totalNeeded = 0;
 let wristbandInputActive = false;
+let nextType = null; // 'adult' | 'child' — declared before each NFC scan
 
 window.onload = async () => {
   token = localStorage.getItem('auth_token');
   if (!token) { window.location.href = 'login.html'; return; }
+  if (DEV_MODE) document.getElementById('devBanner').style.display = 'flex';
   startQRScanner();
 };
 
@@ -576,84 +632,107 @@ async function lookupTicket(code) {
 }
 
 function listenForWristbands() {
-  showManualInput();
-
-  const assignmentCard = document.getElementById('assignmentScreen').querySelector('.card:last-child');
+  updateTypeSelector();
 
   if ('NDEFReader' in window) {
-    document.getElementById('nfcStatus').textContent = 'Tap below to enable NFC scanning';
-    const nfcBtn = document.createElement('button');
-    nfcBtn.id = 'nfcStartBtn';
-    nfcBtn.className = 'nfc-btn';
-    nfcBtn.textContent = '📶 Enable NFC Scanning';
-    assignmentCard.insertBefore(nfcBtn, document.getElementById('manualWristband'));
-
-    nfcBtn.addEventListener('click', async function() {
-      try {
-        const ndef = new NDEFReader();
-        await ndef.scan();
-        nfcBtn.textContent = '✓ NFC Active — Tap Wristband';
-        nfcBtn.className = 'nfc-btn active';
-        document.getElementById('nfcStatus').textContent = 'NFC ready — tap wristband to phone';
-        ndef.onreading = async (event) => {
-          if (!wristbandInputActive) return;
-          const uid = event.serialNumber.replace(/:/g, '').toUpperCase();
-          await assignBand(uid);
-        };
-        ndef.onreadingerror = () => {
-          document.getElementById('nfcStatus').textContent = 'Read error — try again';
-        };
-      } catch(err) {
-        nfcBtn.textContent = '✕ NFC Failed: ' + err.message;
-        nfcBtn.className = 'nfc-btn error';
-        document.getElementById('nfcStatus').textContent = 'Use manual input below';
-      }
+    document.getElementById('nfcStatus').textContent = 'Starting NFC…';
+    const ndef = new NDEFReader();
+    ndef.scan().then(() => {
+      document.getElementById('nfcStatus').textContent = '👆 Select Adult or Child, then tap wristband';
+      ndef.onreading = async (event) => {
+        if (!wristbandInputActive || !nextType) return;
+        const uid = event.serialNumber.replace(/:/g, '').toUpperCase();
+        await assignBand(uid);
+      };
+      ndef.onreadingerror = () => {
+        document.getElementById('nfcStatus').textContent = 'Read error — try again';
+      };
+    }).catch(err => {
+      document.getElementById('nfcStatus').textContent = 'NFC unavailable: ' + err.message;
     });
   } else {
-    document.getElementById('nfcStatus').textContent = 'NFC not supported — use manual input';
+    document.getElementById('nfcStatus').textContent = 'NFC not supported on this browser';
   }
 }
 
-function showManualInput() {
-  let manualDiv = document.getElementById('manualWristband');
-  if (!manualDiv) {
-    const assignmentCard = document.getElementById('assignmentScreen').querySelector('.card:last-child');
-    manualDiv = document.createElement('div');
-    manualDiv.id = 'manualWristband';
-    manualDiv.className = 'manual-wrap';
-    manualDiv.innerHTML = `
-      <label class="manual-label" for="manualUidInput">Manual Wristband UID</label>
-      <input type="text" id="manualUidInput" class="manual-input" placeholder="Type UID and press Enter" autocomplete="off">
-    `;
-    assignmentCard.appendChild(manualDiv);
+function updateTypeSelector() {
+  const adultsAssigned = bands.filter(b => b.type === 'adult').length;
+  const childrenAssigned = bands.filter(b => b.type === 'child').length;
+  const adultsLeft = (ticket.quantity_adult || 0) - adultsAssigned;
+  const childrenLeft = (ticket.quantity_child || 0) - childrenAssigned;
 
-    document.getElementById('manualUidInput').onkeydown = async function(e) {
-      if (e.key === 'Enter') {
-        e.preventDefault();
-        const uid = this.value.trim().toUpperCase();
-        if (uid) { await assignBand(uid); this.value = ''; }
-      }
-    };
+  const selector = document.getElementById('typeSelector');
+  const adultBtn = document.getElementById('adultBtn');
+  const childBtn = document.getElementById('childBtn');
+
+  // If only one type exists on this ticket, auto-select and hide selector
+  if ((ticket.quantity_adult || 0) === 0) {
+    nextType = 'child';
+    selector.classList.add('hidden');
+    return;
   }
-  setTimeout(() => document.getElementById('manualUidInput')?.focus(), 100);
+  if ((ticket.quantity_child || 0) === 0) {
+    nextType = 'adult';
+    selector.classList.add('hidden');
+    return;
+  }
+
+  // Both types — show selector, disable exhausted types
+  selector.classList.remove('hidden');
+  // Single column if one is exhausted
+  selector.className = 'type-selector' + (adultsLeft === 0 || childrenLeft === 0 ? ' single' : '');
+
+  adultBtn.disabled = adultsLeft === 0;
+  adultBtn.style.display = adultsLeft === 0 ? 'none' : '';
+  document.getElementById('adultRemaining').textContent = `${adultsLeft} remaining`;
+
+  childBtn.disabled = childrenLeft === 0;
+  childBtn.style.display = childrenLeft === 0 ? 'none' : '';
+  document.getElementById('childRemaining').textContent = `${childrenLeft} remaining`;
+
+  // Reset selection state
+  adultBtn.classList.remove('selected');
+  childBtn.classList.remove('selected');
+  nextType = null;
+}
+
+function selectType(type) {
+  nextType = type;
+  document.getElementById('adultBtn').classList.toggle('selected', type === 'adult');
+  document.getElementById('childBtn').classList.toggle('selected', type === 'child');
+  const label = type === 'adult' ? '👤 Adult selected — tap wristband now' : '🧒 Child selected — tap wristband now';
+  document.getElementById('nfcStatus').textContent = '📶 ' + (type === 'adult' ? 'Adult' : 'Child') + ' selected — tap wristband now';
 }
 
 async function assignBand(uid) {
-  if (bands.length >= totalNeeded) return;
-  const bandNum = bands.length + 1;
-  const type = bandNum <= (ticket.quantity_adult || 0) ? 'adult' : 'child';
+  if (bands.length >= totalNeeded || !nextType) return;
+  const type = nextType;
+  nextType = null; // clear immediately to prevent double-tap
+  document.getElementById('adultBtn')?.classList.remove('selected');
+  document.getElementById('childBtn')?.classList.remove('selected');
+  document.getElementById('nfcStatus').textContent = '⏳ Registering…';
+
+  const sendUid = DEV_MODE ? uid + '_TEST' + Math.random().toString(36).slice(2,6).toUpperCase() : uid;
 
   try {
     const r = await fetch(API + '/wristbands/link', {
       method: 'POST',
       headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ rfid_uid: uid, ticket_order_id: ticket.id, ticket_type: type })
+      body: JSON.stringify({ rfid_uid: sendUid, ticket_order_id: ticket.id, ticket_type: type })
     });
     const d = await r.json();
-    if (r.ok) {
-      bands.push({ uid, type });
+    if (r.ok || (DEV_MODE && d.error === 'This wristband is already registered')) {
+      bands.push({ uid, sendUid, type });
       updateWristbandDisplay();
-      if (bands.length === totalNeeded) completeEntry();
+      if (bands.length === totalNeeded) {
+        document.getElementById('typeSelector').classList.add('hidden');
+        document.getElementById('completeBtn').classList.add('visible');
+        document.getElementById('nfcStatus').textContent = '✓ All wristbands scanned — set 19+ flags then tap Complete';
+        wristbandInputActive = false;
+      } else {
+        updateTypeSelector();
+        document.getElementById('nfcStatus').textContent = '👆 Select next type, then tap wristband';
+      }
     } else {
       showMessage('❌ ' + (d.error || 'Assignment failed'), 'error');
     }
@@ -669,16 +748,62 @@ function updateWristbandDisplay() {
 
   const list = document.getElementById('wristbandList');
   list.classList.remove('hidden');
-  list.innerHTML = bands.map((b, i) => `
-    <div class="wristband-item">
-      <div class="wb-left">
-        <span class="wb-name">Wristband #${i + 1}</span>
-        <span class="wb-type">${b.type}</span>
-        <span class="wb-uid">${b.uid}</span>
-      </div>
-      <span class="wb-check">✅</span>
-    </div>
-  `).join('');
+
+  // Append only new rows — preserves existing toggle state
+  bands.forEach((b, i) => {
+    if (document.getElementById(`wb-row-${i}`)) return;
+
+    const row = document.createElement('div');
+    row.className = `wristband-item ${b.type}`;
+    row.id = `wb-row-${i}`;
+
+    const adultNum = bands.slice(0, i + 1).filter(x => x.type === 'adult').length;
+    const childNum = bands.slice(0, i + 1).filter(x => x.type === 'child').length;
+    const label = b.type === 'adult'
+      ? `Adult #${adultNum}`
+      : `Child #${childNum}`;
+
+    row.innerHTML = `
+      <span class="wb-label${b.type === 'child' ? ' child-label' : ''}">${label}</span>
+      ${b.type === 'adult' ? `<button class="toggle-19${b.of_age ? ' on' : ''}" data-index="${i}">🍺 ${b.of_age ? '19+ ✓' : '19+'}</button>` : ''}
+    `;
+
+    if (b.type === 'adult') {
+      row.querySelector('.toggle-19').addEventListener('click', () => toggle19Plus(i));
+    }
+
+    list.appendChild(row);
+  });
+}
+
+async function toggle19Plus(index) {
+  const b = bands[index];
+  const btn = document.querySelector(`#wb-row-${index} .toggle-19`);
+  if (!btn) return;
+
+  btn.classList.add('loading');
+  const newVal = !b.of_age;
+  const endpoint = newVal ? '/wristbands/approve-age' : '/wristbands/revoke-age';
+
+  try {
+    const r = await fetch(API + endpoint, {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ rfid_uid: b.sendUid || b.uid })
+    });
+    if (r.ok) {
+      b.of_age = newVal;
+      btn.classList.toggle('on', newVal);
+      btn.textContent = newVal ? '🍺 19+ ✓' : '🍺 19+';
+    } else {
+      const d = await r.json();
+      showMessage('❌ ' + (d.error || 'Could not update age flag'), 'error');
+    }
+  } catch(err) {
+    showMessage('❌ Error updating 19+ flag', 'error');
+  } finally {
+    btn.classList.remove('loading');
+  }
 }
 
 function completeEntry() {
@@ -703,11 +828,13 @@ function reset() {
   wristbandInputActive = false;
 
   // Clean up injected elements
+  nextType = null;
   document.getElementById('nfcStartBtn')?.remove();
-  document.getElementById('manualWristband')?.remove();
+  document.getElementById('typeSelector').classList.add('hidden');
   document.getElementById('wristbandList').classList.add('hidden');
   document.getElementById('wristbandList').innerHTML = '';
   document.getElementById('ticketInfo').innerHTML = '';
+  document.getElementById('completeBtn').classList.remove('visible');
 
   document.getElementById('scanningScreen').classList.remove('hidden');
   document.getElementById('assignmentScreen').classList.add('hidden');
