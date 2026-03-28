@@ -264,32 +264,38 @@
   .wristband-list { margin-top: 4px; }
   .wristband-item {
     display: flex;
-    justify-content: space-between;
     align-items: center;
-    padding: 12px 14px;
+    gap: 10px;
+    padding: 10px 12px;
     background: var(--surface);
     border-radius: 8px;
-    margin-bottom: 8px;
+    margin-bottom: 6px;
     border-left: 3px solid var(--green);
     animation: slideIn 0.25s ease;
   }
-  .wristband-item.child {
-    border-left-color: var(--gold);
-    background: rgba(245,166,35,0.06);
-  }
+  .wristband-item.child { border-left-color: var(--gold); }
   @keyframes slideIn {
     from { opacity: 0; transform: translateY(-6px); }
     to   { opacity: 1; transform: translateY(0); }
   }
   .wristband-item:last-child { margin-bottom: 0; }
-  .wb-left { display: flex; flex-direction: column; gap: 3px; }
-  .wb-name {
-    font-weight: 700;
-    font-size: 14px;
-    color: var(--txt);
+
+  /* left check icon */
+  .wb-check { font-size: 16px; flex-shrink: 0; }
+
+  /* middle: grows to fill space */
+  .wb-middle {
+    flex: 1;
     display: flex;
     align-items: center;
     gap: 8px;
+    min-width: 0;
+  }
+  .wb-num {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 16px;
+    color: var(--txt-dim);
+    flex-shrink: 0;
   }
   .wb-badge {
     font-size: 10px;
@@ -298,6 +304,7 @@
     text-transform: uppercase;
     padding: 2px 7px;
     border-radius: 4px;
+    flex-shrink: 0;
   }
   .wb-badge.adult {
     background: rgba(0,201,87,0.15);
@@ -310,12 +317,40 @@
     border: 1px solid rgba(245,166,35,0.3);
   }
   .wb-uid {
-    font-size: 12px;
+    font-size: 11px;
     font-weight: 600;
     color: var(--txt-dim);
     letter-spacing: 1px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
-  .wb-check { font-size: 20px; }
+
+  /* 19+ toggle */
+  .toggle-19 {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 5px 10px;
+    border-radius: 6px;
+    border: 1px solid rgba(255,255,255,0.12);
+    background: transparent;
+    color: var(--txt-dim);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.18s ease;
+    white-space: nowrap;
+  }
+  .toggle-19:hover { border-color: var(--gold); color: var(--gold); }
+  .toggle-19.on {
+    background: rgba(245,166,35,0.15);
+    border-color: var(--gold);
+    color: var(--gold);
+  }
+  .toggle-19.loading { opacity: 0.5; pointer-events: none; }
 
   /* ── NEXT ASSIGNMENT PROMPT ── */
   .next-up {
@@ -717,18 +752,60 @@ function updateWristbandDisplay() {
 
   const list = document.getElementById('wristbandList');
   list.classList.remove('hidden');
-  list.innerHTML = bands.map((b, i) => `
-    <div class="wristband-item ${b.type}">
-      <div class="wb-left">
-        <span class="wb-name">
-          Wristband #${i + 1}
-          <span class="wb-badge ${b.type}">${b.type}</span>
-        </span>
+
+  // Build rows — keep existing DOM nodes where possible to avoid toggle flicker
+  bands.forEach((b, i) => {
+    const existingRow = document.getElementById(`wb-row-${i}`);
+    if (existingRow) return; // already rendered, don't re-render (preserves toggle state)
+
+    const checkIcon = b.type === 'adult' ? '✅' : '🟡';
+    const row = document.createElement('div');
+    row.className = `wristband-item ${b.type}`;
+    row.id = `wb-row-${i}`;
+    row.innerHTML = `
+      <span class="wb-check">${checkIcon}</span>
+      <div class="wb-middle">
+        <span class="wb-num">#${i + 1}</span>
+        <span class="wb-badge ${b.type}">${b.type}</span>
         <span class="wb-uid">${b.uid}</span>
       </div>
-      <span class="wb-check">${b.type === 'adult' ? '✅' : '🟡'}</span>
-    </div>
-  `).join('');
+      ${b.type === 'adult' ? `<button class="toggle-19${b.of_age ? ' on' : ''}" data-index="${i}" title="Toggle 19+ verified">🍺 19+</button>` : ''}
+    `;
+
+    if (b.type === 'adult') {
+      row.querySelector('.toggle-19').addEventListener('click', () => toggle19Plus(i));
+    }
+
+    list.appendChild(row);
+  });
+}
+
+async function toggle19Plus(index) {
+  const b = bands[index];
+  const btn = document.querySelector(`#wb-row-${index} .toggle-19`);
+  if (!btn) return;
+
+  btn.classList.add('loading');
+  const newVal = !b.of_age;
+
+  try {
+    const r = await fetch(API + '/wristbands/set-age', {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ rfid_uid: b.uid, of_age: newVal })
+    });
+    if (r.ok) {
+      b.of_age = newVal;
+      btn.classList.toggle('on', newVal);
+    } else {
+      const d = await r.json();
+      showMessage('❌ ' + (d.error || 'Could not update age flag'), 'error');
+    }
+  } catch(err) {
+    showMessage('❌ Error updating 19+ flag', 'error');
+  } finally {
+    btn.classList.remove('loading');
+  }
 }
 
 function completeEntry() {
