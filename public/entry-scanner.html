@@ -173,52 +173,27 @@
   .info-label { color: var(--txt-dim); font-weight: 500; }
   .info-value { color: var(--txt); font-weight: 600; }
 
-  /* ── WRISTBAND STATUS ── */
-  .wristband-status {
-    background: var(--surface);
-    border-radius: 12px;
-    padding: 20px;
-    margin-bottom: 18px;
-    text-align: center;
-    border: 1px solid var(--line);
-  }
-  .wristband-status h3 {
-    font-family: 'Bebas Neue', sans-serif;
-    font-size: 14px;
-    letter-spacing: 3px;
-    color: var(--txt-dim);
-    text-transform: uppercase;
+  /* ── COMPACT PROGRESS CHIP ── */
+  .progress-chip {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
     margin-bottom: 10px;
   }
-  .band-counter {
-    display: flex;
-    align-items: baseline;
-    justify-content: center;
-    gap: 6px;
-    margin-bottom: 8px;
-  }
-  .band-counter .current {
+  .progress-chip .chip-label {
     font-family: 'Bebas Neue', sans-serif;
-    font-size: 64px;
-    color: var(--gold);
-    line-height: 1;
-  }
-  .band-counter .sep {
-    font-family: 'Bebas Neue', sans-serif;
-    font-size: 32px;
+    font-size: 13px;
+    letter-spacing: 2px;
     color: var(--txt-dim);
-  }
-  .band-counter .total {
-    font-family: 'Bebas Neue', sans-serif;
-    font-size: 32px;
-    color: var(--txt-dim);
+    white-space: nowrap;
   }
   .progress-track {
-    height: 6px;
+    flex: 1;
+    height: 5px;
     background: rgba(255,255,255,0.08);
     border-radius: 3px;
     overflow: hidden;
-    margin: 8px 0 12px;
   }
   .progress-fill {
     height: 100%;
@@ -227,10 +202,17 @@
     transition: width 0.4s ease;
     width: 0%;
   }
+  .progress-chip .chip-count {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 16px;
+    color: var(--green);
+    white-space: nowrap;
+  }
   .nfc-status-line {
-    font-size: 13px;
+    font-size: 12px;
     font-weight: 600;
     color: var(--green);
+    margin-bottom: 10px;
   }
 
   /* NFC button */
@@ -258,172 +240,69 @@
     color: white;
   }
 
-
-
-  /* ── WRISTBAND GALLERY ── */
+  /* ── WRISTBAND LIST — vertical scroll, one row per band ── */
   .wristband-list {
-    margin-top: 8px;
     display: flex;
-    gap: 10px;
-    overflow-x: auto;
-    overflow-y: visible;
-    padding-bottom: 6px;
-    /* smooth momentum scroll on iOS */
+    flex-direction: column;
+    gap: 6px;
+    max-height: 320px;
+    overflow-y: auto;
     -webkit-overflow-scrolling: touch;
-    scroll-snap-type: x mandatory;
   }
-  /* hide scrollbar but keep scrollable */
-  .wristband-list::-webkit-scrollbar { display: none; }
-  .wristband-list { scrollbar-width: none; }
+  .wristband-list::-webkit-scrollbar { width: 3px; }
+  .wristband-list::-webkit-scrollbar-track { background: transparent; }
+  .wristband-list::-webkit-scrollbar-thumb { background: var(--line); border-radius: 2px; }
 
   .wristband-item {
-    flex: 0 0 140px;
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    padding: 12px;
-    background: var(--surface);
-    border-radius: 10px;
-    border-top: 3px solid var(--green);
-    scroll-snap-align: start;
-    animation: slideIn 0.25s ease;
-  }
-  .wristband-item.child { border-top-color: var(--gold); }
-  @keyframes slideIn {
-    from { opacity: 0; transform: translateX(10px); }
-    to   { opacity: 1; transform: translateX(0); }
-  }
-
-  /* top info */
-  .wb-row {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-  }
-  .wb-top-line {
     display: flex;
     align-items: center;
-    gap: 6px;
-  }
-  .wb-check { font-size: 14px; flex-shrink: 0; }
-  .wb-num {
-    font-family: 'Bebas Neue', sans-serif;
-    font-size: 20px;
-    color: var(--txt);
-    line-height: 1;
-  }
-  .wb-badge {
-    font-size: 9px;
-    font-weight: 700;
-    letter-spacing: 1px;
-    text-transform: uppercase;
-    padding: 2px 6px;
-    border-radius: 4px;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 10px 14px;
+    background: var(--surface);
+    border-radius: 8px;
+    border-left: 3px solid var(--green);
+    animation: slideIn 0.2s ease;
     flex-shrink: 0;
   }
-  .wb-badge.adult {
-    background: rgba(0,201,87,0.15);
-    color: var(--green);
-    border: 1px solid rgba(0,201,87,0.3);
-  }
-  .wb-badge.child {
-    background: rgba(245,166,35,0.15);
-    color: var(--gold);
-    border: 1px solid rgba(245,166,35,0.3);
-  }
-  .wb-uid {
-    font-size: 10px;
-    font-weight: 600;
-    color: var(--txt-dim);
-    letter-spacing: 1px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+  .wristband-item.child { border-left-color: var(--gold); }
+  @keyframes slideIn {
+    from { opacity: 0; transform: translateY(-4px); }
+    to   { opacity: 1; transform: translateY(0); }
   }
 
-  /* 19+ toggle — fills bottom of adult card */
+  .wb-label {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 17px;
+    letter-spacing: 1px;
+    color: var(--txt);
+    white-space: nowrap;
+  }
+  .wb-label.child-label { color: var(--gold); }
+
+  /* 19+ toggle — right side of row, compact */
   .toggle-19 {
-    margin-top: auto;
-    width: 100%;
-    padding: 9px 4px;
+    flex-shrink: 0;
+    padding: 7px 14px;
     border-radius: 7px;
-    border: 2px dashed rgba(255,255,255,0.15);
+    border: 1.5px dashed rgba(255,255,255,0.2);
     background: transparent;
     color: var(--txt-dim);
     font-family: 'Bebas Neue', sans-serif;
-    font-size: 15px;
+    font-size: 14px;
     letter-spacing: 1px;
     cursor: pointer;
-    transition: all 0.18s ease;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 5px;
+    transition: all 0.15s ease;
     white-space: nowrap;
   }
-  .toggle-19:active {
-    transform: scale(0.97);
-  }
+  .toggle-19:active { transform: scale(0.96); }
   .toggle-19.on {
     background: rgba(245,166,35,0.15);
     border-color: var(--gold);
     border-style: solid;
     color: var(--gold);
   }
-  .toggle-19.loading { opacity: 0.5; pointer-events: none; }
-
-  /* ── NEXT ASSIGNMENT PROMPT ── */
-  .next-up {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 12px 14px;
-    border-radius: 8px;
-    margin-top: 10px;
-    font-size: 14px;
-    font-weight: 600;
-    border: 1px dashed;
-  }
-  .next-up.adult {
-    background: rgba(0,201,87,0.06);
-    border-color: rgba(0,201,87,0.25);
-    color: var(--green);
-  }
-  .next-up.child {
-    background: rgba(245,166,35,0.06);
-    border-color: rgba(245,166,35,0.25);
-    color: var(--gold);
-  }
-  .next-up .next-icon { font-size: 18px; }
-
-  /* ── TYPE SUMMARY ── */
-  .type-summary {
-    display: flex;
-    justify-content: center;
-    gap: 20px;
-    margin-top: 6px;
-    margin-bottom: 4px;
-  }
-  .type-pill {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    font-size: 13px;
-    font-weight: 600;
-  }
-  .type-pill .pill-count {
-    font-family: 'Bebas Neue', sans-serif;
-    font-size: 20px;
-    line-height: 1;
-  }
-  .type-pill.adult .pill-count { color: var(--green); }
-  .type-pill.child .pill-count  { color: var(--gold); }
-  .type-pill .pill-label {
-    font-size: 11px;
-    text-transform: uppercase;
-    letter-spacing: 1px;
-    color: var(--txt-dim);
-  }
+  .toggle-19.loading { opacity: 0.4; pointer-events: none; }
 
   /* ── SUCCESS ── */
   .success-screen {
@@ -559,37 +438,14 @@
 
     <!-- Wristband Assignment -->
     <div class="card">
-      <div class="section-label">Wristband Assignment</div>
-
-      <div class="wristband-status">
-        <h3>Wristbands Assigned</h3>
-        <div class="band-counter">
-          <div class="current" id="assignedCount">0</div>
-          <div class="sep">/</div>
-          <div class="total" id="totalCount">0</div>
-        </div>
-        <div class="type-summary">
-          <div class="type-pill adult">
-            <span class="pill-count" id="adultAssigned">0</span>
-            <span>👤</span>
-            <span class="pill-label">Adults</span>
-          </div>
-          <div class="type-pill child">
-            <span class="pill-count" id="childAssigned">0</span>
-            <span>🧒</span>
-            <span class="pill-label">Children</span>
-          </div>
-        </div>
-        <div class="progress-track">
-          <div class="progress-fill" id="progressFill"></div>
-        </div>
-        <div class="nfc-status-line" id="nfcStatus">Initializing…</div>
+      <div class="progress-chip">
+        <span class="chip-label">Wristbands</span>
+        <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+        <span class="chip-count"><span id="assignedCount">0</span> / <span id="totalCount">0</span></span>
       </div>
-
-      <div id="nextUpPrompt" class="hidden"></div>
+      <div class="nfc-status-line" id="nfcStatus">Initializing…</div>
       <div id="wristbandList" class="wristband-list hidden"></div>
-
-      <!-- NFC button & manual input injected here by JS -->
+      <!-- NFC button injected here by JS -->
     </div>
   </div>
 
@@ -691,36 +547,21 @@ async function lookupTicket(code) {
 }
 
 function listenForWristbands() {
-  const assignmentCard = document.getElementById('assignmentScreen').querySelector('.card:last-child');
-
   if ('NDEFReader' in window) {
-    document.getElementById('nfcStatus').textContent = 'Tap below to enable NFC scanning';
-    const nfcBtn = document.createElement('button');
-    nfcBtn.id = 'nfcStartBtn';
-    nfcBtn.className = 'nfc-btn';
-    nfcBtn.textContent = '📶 Enable NFC Scanning';
-    assignmentCard.appendChild(nfcBtn);
-
-    nfcBtn.addEventListener('click', async function() {
-      try {
-        const ndef = new NDEFReader();
-        await ndef.scan();
-        nfcBtn.textContent = '✓ NFC Active — Tap Wristband';
-        nfcBtn.className = 'nfc-btn active';
-        document.getElementById('nfcStatus').textContent = 'NFC ready — tap wristband to phone';
-        ndef.onreading = async (event) => {
-          if (!wristbandInputActive) return;
-          const uid = event.serialNumber.replace(/:/g, '').toUpperCase();
-          await assignBand(uid);
-        };
-        ndef.onreadingerror = () => {
-          document.getElementById('nfcStatus').textContent = 'Read error — try again';
-        };
-      } catch(err) {
-        nfcBtn.textContent = '✕ NFC Failed: ' + err.message;
-        nfcBtn.className = 'nfc-btn error';
-        document.getElementById('nfcStatus').textContent = 'NFC unavailable on this device';
-      }
+    document.getElementById('nfcStatus').textContent = 'Starting NFC…';
+    const ndef = new NDEFReader();
+    ndef.scan().then(() => {
+      document.getElementById('nfcStatus').textContent = '📶 NFC ready — tap wristband';
+      ndef.onreading = async (event) => {
+        if (!wristbandInputActive) return;
+        const uid = event.serialNumber.replace(/:/g, '').toUpperCase();
+        await assignBand(uid);
+      };
+      ndef.onreadingerror = () => {
+        document.getElementById('nfcStatus').textContent = 'Read error — try again';
+      };
+    }).catch(err => {
+      document.getElementById('nfcStatus').textContent = 'NFC unavailable: ' + err.message;
     });
   } else {
     document.getElementById('nfcStatus').textContent = 'NFC not supported on this browser';
@@ -757,46 +598,26 @@ function updateWristbandDisplay() {
   document.getElementById('assignedCount').textContent = bands.length;
   document.getElementById('progressFill').style.width = pct + '%';
 
-  const adultCount = bands.filter(b => b.type === 'adult').length;
-  const childCount = bands.filter(b => b.type === 'child').length;
-  document.getElementById('adultAssigned').textContent = adultCount;
-  document.getElementById('childAssigned').textContent = childCount;
-
-  // Next-up prompt
-  const nextPrompt = document.getElementById('nextUpPrompt');
-  if (bands.length < totalNeeded) {
-    const nextType = (bands.length + 1) <= (ticket.quantity_adult || 0) ? 'adult' : 'child';
-    const icon = nextType === 'adult' ? '👤' : '🧒';
-    const label = nextType === 'adult' ? 'Adult wristband' : 'Child wristband';
-    nextPrompt.className = `next-up ${nextType}`;
-    nextPrompt.innerHTML = `<span class="next-icon">${icon}</span> Next scan: <strong>${label}</strong>`;
-    nextPrompt.classList.remove('hidden');
-  } else {
-    nextPrompt.classList.add('hidden');
-  }
-
   const list = document.getElementById('wristbandList');
   list.classList.remove('hidden');
 
-  // Build rows — keep existing DOM nodes where possible to avoid toggle flicker
+  // Append only new rows — preserves existing toggle state
   bands.forEach((b, i) => {
-    const existingRow = document.getElementById(`wb-row-${i}`);
-    if (existingRow) return; // already rendered, don't re-render (preserves toggle state)
+    if (document.getElementById(`wb-row-${i}`)) return;
 
-    const checkIcon = b.type === 'adult' ? '✅' : '🟡';
     const row = document.createElement('div');
     row.className = `wristband-item ${b.type}`;
     row.id = `wb-row-${i}`;
+
+    const adultNum = bands.slice(0, i + 1).filter(x => x.type === 'adult').length;
+    const childNum = bands.slice(0, i + 1).filter(x => x.type === 'child').length;
+    const label = b.type === 'adult'
+      ? `Adult #${adultNum}`
+      : `Child #${childNum}`;
+
     row.innerHTML = `
-      <div class="wb-row">
-        <div class="wb-top-line">
-          <span class="wb-check">${checkIcon}</span>
-          <span class="wb-num">#${i + 1}</span>
-          <span class="wb-badge ${b.type}">${b.type}</span>
-        </div>
-        <span class="wb-uid">${b.uid}</span>
-      </div>
-      ${b.type === 'adult' ? `<button class="toggle-19${b.of_age ? ' on' : ''}" data-index="${i}">🍺 ${b.of_age ? '19+ ✓' : 'TAP 19+'}</button>` : ''}
+      <span class="wb-label${b.type === 'child' ? ' child-label' : ''}">${label}</span>
+      ${b.type === 'adult' ? `<button class="toggle-19${b.of_age ? ' on' : ''}" data-index="${i}">🍺 ${b.of_age ? '19+ ✓' : '19+'}</button>` : ''}
     `;
 
     if (b.type === 'adult') {
@@ -862,9 +683,6 @@ function reset() {
   document.getElementById('wristbandList').classList.add('hidden');
   document.getElementById('wristbandList').innerHTML = '';
   document.getElementById('ticketInfo').innerHTML = '';
-  document.getElementById('adultAssigned').textContent = '0';
-  document.getElementById('childAssigned').textContent = '0';
-  document.getElementById('nextUpPrompt').classList.add('hidden');
 
   document.getElementById('scanningScreen').classList.remove('hidden');
   document.getElementById('assignmentScreen').classList.add('hidden');
