@@ -1,0 +1,557 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=800, height=1280, initial-scale=1.0, user-scalable=no">
+<title>Rodeo Kiosk</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Barlow:wght@400;500;600;700;800&family=Barlow+Condensed:wght@600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --stone-950: #0c0a09;
+    --stone-900: #1c1917;
+    --stone-800: #292524;
+    --stone-700: #44403c;
+    --stone-600: #57534e;
+    --stone-400: #a8a29e;
+    --stone-300: #d6d3d1;
+    --stone-200: #e7e5e4;
+    --green-600: #16a34a;
+    --green-500: #22c55e;
+    --green-400: #4ade80;
+    --green-300: #86efac;
+    --green-700: #15803d;
+    --white: #FEFCF7;
+    --success: #22c55e;
+    --error: #ef4444;
+  }
+
+  * {
+    margin: 0; padding: 0; box-sizing: border-box;
+    -webkit-tap-highlight-color: transparent;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+
+  html, body {
+    width: 800px; height: 1280px;
+    overflow: hidden;
+    font-family: 'Barlow', sans-serif;
+    background: var(--stone-950);
+  }
+
+  /* ===== KIOSK LOCKDOWN ===== */
+  body {
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    touch-action: manipulation;
+  }
+
+  /* ===== BACKGROUND ===== */
+  body::before {
+    content: '';
+    position: fixed; inset: 0;
+    background:
+      radial-gradient(ellipse at 50% 30%, rgba(34,197,94,0.06) 0%, transparent 60%),
+      radial-gradient(ellipse at 50% 80%, rgba(34,197,94,0.03) 0%, transparent 50%);
+    pointer-events: none; z-index: 0;
+  }
+
+  /* ===== LAUNCHER SCREEN ===== */
+  .launcher {
+    position: fixed; inset: 0;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    z-index: 10;
+    transition: opacity 0.4s, transform 0.4s;
+  }
+
+  .launcher.hidden {
+    opacity: 0;
+    transform: scale(0.95);
+    pointer-events: none;
+  }
+
+  .logo-area {
+    text-align: center;
+    margin-bottom: 60px;
+  }
+
+  .logo-emoji {
+    font-size: 80px;
+    margin-bottom: 16px;
+    display: block;
+  }
+
+  .logo-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 72px;
+    color: var(--stone-200);
+    letter-spacing: 6px;
+    line-height: 1;
+  }
+
+  .logo-sub {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--green-500);
+    letter-spacing: 6px;
+    text-transform: uppercase;
+    margin-top: 8px;
+  }
+
+  .choose-label {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--stone-400);
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    margin-bottom: 40px;
+  }
+
+  .kiosk-options {
+    display: flex; gap: 40px;
+    justify-content: center;
+  }
+
+  .kiosk-card {
+    width: 300px; height: 360px;
+    background: var(--stone-900);
+    border: 2px solid var(--stone-700);
+    border-radius: 30px;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .kiosk-card::before {
+    content: '';
+    position: absolute; inset: 0;
+    border-radius: 30px;
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+
+  .kiosk-card.food::before {
+    background: linear-gradient(135deg, rgba(34,197,94,0.1) 0%, rgba(22,163,74,0.05) 100%);
+  }
+
+  .kiosk-card.drink::before {
+    background: linear-gradient(135deg, rgba(34,197,94,0.1) 0%, rgba(74,222,128,0.05) 100%);
+  }
+
+  .kiosk-card:hover::before,
+  .kiosk-card:active::before {
+    opacity: 1;
+  }
+
+  .kiosk-card:active {
+    transform: scale(0.97);
+    border-color: var(--green-500);
+  }
+
+  .card-emoji {
+    font-size: 100px;
+    margin-bottom: 20px;
+    position: relative; z-index: 1;
+  }
+
+  .card-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 42px;
+    color: var(--stone-200);
+    letter-spacing: 3px;
+    position: relative; z-index: 1;
+  }
+
+  .card-desc {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--stone-400);
+    margin-top: 8px;
+    position: relative; z-index: 1;
+  }
+
+  /* ===== IFRAME CONTAINER ===== */
+  .kiosk-frame-container {
+    position: fixed; inset: 0;
+    z-index: 20;
+    display: none;
+  }
+
+  .kiosk-frame-container.active {
+    display: block;
+  }
+
+  .kiosk-frame-container iframe {
+    width: 100%; height: 100%;
+    border: none;
+  }
+
+  /* ===== BACK BUTTON (floating, bottom-left) ===== */
+  .back-home-btn {
+    position: fixed;
+    bottom: 20px; left: 20px;
+    width: 70px; height: 70px;
+    background: var(--stone-900);
+    border: 2px solid var(--stone-700);
+    border-radius: 50%;
+    color: var(--stone-300);
+    font-size: 32px;
+    display: none;
+    align-items: center; justify-content: center;
+    cursor: pointer;
+    z-index: 30;
+    transition: all 0.2s;
+  }
+
+  .back-home-btn.show {
+    display: flex;
+  }
+
+  .back-home-btn:active {
+    transform: scale(0.9);
+    background: var(--stone-800);
+    border-color: var(--green-500);
+  }
+
+  /* ===== INACTIVITY OVERLAY ===== */
+  .idle-overlay {
+    position: fixed; inset: 0;
+    background: rgba(12,10,9,0.92);
+    display: none;
+    align-items: center; justify-content: center;
+    flex-direction: column;
+    z-index: 50;
+    cursor: pointer;
+  }
+
+  .idle-overlay.show {
+    display: flex;
+  }
+
+  .idle-text {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 64px;
+    color: var(--green-400);
+    letter-spacing: 4px;
+    animation: pulse 2s ease-in-out infinite;
+  }
+
+  .idle-sub {
+    font-size: 22px;
+    font-weight: 600;
+    color: var(--stone-400);
+    margin-top: 16px;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 0.7; }
+    50% { opacity: 1; }
+  }
+
+  /* ===== ADMIN EXIT (hidden triple-tap area) ===== */
+  .admin-exit-zone {
+    position: fixed;
+    top: 0; right: 0;
+    width: 60px; height: 60px;
+    z-index: 100;
+    /* Invisible tap target for admin exit */
+  }
+</style>
+</head>
+<body>
+
+<!-- ===== LAUNCHER SCREEN ===== -->
+<div class="launcher" id="launcher">
+  <div class="logo-area">
+    <span class="logo-emoji">🤠</span>
+    <div class="logo-title">Holmdale Pro Rodeo</div>
+    <div class="logo-sub">Self-Service Kiosk</div>
+  </div>
+
+  <div class="choose-label">What would you like?</div>
+
+  <div class="kiosk-options">
+    <div class="kiosk-card food" onclick="openKiosk('food')">
+      <div class="card-emoji">🍔</div>
+      <div class="card-title">Order Food</div>
+      <div class="card-desc">Burgers, dogs, sides & more</div>
+    </div>
+
+    <div class="kiosk-card drink" onclick="openKiosk('drink')">
+      <div class="card-emoji">🍺</div>
+      <div class="card-title">Drink Tickets</div>
+      <div class="card-desc">Buy bar credit tickets</div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== FOOD KIOSK IFRAME ===== -->
+<div class="kiosk-frame-container" id="foodFrame">
+  <iframe id="foodIframe" src="about:blank" allow="payment; nfc"></iframe>
+</div>
+
+<!-- ===== DRINK KIOSK IFRAME ===== -->
+<div class="kiosk-frame-container" id="drinkFrame">
+  <iframe id="drinkIframe" src="about:blank" allow="payment; nfc"></iframe>
+</div>
+
+<!-- ===== BACK TO HOME BUTTON ===== -->
+<div class="back-home-btn" id="backBtn" onclick="goHome()">🏠</div>
+
+<!-- ===== INACTIVITY SCREEN ===== -->
+<div class="idle-overlay" id="idleOverlay" onclick="wakeUp()">
+  <div class="idle-text">Tap to Start</div>
+  <div class="idle-sub">🤠 Holmdale Pro Rodeo</div>
+</div>
+
+<!-- ===== ADMIN EXIT ZONE (triple-tap top-right corner to exit) ===== -->
+<div class="admin-exit-zone" id="adminZone"></div>
+
+<script>
+// ╔══════════════════════════════════════════════════════════════════════╗
+// ║  CONFIGURATION                                                      ║
+// ╚══════════════════════════════════════════════════════════════════════╝
+
+// URLs for each kiosk page (relative — these live in the same folder)
+const FOOD_KIOSK_URL = 'rodeo-food-kiosk.html';
+const DRINK_KIOSK_URL = 'rodeo-kiosk.html';
+
+// Inactivity timeout (ms) — return to launcher after this long with no taps
+const IDLE_TIMEOUT = 90000;    // 90 seconds in a sub-kiosk
+const SLEEP_TIMEOUT = 180000;  // 3 minutes on launcher → show "Tap to Start"
+
+// Admin exit: number of rapid taps in the corner to exit kiosk
+const ADMIN_TAP_COUNT = 5;
+const ADMIN_TAP_WINDOW = 3000; // 5 taps within 3 seconds
+
+// ╔══════════════════════════════════════════════════════════════════════╗
+// ║  STATE                                                              ║
+// ╚══════════════════════════════════════════════════════════════════════╝
+
+let currentKiosk = null;  // 'food', 'drink', or null
+let idleTimer = null;
+let sleepTimer = null;
+let adminTaps = [];
+
+// ╔══════════════════════════════════════════════════════════════════════╗
+// ║  KIOSK NAVIGATION                                                   ║
+// ╚══════════════════════════════════════════════════════════════════════╝
+
+function openKiosk(type) {
+  currentKiosk = type;
+
+  // Load iframe (lazy — only loads when selected)
+  if (type === 'food') {
+    const iframe = document.getElementById('foodIframe');
+    if (iframe.src === 'about:blank' || !iframe.src.includes(FOOD_KIOSK_URL)) {
+      iframe.src = FOOD_KIOSK_URL;
+    }
+    document.getElementById('foodFrame').classList.add('active');
+    document.getElementById('drinkFrame').classList.remove('active');
+  } else {
+    const iframe = document.getElementById('drinkIframe');
+    if (iframe.src === 'about:blank' || !iframe.src.includes(DRINK_KIOSK_URL)) {
+      iframe.src = DRINK_KIOSK_URL;
+    }
+    document.getElementById('drinkFrame').classList.add('active');
+    document.getElementById('foodFrame').classList.remove('active');
+  }
+
+  // Hide launcher, show back button
+  document.getElementById('launcher').classList.add('hidden');
+  document.getElementById('backBtn').classList.add('show');
+
+  // Start idle timer
+  resetIdleTimer();
+
+  console.log('[Launcher] Opened', type, 'kiosk');
+}
+
+function goHome() {
+  currentKiosk = null;
+
+  // Hide both kiosk frames
+  document.getElementById('foodFrame').classList.remove('active');
+  document.getElementById('drinkFrame').classList.remove('active');
+
+  // Reload iframes to reset their state (clear carts, etc.)
+  document.getElementById('foodIframe').src = 'about:blank';
+  document.getElementById('drinkIframe').src = 'about:blank';
+
+  // Show launcher, hide back button
+  document.getElementById('launcher').classList.remove('hidden');
+  document.getElementById('backBtn').classList.remove('show');
+
+  // Clear idle timer, start sleep timer
+  clearTimeout(idleTimer);
+  resetSleepTimer();
+
+  console.log('[Launcher] Returned to home');
+}
+
+// ╔══════════════════════════════════════════════════════════════════════╗
+// ║  INACTIVITY HANDLING                                                ║
+// ╚══════════════════════════════════════════════════════════════════════╝
+
+function resetIdleTimer() {
+  clearTimeout(idleTimer);
+  if (currentKiosk) {
+    idleTimer = setTimeout(() => {
+      console.log('[Launcher] Idle timeout — returning to home');
+      goHome();
+    }, IDLE_TIMEOUT);
+  }
+}
+
+function resetSleepTimer() {
+  clearTimeout(sleepTimer);
+  sleepTimer = setTimeout(() => {
+    if (!currentKiosk) {
+      document.getElementById('idleOverlay').classList.add('show');
+      console.log('[Launcher] Sleep mode activated');
+    }
+  }, SLEEP_TIMEOUT);
+}
+
+function wakeUp() {
+  document.getElementById('idleOverlay').classList.remove('show');
+  resetSleepTimer();
+  console.log('[Launcher] Woke up from sleep');
+}
+
+// Listen for ANY touch/click to reset timers
+document.addEventListener('click', () => {
+  resetIdleTimer();
+  if (document.getElementById('idleOverlay').classList.contains('show')) {
+    wakeUp();
+  }
+}, true);
+
+document.addEventListener('touchstart', () => {
+  resetIdleTimer();
+}, true);
+
+// Also listen for activity inside iframes
+window.addEventListener('message', (event) => {
+  if (event.data === 'kiosk-activity') {
+    resetIdleTimer();
+  }
+  // Listen for "order complete" to auto-return home after a delay
+  if (event.data === 'order-complete') {
+    setTimeout(goHome, 8000); // Return home 8s after order success
+  }
+});
+
+// ╔══════════════════════════════════════════════════════════════════════╗
+// ║  NFC BRIDGE — Forward NFC reads from Android to active iframe       ║
+// ╚══════════════════════════════════════════════════════════════════════╝
+
+// Android native app calls this function when an NFC tag is scanned
+window.onNfcRead = function(uid) {
+  console.log('[Launcher] NFC read:', uid);
+
+  // Forward to whichever iframe is active
+  if (currentKiosk === 'food') {
+    const iframe = document.getElementById('foodIframe');
+    iframe.contentWindow.postMessage({ type: 'nfc-read', uid: uid }, '*');
+  } else if (currentKiosk === 'drink') {
+    const iframe = document.getElementById('drinkIframe');
+    iframe.contentWindow.postMessage({ type: 'nfc-read', uid: uid }, '*');
+  }
+};
+
+// ╔══════════════════════════════════════════════════════════════════════╗
+// ║  ADMIN EXIT — 5 rapid taps in top-right corner                      ║
+// ╚══════════════════════════════════════════════════════════════════════╝
+
+document.getElementById('adminZone').addEventListener('click', () => {
+  const now = Date.now();
+  adminTaps.push(now);
+
+  // Keep only taps within the time window
+  adminTaps = adminTaps.filter(t => now - t < ADMIN_TAP_WINDOW);
+
+  if (adminTaps.length >= ADMIN_TAP_COUNT) {
+    adminTaps = [];
+    if (confirm('Exit kiosk mode?')) {
+      // On Android, this will close the app or go to settings
+      // On browser, just navigate away
+      window.location.href = 'about:blank';
+    }
+  }
+});
+
+// ╔══════════════════════════════════════════════════════════════════════╗
+// ║  KIOSK LOCKDOWN — Prevent escape on Android & browser               ║
+// ╚══════════════════════════════════════════════════════════════════════╝
+
+// Prevent back button / swipe back
+window.addEventListener('popstate', (e) => {
+  e.preventDefault();
+  window.history.pushState(null, '', window.location.href);
+});
+window.history.pushState(null, '', window.location.href);
+
+// Prevent context menu (long-press)
+document.addEventListener('contextmenu', e => e.preventDefault());
+
+// Prevent pinch zoom
+document.addEventListener('gesturestart', e => e.preventDefault());
+document.addEventListener('gesturechange', e => e.preventDefault());
+
+// Prevent multi-touch zoom
+let lastTouchEnd = 0;
+document.addEventListener('touchend', (e) => {
+  const now = Date.now();
+  if (now - lastTouchEnd <= 300) {
+    e.preventDefault(); // Prevent double-tap zoom
+  }
+  lastTouchEnd = now;
+}, false);
+
+// Prevent keyboard shortcuts (Ctrl+L, Ctrl+T, F5, etc.)
+document.addEventListener('keydown', (e) => {
+  // Allow nothing except basic input keys
+  if (e.ctrlKey || e.altKey || e.metaKey) {
+    e.preventDefault();
+    return false;
+  }
+  // Block F-keys, Escape
+  if (e.key.startsWith('F') || e.key === 'Escape') {
+    e.preventDefault();
+    return false;
+  }
+});
+
+// Request fullscreen on first tap (works in Chrome Android)
+document.addEventListener('click', function enterFullscreen() {
+  if (!document.fullscreenElement && document.documentElement.requestFullscreen) {
+    document.documentElement.requestFullscreen().catch(() => {});
+  }
+}, { once: true });
+
+// Re-enter fullscreen if exited
+document.addEventListener('fullscreenchange', () => {
+  if (!document.fullscreenElement) {
+    setTimeout(() => {
+      document.documentElement.requestFullscreen?.().catch(() => {});
+    }, 500);
+  }
+});
+
+// ╔══════════════════════════════════════════════════════════════════════╗
+// ║  INIT                                                               ║
+// ╚══════════════════════════════════════════════════════════════════════╝
+
+resetSleepTimer();
+console.log('[Launcher] Rodeo Kiosk Launcher ready');
+console.log('[Launcher] Admin exit: tap top-right corner 5 times quickly');
+</script>
+</body>
+</html>

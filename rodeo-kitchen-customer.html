@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Order Status — Pickup</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0c0a09;
+    --surface: #1c1917;
+    --surface2: #292524;
+    --border: #44403c;
+    --text: #e7e5e4;
+    --text-dim: #a8a29e;
+    --progress: #3b82f6;
+    --progress-bg: rgba(59,130,246,0.10);
+    --ready: #22c55e;
+    --ready-bg: rgba(34,197,94,0.10);
+    --gold: #eab308;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Inter', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    overflow: hidden;
+  }
+
+  /* ===== HEADER ===== */
+  .header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 20px 40px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .header-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 36px;
+    letter-spacing: 3px;
+  }
+
+  .header-logo {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 24px;
+    color: var(--text-dim);
+  }
+
+  .header-clock {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 28px;
+    color: var(--text-dim);
+  }
+
+  /* ===== MAIN LAYOUT ===== */
+  .main {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    height: calc(100vh - 88px);
+  }
+
+  .panel {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .panel:first-child {
+    border-right: 2px solid var(--border);
+  }
+
+  /* ===== PANEL HEADERS ===== */
+  .panel-header {
+    padding: 18px 32px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-shrink: 0;
+  }
+
+  .panel-header h2 {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 30px;
+    letter-spacing: 2px;
+  }
+
+  .panel-count {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 36px;
+  }
+
+  .panel-preparing .panel-header {
+    background: var(--progress-bg);
+    border-bottom: 4px solid var(--progress);
+  }
+  .panel-preparing .panel-header h2 { color: var(--progress); }
+  .panel-preparing .panel-count { color: var(--progress); }
+
+  .panel-ready .panel-header {
+    background: var(--ready-bg);
+    border-bottom: 4px solid var(--ready);
+  }
+  .panel-ready .panel-header h2 { color: var(--ready); }
+  .panel-ready .panel-count { color: var(--ready); }
+
+  /* ===== ORDER NUMBER GRID ===== */
+  .order-grid {
+    flex: 1;
+    display: flex;
+    flex-wrap: wrap;
+    align-content: flex-start;
+    padding: 24px;
+    gap: 16px;
+    overflow-y: auto;
+  }
+
+  .order-tile {
+    width: calc(33.33% - 12px);
+    min-height: 120px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    border-radius: 18px;
+    transition: all 0.4s ease;
+  }
+
+  .order-tile .number {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 72px;
+    line-height: 1;
+  }
+
+  .order-tile .name {
+    font-size: 16px;
+    font-weight: 700;
+    margin-top: 4px;
+    opacity: 0.8;
+  }
+
+  .order-tile .time {
+    font-size: 12px;
+    margin-top: 2px;
+    opacity: 0.5;
+  }
+
+  /* Preparing tiles */
+  .tile-preparing {
+    background: var(--progress-bg);
+    border: 2px solid rgba(59,130,246,0.3);
+  }
+
+  .tile-preparing .number { color: var(--progress); }
+
+  /* In-progress animation */
+  .tile-preparing .number::after {
+    content: '';
+    display: block;
+    width: 60%;
+    height: 3px;
+    margin: 6px auto 0;
+    background: var(--progress);
+    border-radius: 2px;
+    animation: progressPulse 1.5s ease infinite;
+  }
+
+  @keyframes progressPulse {
+    0%, 100% { opacity: 0.3; width: 30%; }
+    50% { opacity: 1; width: 60%; }
+  }
+
+  /* Ready tiles */
+  .tile-ready {
+    background: var(--ready-bg);
+    border: 3px solid var(--ready);
+    animation: readyBounce 0.5s ease;
+  }
+
+  .tile-ready .number { color: var(--ready); }
+
+  @keyframes readyBounce {
+    0% { transform: scale(0.8); opacity: 0; }
+    60% { transform: scale(1.05); }
+    100% { transform: scale(1); opacity: 1; }
+  }
+
+  /* Flash animation for newly ready */
+  .tile-ready.flash {
+    animation: readyFlash 1s ease 3;
+  }
+
+  @keyframes readyFlash {
+    0%, 100% { background: var(--ready-bg); }
+    50% { background: rgba(34,197,94,0.3); border-color: var(--ready); box-shadow: 0 0 30px rgba(34,197,94,0.4); }
+  }
+
+  /* ===== EMPTY STATE ===== */
+  .empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    flex: 1;
+    gap: 12px;
+    opacity: 0.4;
+  }
+
+  .empty-state .emoji {
+    font-size: 60px;
+  }
+
+  .empty-state p {
+    font-size: 20px;
+    font-weight: 600;
+    color: var(--text-dim);
+  }
+
+  /* ===== BOTTOM TICKER ===== */
+  .ticker {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+    padding: 8px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 32px;
+    font-size: 14px;
+    color: var(--text-dim);
+  }
+
+  .ticker-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  /* ===== SCROLLBAR ===== */
+  .order-grid::-webkit-scrollbar { width: 0; }
+
+  /* ===== 4K+ SCALING ===== */
+  @media (min-width: 1920px) {
+    .order-tile .number { font-size: 96px; }
+    .order-tile { min-height: 160px; }
+  }
+
+  @media (max-width: 768px) {
+    .main { grid-template-columns: 1fr; }
+    .panel:first-child { border-right: none; border-bottom: 2px solid var(--border); }
+    .order-tile { width: calc(50% - 8px); min-height: 90px; }
+    .order-tile .number { font-size: 48px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="header">
+  <div class="header-logo">🤠 HOLMDALE RODEO</div>
+  <div class="header-title">ORDER STATUS</div>
+  <div class="header-clock" id="clock">00:00</div>
+</div>
+
+<!-- MAIN PANELS -->
+<div class="main">
+  <!-- PREPARING -->
+  <div class="panel panel-preparing">
+    <div class="panel-header">
+      <h2>🍳 PREPARING</h2>
+      <div class="panel-count" id="prepCount">0</div>
+    </div>
+    <div class="order-grid" id="prepGrid"></div>
+  </div>
+
+  <!-- READY FOR PICKUP -->
+  <div class="panel panel-ready">
+    <div class="panel-header">
+      <h2>✅ READY FOR PICKUP</h2>
+      <div class="panel-count" id="readyCount">0</div>
+    </div>
+    <div class="order-grid" id="readyGrid"></div>
+  </div>
+</div>
+
+<!-- BOTTOM TICKER -->
+<div class="ticker">
+  <div class="ticker-item">🎫 Order at the kiosk or on your phone</div>
+  <div class="ticker-item">•</div>
+  <div class="ticker-item">📱 holmdalerodeo.ca/FoodOrder</div>
+  <div class="ticker-item">•</div>
+  <div class="ticker-item">🍺 Drink tickets accepted at bar</div>
+</div>
+
+<script>
+// ===== CONFIG =====
+const API_URL = 'https://rodeo-fresh-production-7348.up.railway.app/api';
+const POLL_INTERVAL = 5000;
+
+let orders = [];
+let prevReadyIds = new Set();
+
+// ===== CLOCK =====
+function updateClock() {
+  const now = new Date();
+  document.getElementById('clock').textContent =
+    now.toLocaleTimeString('en-US', { hour:'2-digit', minute:'2-digit' });
+}
+setInterval(updateClock, 10000);
+updateClock();
+
+// ===== RENDER =====
+function renderDisplay() {
+  // Combine new + in_progress as "Preparing" for customer view
+  const preparing = orders.filter(o => o.status === 'new' || o.status === 'in_progress');
+  const ready = orders.filter(o => o.status === 'ready');
+
+  document.getElementById('prepCount').textContent = preparing.length;
+  document.getElementById('readyCount').textContent = ready.length;
+
+  // Preparing grid
+  const prepGrid = document.getElementById('prepGrid');
+  if (preparing.length === 0) {
+    prepGrid.innerHTML = '<div class="empty-state"><div class="emoji">⏳</div><p>No orders cooking</p></div>';
+  } else {
+    prepGrid.innerHTML = preparing.map(o => {
+      const firstName = (o.customer_name || '').replace(/\s*#\d+$/, '').trim();
+      const num = o.order_number || (o.customer_name || '').replace(/[^0-9]/g, '');
+      return `
+      <div class="order-tile tile-preparing">
+        <div class="number">#${num}</div>
+        ${firstName ? `<div class="name">${firstName}</div>` : ''}
+      </div>
+    `;
+    }).join('');
+  }
+
+  // Ready grid — flash new arrivals
+  const readyGrid = document.getElementById('readyGrid');
+  const currentReadyIds = new Set(ready.map(o => o.id));
+  const newlyReady = ready.filter(o => !prevReadyIds.has(o.id));
+
+  if (ready.length === 0) {
+    readyGrid.innerHTML = '<div class="empty-state"><div class="emoji">👍</div><p>All orders picked up</p></div>';
+  } else {
+    readyGrid.innerHTML = ready.map(o => {
+      const isNew = newlyReady.some(n => n.id === o.id);
+      const firstName = (o.customer_name || '').replace(/\s*#\d+$/, '').trim();
+      const num = o.order_number || (o.customer_name || '').replace(/[^0-9]/g, '');
+      return `
+        <div class="order-tile tile-ready ${isNew ? 'flash' : ''}">
+          <div class="number">#${num}</div>
+          ${firstName ? `<div class="name">${firstName}</div>` : ''}
+        </div>
+      `;
+    }).join('');
+
+    // Play ding for newly ready orders
+    if (newlyReady.length > 0) {
+      playReadySound();
+    }
+  }
+
+  prevReadyIds = currentReadyIds;
+}
+
+// ===== SOUND =====
+const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+function playReadySound() {
+  try {
+    audioCtx.resume();
+    // Pleasant 3-note chime
+    const notes = [523.25, 659.25, 783.99]; // C5, E5, G5
+    notes.forEach((freq, i) => {
+      setTimeout(() => {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.frequency.value = freq;
+        osc.type = 'sine';
+        gain.gain.value = 0.2;
+        osc.start();
+        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.6);
+        osc.stop(audioCtx.currentTime + 0.6);
+      }, i * 150);
+    });
+  } catch(e) {}
+}
+
+// ===== FETCH =====
+async function fetchOrders() {
+  try {
+    const resp = await fetch(API_URL + '/kitchen/orders');
+    const data = await resp.json();
+    if (data.orders) {
+      orders = data.orders;
+      renderDisplay();
+    }
+  } catch (err) {
+    console.error('[Customer KDS] Fetch error:', err.message);
+  }
+}
+
+// ===== INIT =====
+fetchOrders();
+setInterval(fetchOrders, POLL_INTERVAL);
+
+// Fullscreen on first tap
+document.addEventListener('click', () => {
+  if (!document.fullscreenElement) {
+    document.documentElement.requestFullscreen?.().catch(() => {});
+  }
+  audioCtx.resume();
+}, { once: true });
+
+// Prevent sleep
+async function preventSleep() {
+  try {
+    if ('wakeLock' in navigator) {
+      await navigator.wakeLock.request('screen');
+    }
+  } catch(e) {}
+}
+preventSleep();
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden) preventSleep();
+});
+</script>
+</body>
+</html>

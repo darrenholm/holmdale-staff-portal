@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Staff Portal - Holmdale Pro Rodeo</title>
+   <script>
+(function() {
+    function checkAuth() {
+        const token = localStorage.getItem('auth_token');
+        const staffName = localStorage.getItem('staff_name');
+        if (!token) {
+            window.location.href = 'login.html';
+            return;
+        }
+        try {
+            const payload = JSON.parse(atob(token.split('.')[1]));
+            const now = Math.floor(Date.now() / 1000);
+            if (payload.exp && payload.exp < now) {
+                clearAuth();
+                window.location.href = 'login.html';
+                return;
+            }
+        } catch(e) {
+            clearAuth();
+            window.location.href = 'login.html';
+            return;
+        }
+        const staffNameElement = document.getElementById('currentStaffName');
+        if (staffNameElement && staffName) {
+            staffNameElement.textContent = staffName;
+        }
+    }
+    function clearAuth() {
+        localStorage.removeItem('auth_token');
+        localStorage.removeItem('staff_name');
+        localStorage.removeItem('staff_id');
+        localStorage.removeItem('staff_email');
+        localStorage.removeItem('remember_me');
+    }
+    window.logout = function() {
+        if (confirm('Are you sure you want to logout?')) {
+            clearAuth();
+            window.location.href = 'login.html';
+        }
+    };
+    window.getCurrentStaff = function() {
+        return {
+            token: localStorage.getItem('auth_token'),
+            name: localStorage.getItem('staff_name'),
+            id: localStorage.getItem('staff_id'),
+            email: localStorage.getItem('staff_email')
+        };
+    };
+    checkAuth();
+})();
+</script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #00B74A 0%, #2A2A2A 100%);
+            min-height: 100vh;
+            padding: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .container { max-width: 800px; width: 100%; }
+        .header {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            text-align: center;
+        }
+        .header h1 {
+            color: #00B74A;
+            font-size: 36px;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        .header p {
+            color: #666;
+            font-size: 18px;
+        }
+        .menu-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        .menu-card {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            text-align: center;
+            text-decoration: none;
+            transition: all 0.3s;
+            cursor: pointer;
+        }
+        .menu-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 40px rgba(0,0,0,0.3);
+        }
+        .menu-icon {
+            font-size: 64px;
+            margin-bottom: 15px;
+        }
+        .menu-title {
+            color: #333;
+            font-size: 22px;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        .menu-description {
+            color: #666;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+        .admin-section {
+            margin-top: 30px;
+        }
+        .section-title {
+            color: white;
+            font-size: 20px;
+            font-weight: bold;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+        .footer {
+            text-align: center;
+            color: white;
+            margin-top: 30px;
+            font-size: 14px;
+            opacity: 0.8;
+        }
+        /* Color coding for different areas */
+        .gate { border-left: 5px solid #3b82f6; }
+        .bar { border-left: 5px solid #8b5cf6; }
+        .admin { border-left: 5px solid #ef4444; }
+        
+        @media (max-width: 768px) {
+    body { padding: 10px; }
+    .container { max-width: 100%; }
+    .header { padding: 20px 15px; margin-bottom: 20px; }
+    .header h1 { font-size: 24px; }
+    .header p { font-size: 14px; }
+    .header div { flex-direction: column; gap: 10px !important; }
+    .menu-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 12px;
+    }
+    .menu-card { padding: 20px 15px; }
+    .menu-icon { font-size: 40px; margin-bottom: 8px; }
+    .menu-title { font-size: 16px; }
+    .menu-description { font-size: 12px; }
+    .section-title { font-size: 16px; margin-bottom: 10px; }
+    .admin-section { margin-top: 20px; }
+}
+
+@media (max-width: 480px) {
+    .menu-grid {
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+    }
+    .menu-card { padding: 15px 10px; }
+    .menu-icon { font-size: 32px; margin-bottom: 5px; }
+    .menu-title { font-size: 14px; }
+    .menu-description { font-size: 11px; }
+    .header h1 { font-size: 20px; }
+}
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>HOLMDALE PRO RODEO</h1>
+            <p>Staff Portal</p>
+            <div style="margin-top: 15px; display: flex; justify-content: center; align-items: center; gap: 20px;">
+                <span style="color: #666; font-size: 16px;">
+                    Welcome, <strong id="currentStaffName">Staff Member</strong>!
+                </span>
+                <button onclick="logout()" style="padding: 8px 16px; background: #dc2626; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600;">
+                    Logout
+                </button>
+            </div>
+        </div>
+
+        <div class="section-title">🎫 Event Operations</div>
+        <div class="menu-grid">
+            <a href="entry-scanner.html" class="menu-card gate">
+                <div class="menu-icon">🎫</div>
+                <div class="menu-title">Entry Scanner</div>
+                <div class="menu-description">Scan tickets and assign wristbands at Gate 1</div>
+            </a>
+
+            <a href="age-verification.html" class="menu-card gate">
+                <div class="menu-icon">🔒</div>
+                <div class="menu-title">Age Verification</div>
+                <div class="menu-description">Verify 19+ and approve for alcohol at Gate 2</div>
+            </a>
+
+            <a href="rodeo-ticket-counter.html" class="menu-card bar">
+                <div class="menu-icon">🎟️</div>
+                <div class="menu-title">POS Counter</div>
+                <div class="menu-description">Manned counter for gate tickets, drinks, food & merch</div>
+            </a>
+
+            <a href="bar-service.html" class="menu-card bar">
+                <div class="menu-icon">🍺</div>
+                <div class="menu-title">Bar Service</div>
+                <div class="menu-description">Serve drinks and manage orders</div>
+            </a>
+
+            <a href="shift-picker.html" class="menu-card gate">
+                <div class="menu-icon">📅</div>
+                <div class="menu-title">Staff Schedule</div>
+                <div class="menu-description">Pick your shifts and see coworkers</div>
+            </a>
+
+            <a href="#" class="menu-card gate" onclick="alert('Ticket Resend - Coming Soon!'); return false;">
+                <div class="menu-icon">📧</div>
+                <div class="menu-title">Ticket Resend</div>
+                <div class="menu-description">Resend tickets to customers by email</div>
+            </a>
+
+            <a href="manage-signs.html" class="menu-card gate">
+                <div class="menu-icon">📍</div>
+                <div class="menu-title">Sign Locations</div>
+                <div class="menu-description">Track sign install and removal</div>
+            </a>
+        </div>
+
+        <div class="admin-section" id="displaysSection" style="display:none;">
+            <div class="section-title">📺 Displays & Kiosks</div>
+            <div class="menu-grid">
+                <a href="rodeo-kitchen-staff.html" class="menu-card bar">
+                    <div class="menu-icon">👨‍🍳</div>
+                    <div class="menu-title">Kitchen Staff</div>
+                    <div class="menu-description">Order management display for kitchen TV</div>
+                </a>
+
+                <a href="rodeo-kitchen-customer.html" class="menu-card bar">
+                    <div class="menu-icon">📺</div>
+                    <div class="menu-title">Pickup Board</div>
+                    <div class="menu-description">Customer-facing order status display</div>
+                </a>
+
+                <a href="rodeo-kiosk.html" class="menu-card gate">
+                    <div class="menu-icon">🎫</div>
+                    <div class="menu-title">Drink Kiosk</div>
+                    <div class="menu-description">Self-serve drink ticket purchasing</div>
+                </a>
+
+                <a href="rodeo-food-kiosk.html" class="menu-card gate">
+                    <div class="menu-icon">🍔</div>
+                    <div class="menu-title">Food Kiosk</div>
+                    <div class="menu-description">Self-serve food ordering</div>
+                </a>
+
+                <a href="rodeo-balance-checker.html" class="menu-card gate">
+                    <div class="menu-icon">💰</div>
+                    <div class="menu-title">Balance Checker</div>
+                    <div class="menu-description">Wristband balance check kiosk</div>
+                </a>
+
+            </div>
+        </div>
+
+        <div class="admin-section" id="adminToolsSection" style="display:none;">
+            <div class="section-title">⚙️ Admin Tools</div>
+            <div class="menu-grid">
+                <a href="manage-events.html" class="menu-card admin">
+                    <div class="menu-icon">📅</div>
+                    <div class="menu-title">Manage Events</div>
+                    <div class="menu-description">Create, edit, and delete events</div>
+                </a>
+
+                <a href="inventory-manager.html" class="menu-card admin">
+                    <div class="menu-icon">📊</div>
+                    <div class="menu-title">Inventory Manager</div>
+                    <div class="menu-description">Manage drink stock and view sales</div>
+                </a>
+
+                <a href="shift-manager.html" class="menu-card admin">
+                    <div class="menu-icon">🗓️</div>
+                    <div class="menu-title">Shift Manager</div>
+                    <div class="menu-description">Create, edit, and delete shifts (Admin)</div>
+                </a>
+
+                <a href="dashboard.html" class="menu-card admin">
+                    <div class="menu-icon">📈</div>
+                    <div class="menu-title">Dashboard</div>
+                    <div class="menu-description">View reports and analytics</div>
+                </a>
+
+                <a href="rodeo-food-admin.html" class="menu-card admin">
+                    <div class="menu-icon">📋</div>
+                    <div class="menu-title">Food Admin</div>
+                    <div class="menu-description">Edit food/drink menus & ticket pricing</div>
+                </a>
+
+                <a href="manage-sponsors.html" class="menu-card admin">
+                    <div class="menu-icon">🤝</div>
+                    <div class="menu-title">Sponsors & Vendors</div>
+                    <div class="menu-description">Manage sponsors, vendors & sign locations</div>
+                </a>
+                
+                <a href="edit-staff.html" class="card admin">
+                    <div class="card-icon">✏️</div>
+                    <h3>Edit Staff</h3>
+                    <p>Add, edit & remove staff members</p>
+                    </a>
+            </div>
+        </div>
+
+        <div class="footer">
+            <p>Holmdale Pro Rodeo • August 2026 • Walkerton, Ontario</p>
+        </div>
+    </div>
+    <script>
+    (function() {
+        // ── Access control lists (add names to grant access) ──
+        var ADMIN_NAMES = ['Darren Holm', 'Todd Holm', 'Admin User'];
+        var MANAGER_NAMES = ['Darren Holm', 'Todd Holm', 'Brady Yzerman', 'Keaton Holm', 'Chapman Holm', 'Admin User'];
+
+        var staffName = localStorage.getItem('staff_name');
+
+        // Set welcome name
+        var nameEl = document.getElementById('currentStaffName');
+        if (nameEl && staffName) {
+            nameEl.textContent = staffName;
+        }
+
+        var isAdmin = staffName && ADMIN_NAMES.indexOf(staffName) !== -1;
+        var isManager = staffName && MANAGER_NAMES.indexOf(staffName) !== -1;
+
+        // Managers + Admins see Displays & Kiosks
+        if (isManager || isAdmin) {
+            document.getElementById('displaysSection').style.display = '';
+        }
+        // Only Admins see Admin Tools
+        if (isAdmin) {
+            document.getElementById('adminToolsSection').style.display = '';
+        }
+    })();
+    </script>
+</body>
+</html>

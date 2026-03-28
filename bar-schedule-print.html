@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Staff Schedule - Holmdale Pro Rodeo 2026</title>
+    <style>
+        @page {
+            size: 10in 16in portrait;
+            margin: 0.25in;
+        }
+        
+        @media print {
+            body {
+                margin: 0;
+                padding: 0;
+            }
+            .no-print {
+                display: none !important;
+            }
+            .day-section {
+                page-break-after: always;
+            }
+            .day-section:last-child {
+                page-break-after: auto;
+            }
+        }
+        
+        * { 
+            margin: 0; 
+            padding: 0; 
+            box-sizing: border-box; 
+        }
+        
+        body {
+            font-family: 'Arial', sans-serif;
+            background: white;
+            padding: 0.25in;
+        }
+        
+        .print-button {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 15px 30px;
+            background: #00B74A;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+            z-index: 1000;
+        }
+        
+        .print-button:hover {
+            background: #009639;
+        }
+        
+        .day-section {
+            width: 9.5in;
+            height: 15.5in;
+            page-break-after: always;
+            page-break-before: always;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .day-section:first-child {
+            page-break-before: auto;
+        }
+        
+        .day-section:last-child {
+            page-break-after: auto;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 15px;
+            border-bottom: 3px solid #00B74A;
+            padding-bottom: 10px;
+        }
+        
+        .header h1 {
+            font-size: 38px;
+            color: #00B74A;
+            font-weight: bold;
+            margin-bottom: 5px;
+            letter-spacing: 1px;
+        }
+        
+        .header .date {
+            font-size: 26px;
+            color: #2A2A2A;
+            font-weight: bold;
+        }
+        
+        .roles-container {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+            height: 13.5in;
+            overflow: hidden;
+        }
+        
+        .role-section {
+            border: 2px solid #2A2A2A;
+            border-radius: 6px;
+            padding: 10px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        
+        .role-section.ticket {
+            background: #dbeafe;
+            border-color: #1e40af;
+        }
+        
+        .role-section.gate {
+            background: #d1fae5;
+            border-color: #065f46;
+        }
+        
+        .role-section.bar {
+            background: #f3e8ff;
+            border-color: #6b21a8;
+        }
+        
+        .role-header {
+            font-size: 22px;
+            font-weight: bold;
+            text-align: center;
+            padding: 8px;
+            margin-bottom: 10px;
+            border-radius: 5px;
+            background: white;
+        }
+        
+        .role-section.ticket .role-header {
+            color: #1e40af;
+        }
+        
+        .role-section.gate .role-header {
+            color: #065f46;
+        }
+        
+        .role-section.bar .role-header {
+            color: #6b21a8;
+        }
+        
+        .shifts-list {
+            flex: 1;
+            overflow-y: auto;
+        }
+        
+        .shift-card {
+            background: white;
+            border: 2px solid #2A2A2A;
+            border-radius: 5px;
+            padding: 8px;
+            margin-bottom: 8px;
+        }
+        
+        .shift-time {
+            font-size: 18px;
+            font-weight: bold;
+            color: #00B74A;
+            margin-bottom: 6px;
+            text-align: center;
+            padding-bottom: 6px;
+            border-bottom: 2px solid #ddd;
+        }
+        
+        .staff-count {
+            text-align: center;
+            font-size: 13px;
+            color: #666;
+            margin-bottom: 6px;
+            font-weight: 600;
+        }
+        
+        .staff-names {
+            font-size: 13px;
+            line-height: 1.3;
+        }
+        
+        .staff-name {
+            padding: 3px 0;
+            border-left: 3px solid #00B74A;
+            padding-left: 8px;
+            margin-bottom: 3px;
+        }
+        
+        .staff-name.empty {
+            color: #999;
+            font-style: italic;
+            border-left-color: #ccc;
+        }
+    </style>
+</head>
+<body>
+    <button class="print-button no-print" onclick="window.print()">🖨️ Print Schedule</button>
+
+    <div id="scheduleContent">
+        <div style="text-align: center; padding: 100px; font-size: 24px; color: #999;">
+            Loading schedule...
+        </div>
+    </div>
+
+    <script>
+        const API = 'https://rodeo-fresh-production-7348.up.railway.app/api';
+        let token = '';
+
+        window.onload = async function() {
+            try {
+                const r = await fetch(API + '/auth/login', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({email: 'darren@holmgraphics.ca', password: 'changeme123'})
+                });
+                const d = await r.json();
+                token = d.token;
+                
+                await loadSchedule();
+                
+            } catch(err) {
+                console.error('Error:', err);
+                document.getElementById('scheduleContent').innerHTML = 
+                    '<div style="text-align: center; padding: 100px; font-size: 24px; color: #dc2626;">Failed to load schedule</div>';
+            }
+        };
+
+        async function loadSchedule() {
+            try {
+                const shiftsR = await fetch(API + '/shifts-manage', {
+                    headers: {'Authorization': 'Bearer ' + token}
+                });
+                const shifts = await shiftsR.json();
+                
+                // Load details for each shift
+                for (let shift of shifts) {
+                    const detailsR = await fetch(API + '/shifts-manage/' + shift.id, {
+                        headers: {'Authorization': 'Bearer ' + token}
+                    });
+                    const details = await detailsR.json();
+                    shift.assigned_staff = details.assigned_staff || [];
+                }
+                
+                displaySchedule(shifts);
+                
+            } catch(err) {
+                console.error('Error loading schedule:', err);
+            }
+        }
+
+        function displaySchedule(shifts) {
+            // Group by date, then by role
+            const byDate = {};
+            shifts.forEach(shift => {
+                const dateStr = shift.date.split('T')[0];
+                const [year, month, day] = dateStr.split('-');
+                const dateObj = new Date(year, month - 1, day);
+                
+                const date = dateObj.toLocaleDateString('en-US', {
+                    weekday: 'long',
+                    month: 'long',
+                    day: 'numeric',
+                    year: 'numeric'
+                });
+                
+                if (!byDate[date]) byDate[date] = { ticket: [], gate: [], bar: [] };
+                byDate[date][shift.role].push(shift);
+            });
+            
+            // Sort shifts within each role by start time
+            Object.keys(byDate).forEach(date => {
+                ['ticket', 'gate', 'bar'].forEach(role => {
+                    if (byDate[date][role]) {
+                        byDate[date][role].sort((a, b) => a.start_time.localeCompare(b.start_time));
+                    }
+                });
+            });
+            
+            let html = '';
+            
+            Object.keys(byDate).forEach(date => {
+                html += `
+                    <div class="day-section">
+                        <div class="header">
+                            <h1>HOLMDALE PRO RODEO 2026</h1>
+                            <div class="date">${date}</div>
+                        </div>
+                        <div class="roles-container">
+                            <div class="role-section ticket">
+                                <div class="role-header">🎫 TICKET SALES</div>
+                                <div class="shifts-list">
+                                    ${renderShifts(byDate[date].ticket || [])}
+                                </div>
+                            </div>
+                            <div class="role-section gate">
+                                <div class="role-header">🚪 GATE/ENTRY</div>
+                                <div class="shifts-list">
+                                    ${renderShifts(byDate[date].gate || [])}
+                                </div>
+                            </div>
+                            <div class="role-section bar">
+                                <div class="role-header">🍺 BAR</div>
+                                <div class="shifts-list">
+                                    ${renderShifts(byDate[date].bar || [])}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            document.getElementById('scheduleContent').innerHTML = html;
+        }
+
+        function renderShifts(shifts) {
+            if (shifts.length === 0) {
+                return '<div style="text-align: center; padding: 20px; font-size: 18px; color: #999; font-style: italic;">No shifts scheduled</div>';
+            }
+            
+            return shifts.map(shift => renderShiftCard(shift)).join('');
+        }
+
+        function renderShiftCard(shift) {
+            const startTime = formatTime(shift.start_time);
+            const endTime = formatTime(shift.end_time);
+            
+            const assignedCount = shift.assigned_staff.length;
+            const spotsRemaining = 6 - assignedCount;
+            
+            let staffHTML = '';
+            
+            if (assignedCount > 0) {
+                shift.assigned_staff.forEach(staff => {
+                    staffHTML += `<div class="staff-name">${staff.staff_name}</div>`;
+                });
+            }
+            
+            // Add empty slots
+            for (let i = 0; i < spotsRemaining; i++) {
+                staffHTML += `<div class="staff-name empty">— Available —</div>`;
+            }
+            
+            return `
+                <div class="shift-card">
+                    <div class="shift-time">${startTime} - ${endTime}</div>
+                    <div class="staff-count">${assignedCount}/6 Staff</div>
+                    <div class="staff-names">
+                        ${staffHTML}
+                    </div>
+                </div>
+            `;
+        }
+
+        function formatTime(timeStr) {
+            const [hours, minutes] = timeStr.split(':');
+            const hour = parseInt(hours);
+            const ampm = hour >= 12 ? 'PM' : 'AM';
+            const displayHour = hour === 0 ? 12 : hour > 12 ? hour - 12 : hour;
+            return `${displayHour}:${minutes} ${ampm}`;
+        }
+    </script>
+</body>
+</html>

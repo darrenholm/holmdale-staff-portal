@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Rodeo Bar Tickets</title>
+<script src="https://js.stripe.com/terminal/v1/"></script>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html, body {
+  width: 100%; height: 100%; overflow: hidden;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  background: #1a1a1a; color: #fff;
+  user-select: none;
+}
+.screen {
+  display: none; position: absolute; inset: 0;
+  flex-direction: column; align-items: center; justify-content: center;
+  padding: 16px; gap: 12px; overflow-y: auto;
+}
+.screen.active { display: flex; }
+
+.rodeo-stars { color: #facc15; font-size: 16px; letter-spacing: 6px; }
+.page-title { font-size: clamp(22px, 5vw, 32px); font-weight: 900; letter-spacing: 2px; }
+
+.nfc-circle {
+  width: clamp(120px, 28vw, 160px);
+  height: clamp(120px, 28vw, 160px);
+  border-radius: 50%;
+  background: radial-gradient(circle, #00B74A33 0%, #00B74A11 70%);
+  border: 3px solid #00B74A;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  animation: pulse 2s infinite; cursor: pointer; flex-shrink: 0;
+}
+.nfc-circle .nfc-icon { font-size: clamp(36px, 8vw, 50px); margin-bottom: 4px; }
+.nfc-circle .nfc-text { font-size: 11px; color: #00B74A; font-weight: 600; }
+@keyframes pulse {
+  0%, 100% { box-shadow: 0 0 0 0 #00B74A44; }
+  50% { box-shadow: 0 0 0 16px #00B74A00; }
+}
+.nfc-status { font-size: 11px; color: #666; text-align: center; }
+
+.customer-card {
+  background: #2a2a2a; border: 2px solid #00B74A; border-radius: 14px;
+  padding: 14px 18px; width: 100%;
+}
+.customer-name { font-size: clamp(16px, 3.5vw, 20px); font-weight: 700; color: #00B74A; }
+.balance-big { font-size: clamp(36px, 10vw, 52px); font-weight: 900; color: #facc15; line-height: 1; }
+.balance-label { font-size: 11px; color: #888; text-transform: uppercase; letter-spacing: 1px; margin-top: 2px; }
+
+.ticket-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; width: 100%; }
+.ticket-option {
+  background: #2a2a2a; border: 2px solid #333; border-radius: 10px;
+  padding: clamp(10px, 2.5vw, 16px) 10px; cursor: pointer; position: relative; transition: all 0.2s;
+}
+.ticket-option:active { transform: scale(0.97); }
+.ticket-option.selected { border-color: #00B74A; background: #00B74A22; }
+.ticket-option.best-value { border-color: #facc15; }
+.best-value-badge {
+  position: absolute; top: -9px; left: 50%; transform: translateX(-50%);
+  background: #facc15; color: #000; font-size: 9px; font-weight: 700;
+  padding: 2px 7px; border-radius: 8px; white-space: nowrap;
+}
+.ticket-qty { font-size: clamp(24px, 6vw, 34px); font-weight: 900; }
+.ticket-label { font-size: 11px; color: #888; }
+.ticket-price { font-size: clamp(14px, 3vw, 17px); font-weight: 700; color: #00B74A; margin-top: 2px; }
+
+.btn {
+  width: 100%; padding: clamp(13px, 3vw, 18px); border: none; border-radius: 11px;
+  font-size: clamp(15px, 3.5vw, 18px); font-weight: 700; cursor: pointer; transition: all 0.2s;
+  flex-shrink: 0;
+}
+.btn:active { transform: scale(0.98); }
+.btn-green { background: #00B74A; color: #fff; }
+.btn-green:disabled { background: #333; color: #666; cursor: not-allowed; }
+.btn-gray { background: #333; color: #aaa; }
+
+.payment-methods { display: flex; gap: 10px; width: 100%; }
+.payment-btn {
+  flex: 1; padding: clamp(12px, 3vw, 18px) 10px; border: 2px solid #333; border-radius: 11px;
+  background: #2a2a2a; color: #fff; cursor: pointer; font-size: clamp(12px, 2.5vw, 14px);
+  font-weight: 600; transition: all 0.2s; text-align: center;
+}
+.payment-btn:active { transform: scale(0.97); border-color: #00B74A; }
+.payment-btn .pay-icon { font-size: clamp(22px, 5vw, 30px); display: block; margin-bottom: 4px; }
+
+.payment-amount { font-size: clamp(36px, 9vw, 52px); font-weight: 900; color: #facc15; }
+.reader-status {
+  font-size: 13px; color: #aaa; padding: 10px 16px;
+  background: #2a2a2a; border-radius: 10px; width: 100%; text-align: center;
+}
+.reader-status.connecting { color: #facc15; }
+.reader-status.ready { color: #00B74A; }
+
+.terminal-arrow { font-size: 40px; animation: arrow 1s infinite; }
+@keyframes arrow { 0%,100%{transform:translateX(0)} 50%{transform:translateX(8px)} }
+
+.success-icon { font-size: clamp(56px, 14vw, 80px); animation: pop 0.4s ease; }
+@keyframes pop { 0%{transform:scale(0)} 80%{transform:scale(1.2)} 100%{transform:scale(1)} }
+.success-title { font-size: clamp(22px, 5vw, 30px); font-weight: 900; color: #00B74A; }
+.countdown-bar { width: 100%; height: 4px; background: #333; border-radius: 2px; overflow: hidden; }
+.countdown-fill { height: 100%; background: #00B74A; animation: countdown 5s linear forwards; }
+@keyframes countdown { from{width:100%} to{width:0%} }
+
+.error-title { font-size: clamp(20px, 4.5vw, 26px); font-weight: 700; color: #dc2626; }
+
+.demo-bar {
+  position: fixed; bottom: 0; left: 0; right: 0;
+  background: #111; padding: 8px; display: none;
+  gap: 6px; justify-content: center; flex-wrap: wrap; z-index: 100;
+}
+.demo-btn { background: #333; color: #aaa; border: none; padding: 6px 12px; border-radius: 6px; font-size: 11px; cursor: pointer; }
+#adminTap { position: fixed; top: 0; right: 0; width: 50px; height: 50px; opacity: 0; cursor: pointer; z-index: 200; }
+</style>
+</head>
+<body>
+
+<!-- WELCOME -->
+<div class="screen active" id="screen-welcome">
+  <div class="rodeo-stars">★ ★ ★ ★</div>
+  <div style="font-size:11px;color:#facc15;letter-spacing:3px;text-transform:uppercase">Annual Rodeo</div>
+  <div class="page-title">BAR TICKETS</div>
+  <div class="nfc-circle" onclick="simulateNfcTap()">
+    <div class="nfc-icon">📳</div>
+    <div class="nfc-text">TAP WRISTBAND</div>
+  </div>
+  <div class="nfc-status" id="nfcStatus">Starting NFC...</div>
+  <div style="font-size:13px;color:#aaa;text-align:center">Hold wristband against the screen to begin</div>
+  <div style="font-size:10px;color:#444;text-align:center" id="readerConnectionStatus">Connecting to card reader...</div>
+</div>
+
+<!-- LOADING -->
+<div class="screen" id="screen-loading">
+  <div style="font-size:42px">⏳</div>
+  <div style="font-size:16px;color:#aaa">Looking up wristband...</div>
+</div>
+
+<!-- TICKETS -->
+<div class="screen" id="screen-tickets">
+  <div class="customer-card">
+    <div class="customer-name" id="customerName">Guest</div>
+    <div class="balance-big" id="customerBalance">0</div>
+    <div class="balance-label">🎫 Current Tickets</div>
+  </div>
+  <div style="font-size:13px;color:#aaa;width:100%;text-align:left;font-weight:600">Add Tickets:</div>
+  <div class="ticket-grid" id="ticketGrid"></div>
+  <button class="btn btn-green" id="btnConfirm" disabled onclick="showPaymentMethods()">Confirm Purchase</button>
+  <button class="btn btn-gray" onclick="goToScreen('welcome')">Cancel</button>
+</div>
+
+<!-- PAYMENT METHOD -->
+<div class="screen" id="screen-payment-method">
+  <div style="font-size:clamp(18px,4vw,22px);font-weight:700">Choose Payment</div>
+  <div class="payment-amount" id="paymentAmountChoice">$0.00</div>
+  <div class="payment-methods">
+    <div class="payment-btn" onclick="payWithStripe()">
+      <span class="pay-icon">💳</span>
+      WisePad 3<br>
+      <small style="color:#888">Tap / Chip+PIN</small>
+    </div>
+    <div class="payment-btn" onclick="payWithMoneris()">
+      <span class="pay-icon">📟</span>
+      PAX A920<br>
+      <small style="color:#888">Moneris</small>
+    </div>
+  </div>
+  <button class="btn btn-gray" onclick="goToScreen('tickets')">Back</button>
+</div>
+
+<!-- STRIPE PAYMENT -->
+<div class="screen" id="screen-stripe-payment">
+  <div class="payment-amount" id="stripePaymentAmount">$0.00</div>
+  <div id="stripePaymentDetail" style="font-size:14px;color:#aaa"></div>
+  <div class="reader-status connecting" id="readerStatusMsg">🔵 Connecting to WisePad 3...</div>
+  <div class="terminal-arrow" id="terminalArrow" style="display:none">→</div>
+  <div id="tapInstruction" style="font-size:clamp(15px,3.5vw,18px);font-weight:600;text-align:center;display:none">
+    Tap, Insert or Swipe<br>
+    <span style="font-size:clamp(18px,4vw,22px);font-weight:900;color:#facc15">Your Card</span><br>
+    <span style="font-size:13px;color:#aaa">on the WisePad 3 reader</span>
+  </div>
+  <button class="btn btn-gray" onclick="cancelStripePayment()">Cancel</button>
+</div>
+
+<!-- MONERIS PAYMENT -->
+<div class="screen" id="screen-moneris-payment">
+  <div class="payment-amount" id="monerisPaymentAmount">$0.00</div>
+  <div id="monerisPaymentDetail" style="font-size:14px;color:#aaa"></div>
+  <div class="terminal-arrow">→</div>
+  <div style="font-size:clamp(15px,3.5vw,18px);font-weight:600;text-align:center">
+    Tap or Insert Your<br>
+    <span style="font-size:clamp(18px,4vw,22px);font-weight:900;color:#facc15">Payment Card</span><br>
+    <span style="font-size:13px;color:#aaa">on the Moneris PAX A920</span>
+  </div>
+  <div style="font-size:12px;color:#555">Waiting for payment...</div>
+  <button class="btn btn-gray" onclick="goToScreen('payment-method')">Cancel</button>
+</div>
+
+<!-- SUCCESS -->
+<div class="screen" id="screen-success">
+  <div class="success-icon">✅</div>
+  <div class="success-title">Success!</div>
+  <div style="font-size:clamp(14px,3.5vw,18px);color:#aaa" id="successDetail">Tickets added!</div>
+  <div class="customer-card">
+    <div class="balance-label">New Balance</div>
+    <div class="balance-big" id="newBalance">0</div>
+    <div class="balance-label">🎫 Tickets</div>
+  </div>
+  <div style="font-size:12px;color:#555">Returning to start...</div>
+  <div class="countdown-bar"><div class="countdown-fill" id="countdownFill"></div></div>
+</div>
+
+<!-- ERROR -->
+<div class="screen" id="screen-error">
+  <div style="font-size:clamp(48px,12vw,72px)">❌</div>
+  <div class="error-title">Payment Failed</div>
+  <div style="font-size:13px;color:#aaa;padding:0 16px;text-align:center" id="errorDetail">Please try again.</div>
+  <button class="btn btn-green" onclick="retryPayment()">Try Again</button>
+  <button class="btn btn-gray" onclick="goToScreen('welcome')">Cancel</button>
+</div>
+
+<!-- NOT FOUND -->
+<div class="screen" id="screen-notfound">
+  <div style="font-size:clamp(48px,12vw,64px)">🤔</div>
+  <div style="font-size:clamp(18px,4vw,22px);font-weight:700;color:#f59e0b">Wristband Not Found</div>
+  <div style="font-size:13px;color:#aaa;padding:0 16px;text-align:center">Please visit the registration desk.</div>
+  <button class="btn btn-green" onclick="goToScreen('welcome')">Try Again</button>
+</div>
+
+<div id="adminTap"></div>
+<div class="demo-bar" id="demoBar">
+  <button class="demo-btn" onclick="simulateNfcTap()">Tap EE18B764</button>
+  <button class="demo-btn" onclick="simulateStripeSuccess()">Stripe ✓</button>
+  <button class="demo-btn" onclick="simulatePaymentFail()">Fail ✗</button>
+  <button class="demo-btn" onclick="goToScreen('welcome')">Reset</button>
+</div>
+
+<script>
+const API = 'https://rodeo-fresh-production-7348.up.railway.app/api';
+const STRIPE_PK = 'pk_live_51Os4LYA4xAvagWSJZtpYDi456VJVZ7XkJs6JLxWcmeIAHuzB2JzdamlLiDDUsM96ALiWvHIcLaJQ2Qf3y5hsGrOF00B0X42bc0';
+const LOCATION_ID = 'tml_Fg0ecAMifDTJDQ';
+
+let ticketPricePerUnit = 7.00;
+let stripeTerminal = null;
+let currentPaymentIntent = null;
+let lastPaymentMethod = null;
+
+const state = {
+  currentScreen: 'welcome',
+  customer: null,
+  wristbandUid: null,
+  selectedTickets: null,
+  selectedPrice: null,
+  successTimeout: null,
+};
+
+(async () => {
+  try {
+    const r = await fetch(API + '/booth/menu');
+    const d = await r.json();
+    if (d.ticketPrice) ticketPricePerUnit = parseFloat(d.ticketPrice);
+  } catch(e) {}
+  buildTicketGrid();
+})();
+
+function buildTicketGrid() {
+  const p = ticketPricePerUnit;
+  document.getElementById('ticketGrid').innerHTML = [
+    {qty:1,best:false},{qty:5,best:false},{qty:10,best:false},{qty:20,best:true}
+  ].map(pkg => {
+    const price = pkg.qty * p;
+    return `<div class="ticket-option${pkg.best?' best-value':''}"
+      data-qty="${pkg.qty}" data-price="${Math.round(price*100)}"
+      onclick="selectTicket(this)">
+      ${pkg.best?'<div class="best-value-badge">Best Value</div>':''}
+      <div class="ticket-qty">${pkg.qty}</div>
+      <div class="ticket-label">Ticket${pkg.qty>1?'s':''}</div>
+      <div class="ticket-price">$${price.toFixed(2)}</div>
+    </div>`;
+  }).join('');
+}
+
+async function startNFC() {
+  if (typeof NDEFReader === 'undefined') {
+    document.getElementById('nfcStatus').textContent = 'NFC unavailable — use demo bar';
+    return;
+  }
+  try {
+    const reader = new NDEFReader();
+    reader.onreading = async (e) => {
+      const uid = e.serialNumber.replace(/[^a-fA-F0-9]/g,'').toUpperCase();
+      await lookupWristband(uid);
+    };
+    await reader.scan();
+    document.getElementById('nfcStatus').textContent = '✓ NFC active — tap a wristband';
+  } catch(e) {
+    document.getElementById('nfcStatus').textContent = 'NFC unavailable — use demo bar';
+  }
+}
+
+async function lookupWristband(uid) {
+  state.wristbandUid = uid;
+  goToScreen('loading');
+  try {
+    const r = await fetch(`${API}/wristbands/balance/${encodeURIComponent(uid)}`);
+    if (!r.ok) { goToScreen('notfound'); return; }
+    const band = await r.json();
+    const tickets = Math.max(0, Math.floor(parseFloat(band.remaining||0)/ticketPricePerUnit));
+    state.customer = { name: band.customer_name || 'Guest', tickets };
+    document.getElementById('customerName').textContent = `Welcome, ${state.customer.name.split(' ')[0]}!`;
+    document.getElementById('customerBalance').textContent = tickets;
+    document.querySelectorAll('.ticket-option').forEach(o => o.classList.remove('selected'));
+    document.getElementById('btnConfirm').disabled = true;
+    state.selectedTickets = null; state.selectedPrice = null;
+    goToScreen('tickets');
+  } catch(e) { goToScreen('notfound'); }
+}
+
+function goToScreen(id) {
+  if (state.successTimeout) { clearTimeout(state.successTimeout); state.successTimeout = null; }
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  const t = document.getElementById('screen-' + id);
+  if (t) setTimeout(() => t.classList.add('active'), 40);
+  state.currentScreen = id;
+  if (id === 'welcome') { state.customer=null; state.wristbandUid=null; state.selectedTickets=null; state.selectedPrice=null; }
+  if (id === 'success') {
+    const fill = document.getElementById('countdownFill');
+    fill.style.animation='none'; fill.offsetHeight;
+    fill.style.animation='countdown 5s linear forwards';
+    state.successTimeout = setTimeout(()=>goToScreen('welcome'), 5000);
+  }
+}
+
+function selectTicket(el) {
+  document.querySelectorAll('.ticket-option').forEach(o=>o.classList.remove('selected'));
+  el.classList.add('selected');
+  state.selectedTickets = parseInt(el.dataset.qty);
+  state.selectedPrice = parseInt(el.dataset.price);
+  document.getElementById('btnConfirm').disabled = false;
+}
+
+function showPaymentMethods() {
+  if (!state.selectedTickets) return;
+  document.getElementById('paymentAmountChoice').textContent = `$${(state.selectedPrice/100).toFixed(2)}`;
+  goToScreen('payment-method');
+}
+
+async function initStripeTerminal() {
+  try {
+    stripeTerminal = StripeTerminal.create({
+      onFetchConnectionToken: async () => {
+        const r = await fetch(`${API}/stripe/connection-token`, {method:'POST'});
+        const d = await r.json();
+        return d.secret;
+      },
+      onUnexpectedReaderDisconnect: () => {
+        document.getElementById('readerConnectionStatus').textContent = '⚠️ Card reader disconnected';
+      }
+    });
+    await connectReader();
+  } catch(e) {
+    document.getElementById('readerConnectionStatus').textContent = 'Card reader unavailable';
+  }
+}
+
+async function connectReader() {
+  try {
+    document.getElementById('readerConnectionStatus').textContent = '🔵 Scanning for WisePad 3...';
+    const result = await stripeTerminal.discoverReaders({ simulated: false, location: LOCATION_ID });
+    if (result.error || !result.discoveredReaders?.length) {
+      document.getElementById('readerConnectionStatus').textContent = '⚠️ WisePad 3 not found';
+      return;
+    }
+    const reader = result.discoveredReaders[0];
+    const cr = await stripeTerminal.connectReader(reader);
+    if (cr.error) { document.getElementById('readerConnectionStatus').textContent = '⚠️ Could not connect'; return; }
+    document.getElementById('readerConnectionStatus').textContent = `✓ WisePad 3 connected`;
+    document.getElementById('readerConnectionStatus').style.color = '#00B74A';
+  } catch(e) {
+    document.getElementById('readerConnectionStatus').textContent = 'Card reader unavailable';
+  }
+}
+
+async function payWithStripe() {
+  document.getElementById('stripePaymentAmount').textContent = `$${(state.selectedPrice/100).toFixed(2)}`;
+  document.getElementById('stripePaymentDetail').textContent = `${state.selectedTickets} Ticket${state.selectedTickets>1?'s':''}`;
+  document.getElementById('readerStatusMsg').textContent = '🔵 Preparing payment...';
+  document.getElementById('readerStatusMsg').className = 'reader-status connecting';
+  document.getElementById('terminalArrow').style.display = 'none';
+  document.getElementById('tapInstruction').style.display = 'none';
+  lastPaymentMethod = 'stripe';
+  goToScreen('stripe-payment');
+  try {
+    if (!stripeTerminal) throw new Error('Card reader not initialized');
+    const r = await fetch(`${API}/stripe/create-payment-intent`, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({amount:state.selectedPrice, rfid_uid:state.wristbandUid, tickets:state.selectedTickets})
+    });
+    const {client_secret, payment_intent_id} = await r.json();
+    currentPaymentIntent = payment_intent_id;
+    document.getElementById('readerStatusMsg').textContent = '✓ Ready — tap or insert card';
+    document.getElementById('readerStatusMsg').className = 'reader-status ready';
+    document.getElementById('terminalArrow').style.display = 'block';
+    document.getElementById('tapInstruction').style.display = 'block';
+    const collectResult = await stripeTerminal.collectPaymentMethod(client_secret);
+    if (collectResult.error) { onPaymentFailed(collectResult.error.message); return; }
+    document.getElementById('readerStatusMsg').textContent = '⏳ Processing...';
+    document.getElementById('tapInstruction').style.display = 'none';
+    const processResult = await stripeTerminal.processPayment(collectResult.paymentIntent);
+    if (processResult.error) { onPaymentFailed(processResult.error.message); return; }
+    await fetch(`${API}/stripe/capture-payment`, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({payment_intent_id})
+    });
+    onPaymentSuccess();
+  } catch(e) { onPaymentFailed(e.message); }
+}
+
+async function cancelStripePayment() {
+  try { if (stripeTerminal) await stripeTerminal.cancelCollectPaymentMethod(); } catch(e) {}
+  goToScreen('payment-method');
+}
+
+async function payWithMoneris() {
+  document.getElementById('monerisPaymentAmount').textContent = `$${(state.selectedPrice/100).toFixed(2)}`;
+  document.getElementById('monerisPaymentDetail').textContent = `${state.selectedTickets} Ticket${state.selectedTickets>1?'s':''}`;
+  lastPaymentMethod = 'moneris';
+  goToScreen('moneris-payment');
+  const orderId = `RODEO-${Date.now()}-${state.wristbandUid}-${state.selectedTickets}`;
+  try {
+    const r = await fetch(`${API}/moneris/terminal-purchase`, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({amount:state.selectedPrice, order_id:orderId, rfid_uid:state.wristbandUid, tickets:state.selectedTickets})
+    });
+    const result = await r.json();
+    if (r.ok && result.success) onPaymentSuccess();
+    else onPaymentFailed(result.error || 'Transaction declined');
+  } catch(e) { onPaymentFailed('Connection error.'); }
+}
+
+function retryPayment() {
+  if (lastPaymentMethod==='stripe') payWithStripe();
+  else if (lastPaymentMethod==='moneris') payWithMoneris();
+  else goToScreen('payment-method');
+}
+
+function onPaymentSuccess() {
+  const newTickets = (state.customer?.tickets||0) + state.selectedTickets;
+  document.getElementById('successDetail').textContent = `${state.selectedTickets} ticket${state.selectedTickets>1?'s':''} added!`;
+  document.getElementById('newBalance').textContent = newTickets;
+  goToScreen('success');
+}
+function onPaymentFailed(msg) {
+  document.getElementById('errorDetail').textContent = msg || 'Payment declined.';
+  goToScreen('error');
+}
+
+function simulateNfcTap() { lookupWristband('EE18B764'); }
+function simulateStripeSuccess() { if(state.currentScreen==='stripe-payment') onPaymentSuccess(); }
+function simulatePaymentFail() { if(['stripe-payment','moneris-payment'].includes(state.currentScreen)) onPaymentFailed('Test failure'); }
+
+let adminTaps=0, adminTimer=null;
+document.getElementById('adminTap').addEventListener('click',()=>{
+  adminTaps++;
+  if(adminTaps>=3){ adminTaps=0; const b=document.getElementById('demoBar'); b.style.display=b.style.display==='none'?'flex':'none'; }
+  clearTimeout(adminTimer); adminTimer=setTimeout(()=>adminTaps=0,1000);
+});
+
+startNFC();
+initStripeTerminal();
+</script>
+</body>
+</html>

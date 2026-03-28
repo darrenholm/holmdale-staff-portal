@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Staff Login - Holmdale Pro Rodeo</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #1a1a1a;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    .login-card {
+      background: #2A2A2A;
+      border-radius: 16px;
+      padding: 40px;
+      width: 100%;
+      max-width: 400px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+    }
+    .logo { text-align: center; margin-bottom: 32px; }
+    .logo h1 { color: #00B74A; font-size: 24px; font-weight: 800; text-transform: uppercase; letter-spacing: 2px; }
+    .logo p { color: #888; font-size: 13px; margin-top: 4px; }
+    label {
+      display: block; color: #ccc; font-size: 13px; font-weight: 600;
+      margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px;
+    }
+    input {
+      width: 100%; padding: 12px 16px; background: #1a1a1a; border: 1px solid #444;
+      border-radius: 8px; color: #fff; font-size: 15px; margin-bottom: 20px; transition: border-color 0.2s;
+    }
+    input:focus { outline: none; border-color: #00B74A; }
+    .remember { display: flex; align-items: center; gap: 8px; margin-bottom: 24px; }
+    .remember input { width: auto; margin: 0; }
+    .remember label { margin: 0; text-transform: none; font-weight: 400; color: #888; cursor: pointer; }
+    button {
+      width: 100%; padding: 14px; background: #00B74A; color: white; border: none;
+      border-radius: 8px; font-size: 16px; font-weight: 700; cursor: pointer;
+      text-transform: uppercase; letter-spacing: 1px; transition: background 0.2s;
+    }
+    button:hover { background: #009d3e; }
+    button:disabled { background: #444; cursor: not-allowed; }
+    .error {
+      background: #3a1a1a; border: 1px solid #c0392b; color: #e74c3c;
+      padding: 12px 16px; border-radius: 8px; font-size: 14px; margin-bottom: 20px; display: none;
+    }
+    .success {
+      background: #1a3a1a; border: 1px solid #27ae60; color: #2ecc71;
+      padding: 12px 16px; border-radius: 8px; font-size: 14px; margin-bottom: 20px; display: none;
+    }
+    .warning {
+      background: #3a2e1a; border: 1px solid #f39c12; color: #f39c12;
+      padding: 12px 16px; border-radius: 8px; font-size: 14px; margin-bottom: 20px; display: none;
+    }
+    .default-pass { text-align: center; color: #555; font-size: 12px; margin-top: 20px; }
+    .forgot-link { text-align: center; margin-top: 12px; }
+    .forgot-link a { color: #00B74A; font-size: 13px; text-decoration: none; }
+    .forgot-link a:hover { text-decoration: underline; }
+    .password-rules { color: #888; font-size: 12px; margin: -10px 0 20px; }
+  </style>
+</head>
+<body>
+
+<div class="login-card">
+  <div class="logo">
+    <h1>🤠 Holmdale Rodeo</h1>
+    <p>Staff Portal — August 2026</p>
+  </div>
+
+  <div class="warning" id="warningMsg"></div>
+  <div class="error" id="errorMsg"></div>
+  <div class="success" id="successMsg"></div>
+
+  <!-- Login Form -->
+  <div id="loginForm">
+    <label for="email">Email Address</label>
+    <input type="email" id="email" placeholder="you@example.com" autocomplete="email">
+
+    <label for="password">Password</label>
+    <input type="password" id="password" placeholder="••••••••" autocomplete="current-password">
+
+    <div class="remember">
+      <input type="checkbox" id="remember" checked>
+      <label for="remember">Keep me logged in</label>
+    </div>
+
+    <button id="loginBtn" onclick="doLogin()">Sign In</button>
+
+    <div class="forgot-link">
+      <a href="#" onclick="showForgotPassword(); return false;">Forgot password?</a>
+    </div>
+
+    <p class="default-pass">First time? Use default password: rodeo2026</p>
+  </div>
+
+  <!-- Change Password Form (shown after first login with default password) -->
+  <div id="changePasswordForm" style="display:none;">
+    <div style="text-align:center; margin-bottom:20px;">
+      <div style="font-size:40px; margin-bottom:10px;">🔒</div>
+      <h3 style="color:#fff; margin-bottom:5px;">Set Your Password</h3>
+      <p style="color:#888; font-size:13px;">You're using the default password. Please create a new one.</p>
+    </div>
+
+    <label for="newPassword">New Password</label>
+    <input type="password" id="newPassword" placeholder="Choose a new password">
+    <p class="password-rules">At least 6 characters</p>
+
+    <label for="confirmPassword">Confirm Password</label>
+    <input type="password" id="confirmPassword" placeholder="Confirm your new password">
+
+    <button id="changeBtn" onclick="doChangePassword()">Set New Password</button>
+  </div>
+
+  <!-- Forgot Password Form -->
+  <div id="forgotForm" style="display:none;">
+    <div style="text-align:center; margin-bottom:20px;">
+      <div style="font-size:40px; margin-bottom:10px;">📧</div>
+      <h3 style="color:#fff; margin-bottom:5px;">Reset Password</h3>
+      <p style="color:#888; font-size:13px;">Enter your email and we'll send you a reset link.</p>
+    </div>
+
+    <label for="forgotEmail">Email Address</label>
+    <input type="email" id="forgotEmail" placeholder="you@example.com">
+
+    <button id="forgotBtn" onclick="doForgotPassword()">Send Reset Link</button>
+
+    <div class="forgot-link" style="margin-top:16px;">
+      <a href="#" onclick="showLoginForm(); return false;">← Back to login</a>
+    </div>
+  </div>
+</div>
+
+<script>
+  var API = 'https://rodeo-fresh-production-7348.up.railway.app';
+  var tempToken = '';
+  var staffData = null;
+
+  // Check existing token - redirect if valid, show expired message if not
+  var existingToken = localStorage.getItem('auth_token');
+  if (existingToken) {
+    try {
+      var payload = JSON.parse(atob(existingToken.split('.')[1]));
+      if (payload.exp && payload.exp > Math.floor(Date.now() / 1000)) {
+        // Token still valid - go to index
+        window.location.href = 'index.html';
+      } else {
+        // Token expired - clear it and show message
+        localStorage.removeItem('auth_token');
+        localStorage.removeItem('staff_name');
+        localStorage.removeItem('staff_id');
+        localStorage.removeItem('staff_email');
+        document.addEventListener('DOMContentLoaded', function() {
+          var el = document.getElementById('warningMsg');
+          el.textContent = '⏰ Your session has expired. Please sign in again.';
+          el.style.display = 'block';
+        });
+      }
+    } catch (e) {
+      // Malformed token - clear it
+      localStorage.removeItem('auth_token');
+    }
+  }
+
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') {
+      if (document.getElementById('changePasswordForm').style.display !== 'none') {
+        doChangePassword();
+      } else if (document.getElementById('forgotForm').style.display !== 'none') {
+        doForgotPassword();
+      } else {
+        doLogin();
+      }
+    }
+  });
+
+  async function doLogin() {
+    var email = document.getElementById('email').value.trim();
+    var password = document.getElementById('password').value;
+    var btn = document.getElementById('loginBtn');
+
+    hideMessages();
+
+    if (!email || !password) {
+      showError('Please enter your email and password.');
+      return;
+    }
+
+    btn.disabled = true;
+    btn.textContent = 'Signing in...';
+
+    try {
+      var res = await fetch(API + '/api/auth/staff-login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: email, password: password })
+      });
+
+      var data = await res.json();
+
+      if (data.success && data.token) {
+        tempToken = data.token;
+        staffData = data.staff;
+
+        // If using default password, force change
+        if (password === 'rodeo2026') {
+          document.getElementById('loginForm').style.display = 'none';
+          document.getElementById('changePasswordForm').style.display = 'block';
+          document.getElementById('newPassword').focus();
+        } else {
+          completeLogin();
+        }
+      } else {
+        showError(data.error || 'Login failed. Check your email and password.');
+      }
+    } catch (e) {
+      showError('Cannot reach server. Check your connection.');
+    }
+
+    btn.disabled = false;
+    btn.textContent = 'Sign In';
+  }
+
+  async function doChangePassword() {
+    var newPass = document.getElementById('newPassword').value;
+    var confirmPass = document.getElementById('confirmPassword').value;
+    var btn = document.getElementById('changeBtn');
+
+    hideMessages();
+
+    if (!newPass || !confirmPass) {
+      showError('Please fill in both fields.');
+      return;
+    }
+
+    if (newPass.length < 6) {
+      showError('Password must be at least 6 characters.');
+      return;
+    }
+
+    if (newPass !== confirmPass) {
+      showError('Passwords do not match.');
+      return;
+    }
+
+    if (newPass === 'rodeo2026') {
+      showError('Please choose a different password than the default.');
+      return;
+    }
+
+    btn.disabled = true;
+    btn.textContent = 'Setting password...';
+
+    try {
+      var res = await fetch(API + '/api/auth/staff-change-password', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + tempToken
+        },
+        body: JSON.stringify({
+          currentPassword: 'rodeo2026',
+          newPassword: newPass
+        })
+      });
+
+      var data = await res.json();
+
+      if (data.success) {
+        completeLogin();
+      } else {
+        showError(data.error || 'Failed to change password.');
+      }
+    } catch (e) {
+      showError('Cannot reach server. Check your connection.');
+    }
+
+    btn.disabled = false;
+    btn.textContent = 'Set New Password';
+  }
+
+  function completeLogin() {
+    localStorage.setItem('auth_token', tempToken);
+    localStorage.setItem('staff_name', staffData.name || '');
+    localStorage.setItem('staff_email', staffData.email || '');
+    localStorage.setItem('staff_id', staffData.id || '');
+    window.location.href = 'index.html';
+  }
+
+  function showForgotPassword() {
+    hideMessages();
+    document.getElementById('loginForm').style.display = 'none';
+    document.getElementById('changePasswordForm').style.display = 'none';
+    document.getElementById('forgotForm').style.display = 'block';
+    document.getElementById('forgotEmail').focus();
+  }
+
+  function showLoginForm() {
+    hideMessages();
+    document.getElementById('loginForm').style.display = 'block';
+    document.getElementById('changePasswordForm').style.display = 'none';
+    document.getElementById('forgotForm').style.display = 'none';
+  }
+
+  async function doForgotPassword() {
+    var email = document.getElementById('forgotEmail').value.trim();
+    var btn = document.getElementById('forgotBtn');
+
+    hideMessages();
+
+    if (!email) {
+      showError('Please enter your email.');
+      return;
+    }
+
+    btn.disabled = true;
+    btn.textContent = 'Sending...';
+
+    try {
+      var res = await fetch(API + '/api/auth/forgot-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: email })
+      });
+
+      var data = await res.json();
+      showSuccess('If that email exists, a reset link has been sent. Check your inbox.');
+    } catch (e) {
+      showError('Cannot reach server.');
+    }
+
+    btn.disabled = false;
+    btn.textContent = 'Send Reset Link';
+  }
+
+  function showError(msg) {
+    var el = document.getElementById('errorMsg');
+    el.textContent = msg;
+    el.style.display = 'block';
+  }
+
+  function showSuccess(msg) {
+    var el = document.getElementById('successMsg');
+    el.textContent = msg;
+    el.style.display = 'block';
+  }
+
+  function hideMessages() {
+    document.getElementById('warningMsg').style.display = 'none';
+    document.getElementById('errorMsg').style.display = 'none';
+    document.getElementById('successMsg').style.display = 'none';
+  }
+</script>
+
+</body>
+</html>

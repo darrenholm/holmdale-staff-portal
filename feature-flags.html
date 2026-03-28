@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Feature Flags — Holmdale Rodeo Admin</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0a0a0a; color: #fff; min-height: 100vh; }
+  
+  .header { background: #111; border-bottom: 2px solid #00c800; padding: 16px 24px; display: flex; align-items: center; gap: 16px; }
+  .header a { color: #aaa; text-decoration: none; font-size: 14px; }
+  .header h1 { font-size: 20px; color: #00c800; }
+  
+  .container { max-width: 720px; margin: 40px auto; padding: 0 24px; }
+  
+  .intro { background: #1a1a1a; border: 1px solid #333; border-radius: 12px; padding: 20px; margin-bottom: 32px; }
+  .intro p { color: #aaa; font-size: 14px; line-height: 1.6; }
+  .intro strong { color: #fff; }
+
+  .flag-card { background: #1a1a1a; border: 1px solid #333; border-radius: 12px; padding: 24px; margin-bottom: 16px; display: flex; align-items: center; justify-content: space-between; gap: 16px; transition: border-color 0.2s; }
+  .flag-card.enabled { border-color: #00c800; }
+  
+  .flag-info { flex: 1; }
+  .flag-label { font-size: 18px; font-weight: 600; margin-bottom: 4px; }
+  .flag-desc { color: #888; font-size: 13px; margin-bottom: 8px; }
+  .flag-meta { font-size: 11px; color: #555; }
+  .flag-meta span { color: #00c800; }
+
+  /* Toggle switch */
+  .toggle-wrap { display: flex; align-items: center; gap: 12px; flex-shrink: 0; }
+  .toggle-label { font-size: 13px; font-weight: 600; min-width: 36px; text-align: right; }
+  .toggle-label.on { color: #00c800; }
+  .toggle-label.off { color: #666; }
+  
+  .toggle { position: relative; width: 56px; height: 28px; cursor: pointer; }
+  .toggle input { opacity: 0; width: 0; height: 0; }
+  .slider { position: absolute; inset: 0; background: #333; border-radius: 28px; transition: 0.3s; }
+  .slider:before { content: ''; position: absolute; height: 20px; width: 20px; left: 4px; bottom: 4px; background: #666; border-radius: 50%; transition: 0.3s; }
+  input:checked + .slider { background: #00c800; }
+  input:checked + .slider:before { transform: translateX(28px); background: #fff; }
+  .toggle:hover .slider { box-shadow: 0 0 0 2px rgba(0,200,0,0.3); }
+
+  .saving { position: fixed; bottom: 24px; right: 24px; background: #00c800; color: #000; padding: 12px 20px; border-radius: 8px; font-weight: 600; font-size: 14px; opacity: 0; transform: translateY(8px); transition: all 0.3s; pointer-events: none; }
+  .saving.show { opacity: 1; transform: translateY(0); }
+  .saving.error { background: #ff4444; color: #fff; }
+
+  .loading { text-align: center; padding: 60px; color: #555; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <a href="index.html">← Staff Portal</a>
+  <h1>⚙️ Feature Flags</h1>
+</div>
+
+<div class="container">
+  <div class="intro">
+    <p><strong>Control which features are visible on holmdalerodeo.ca.</strong><br>
+    Toggle features on or off instantly — changes take effect within seconds on the public website. 
+    Only enable features when you're ready for customers to use them.</p>
+  </div>
+
+  <div id="flagsContainer">
+    <div class="loading">Loading feature flags…</div>
+  </div>
+</div>
+
+<div class="saving" id="savingToast">Saved ✓</div>
+
+<script>
+const API = 'https://rodeo-fresh-production-7348.up.railway.app/api';
+const token = localStorage.getItem('auth_token');
+
+if (!token) {
+  window.location.href = 'login.html';
+}
+
+const LABELS = {
+  online_admission:   { icon: '🎟️', label: 'Online Admission Tickets', desc: 'Customers can buy admission tickets on holmdalerodeo.ca' },
+  online_merchandise: { icon: '🛍️', label: 'Online Merchandise',       desc: 'Customers can buy merchandise on holmdalerodeo.ca' },
+  buy_friend_drink:   { icon: '🍺', label: 'Buy a Friend a Drink',     desc: 'On-site NFC wristband drink credit transfers between guests' }
+};
+
+async function loadFlags() {
+  try {
+    const r = await fetch(`${API}/features`);
+    const flags = await r.json();
+    renderFlags(flags);
+  } catch (e) {
+    document.getElementById('flagsContainer').innerHTML = 
+      '<div class="loading" style="color:#ff4444">Failed to load feature flags. Check your connection.</div>';
+  }
+}
+
+function renderFlags(flags) {
+  const container = document.getElementById('flagsContainer');
+  container.innerHTML = '';
+  
+  Object.entries(flags).forEach(([key, flag]) => {
+    const info = LABELS[key] || { icon: '⚙️', label: flag.label, desc: flag.description };
+    const updatedAt = flag.updated_at ? new Date(flag.updated_at).toLocaleString('en-CA') : 'Never';
+    const updatedBy = flag.updated_by || '—';
+    
+    const card = document.createElement('div');
+    card.className = `flag-card ${flag.enabled ? 'enabled' : ''}`;
+    card.id = `card-${key}`;
+    card.innerHTML = `
+      <div class="flag-info">
+        <div class="flag-label">${info.icon} ${info.label}</div>
+        <div class="flag-desc">${info.desc}</div>
+        <div class="flag-meta">Last changed: <span>${updatedAt}</span> by <span>${updatedBy}</span></div>
+      </div>
+      <div class="toggle-wrap">
+        <div class="toggle-label ${flag.enabled ? 'on' : 'off'}" id="lbl-${key}">${flag.enabled ? 'ON' : 'OFF'}</div>
+        <label class="toggle">
+          <input type="checkbox" id="toggle-${key}" ${flag.enabled ? 'checked' : ''} onchange="toggleFlag('${key}', this.checked)">
+          <span class="slider"></span>
+        </label>
+      </div>
+    `;
+    container.appendChild(card);
+  });
+}
+
+async function toggleFlag(key, enabled) {
+  const toast = document.getElementById('savingToast');
+  toast.textContent = 'Saving…';
+  toast.className = 'saving show';
+  
+  // Optimistic UI update
+  const card = document.getElementById(`card-${key}`);
+  const lbl = document.getElementById(`lbl-${key}`);
+  card.className = `flag-card ${enabled ? 'enabled' : ''}`;
+  lbl.className = `toggle-label ${enabled ? 'on' : 'off'}`;
+  lbl.textContent = enabled ? 'ON' : 'OFF';
+
+  try {
+    const r = await fetch(`${API}/features/${key}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+      body: JSON.stringify({ enabled })
+    });
+    if (!r.ok) throw new Error('Failed');
+    toast.textContent = `${enabled ? '✅' : '⭕'} ${key.replace(/_/g,' ')} ${enabled ? 'enabled' : 'disabled'}`;
+    setTimeout(() => toast.className = 'saving', 2500);
+  } catch (e) {
+    // Revert on failure
+    document.getElementById(`toggle-${key}`).checked = !enabled;
+    card.className = `flag-card ${!enabled ? 'enabled' : ''}`;
+    lbl.className = `toggle-label ${!enabled ? 'on' : 'off'}`;
+    lbl.textContent = !enabled ? 'ON' : 'OFF';
+    toast.textContent = '❌ Save failed — try again';
+    toast.className = 'saving error show';
+    setTimeout(() => toast.className = 'saving', 3000);
+  }
+}
+
+loadFlags();
+</script>
+</body>
+</html>

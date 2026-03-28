@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=480, initial-scale=1.0, user-scalable=no, maximum-scale=1.0, minimum-scale=1.0">
+<meta name="mobile-web-app-capable" content="yes">
+<title>Balance Checker</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Barlow+Condensed:wght@400;700;900&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:      #0a0805;
+    --surface: #181210;
+    --border:  #3a3028;
+    --text:    #f5f0ea;
+    --dim:     #8a7e72;
+    --gold:    #d4a017;
+    --gold2:   #f5c842;
+    --green:   #2db563;
+    --green2:  #52e88a;
+    --red:     #e03030;
+    --orange:  #e87820;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+  html, body {
+    width: 480px; height: 480px;
+    overflow: hidden;
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Barlow Condensed', sans-serif;
+    user-select: none; -webkit-user-select: none;
+  }
+
+  body::after {
+    content: '';
+    position: fixed; inset: 0; z-index: 0; pointer-events: none;
+    background: repeating-linear-gradient(
+      -45deg, transparent, transparent 40px,
+      rgba(212,160,23,0.018) 40px, rgba(212,160,23,0.018) 41px
+    );
+  }
+
+  /* HEADER */
+  .hdr {
+    position: relative; z-index: 10;
+    width: 100%; height: 44px;
+    background: linear-gradient(90deg, #111008, #1a1408);
+    border-bottom: 2px solid var(--gold);
+    display: flex; align-items: center;
+    padding: 0 14px; gap: 10px;
+  }
+  .hdr-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 20px; letter-spacing: 2px;
+    color: var(--gold2); flex: 1;
+  }
+  .hdr-badge { font-size: 10px; font-weight: 700; letter-spacing: 1.5px; color: var(--dim); }
+  .nfc-dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--border); flex-shrink: 0;
+    transition: background 0.3s, box-shadow 0.3s;
+  }
+  .nfc-dot.on { background: var(--green); box-shadow: 0 0 6px var(--green); }
+
+  /* SCREENS */
+  .screen { display: none; position: relative; z-index: 5; width: 100%; height: 436px; }
+  .screen.active { display: flex; }
+
+  /* TAP SCREEN */
+  #sTap { flex-direction: column; align-items: center; justify-content: center; gap: 0; }
+  .tap-ring {
+    width: 110px; height: 110px; border-radius: 50%;
+    border: 2px solid var(--gold);
+    background: radial-gradient(circle at 40% 35%, rgba(212,160,23,0.22) 0%, rgba(212,160,23,0.04) 65%, transparent 100%);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 52px; margin-bottom: 18px;
+    animation: pulse 2.8s ease-in-out infinite;
+  }
+  @keyframes pulse {
+    0%,100% { transform: scale(1);    box-shadow: 0 0 0 0 rgba(212,160,23,0.25); }
+    50%      { transform: scale(1.06); box-shadow: 0 0 28px 8px rgba(212,160,23,0.12); }
+  }
+  .tap-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 38px; letter-spacing: 3px; color: var(--gold2);
+    text-align: center; line-height: 1; margin-bottom: 8px;
+  }
+  .tap-sub { font-size: 14px; color: var(--dim); text-align: center; line-height: 1.4; max-width: 280px; margin-bottom: 16px; }
+  .divider { width: 60px; height: 1px; background: var(--border); margin-bottom: 14px; }
+  .manual-row { display: flex; gap: 8px; width: 320px; }
+  .manual-input {
+    flex: 1; padding: 10px 14px; border-radius: 8px;
+    border: 1.5px solid var(--border); background: var(--surface);
+    color: var(--text); font-size: 15px;
+    font-family: 'Barlow Condensed', sans-serif; letter-spacing: 1px;
+  }
+  .manual-input:focus { outline: none; border-color: var(--gold); }
+  .manual-btn {
+    padding: 10px 20px; border-radius: 8px; border: none;
+    background: var(--gold); color: #100d06;
+    font-family: 'Bebas Neue', sans-serif; font-size: 18px; letter-spacing: 1px;
+    cursor: pointer; flex-shrink: 0;
+  }
+  .manual-btn:active { opacity: 0.75; }
+
+  /* LOADING */
+  #sLoading { flex-direction: column; align-items: center; justify-content: center; gap: 16px; }
+  .spinner {
+    width: 44px; height: 44px; border: 3px solid var(--border);
+    border-top: 3px solid var(--gold); border-radius: 50%;
+    animation: spin 0.75s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .load-text { font-size: 16px; color: var(--dim); letter-spacing: 1px; }
+
+  /* BALANCE */
+  #sBalance { flex-direction: column; padding: 18px 28px 14px; }
+  .bal-top { display: flex; align-items: flex-end; margin-bottom: 4px; }
+  .bal-big {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 120px; line-height: 1; transition: color 0.3s;
+  }
+  .bal-unit {
+    font-family: 'Bebas Neue', sans-serif; font-size: 22px; letter-spacing: 1.5px;
+    color: var(--gold); padding-bottom: 18px; padding-left: 8px;
+  }
+  .bal-name {
+    font-size: 22px; font-weight: 700; letter-spacing: 0.5px; color: var(--text);
+    margin-bottom: 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .bal-stats { display: flex; gap: 24px; margin-bottom: 10px; }
+  .stat-val { font-family: 'Bebas Neue', sans-serif; font-size: 30px; line-height: 1; }
+  .stat-label { font-size: 11px; color: var(--dim); text-transform: uppercase; letter-spacing: 1.5px; }
+  .progress-wrap { width: 100%; height: 5px; background: var(--border); border-radius: 3px; overflow: hidden; margin-bottom: 12px; }
+  .progress-bar { height: 100%; border-radius: 3px; background: linear-gradient(90deg, var(--gold), var(--gold2)); transition: width 0.5s ease; }
+  .age-badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 5px 14px; border-radius: 20px;
+    font-size: 13px; font-weight: 700; letter-spacing: 1.5px; margin-bottom: 10px;
+  }
+  .over19 { background: rgba(43,181,99,0.12); color: var(--green2); border: 1px solid rgba(43,181,99,0.4); }
+  .under19 { background: rgba(224,48,48,0.10); color: var(--red); border: 1px solid rgba(224,48,48,0.35); }
+  .countdown { font-size: 13px; color: var(--dim); letter-spacing: 0.5px; }
+
+  /* NOT FOUND / ERROR */
+  #sNotFound, #sError {
+    flex-direction: column; align-items: center; justify-content: center;
+    gap: 10px; padding: 30px; text-align: center;
+  }
+  .state-icon { font-size: 56px; }
+  .state-title { font-family: 'Bebas Neue', sans-serif; font-size: 38px; letter-spacing: 2px; line-height: 1; }
+  .state-sub { font-size: 15px; color: var(--dim); line-height: 1.5; max-width: 300px; }
+  .state-cd { font-size: 13px; color: var(--border); margin-top: 6px; }
+</style>
+</head>
+<body>
+
+<div class="hdr">
+  <div class="hdr-title">🤠 HOLMDALE RODEO</div>
+  <div class="hdr-badge">DRINK TICKETS</div>
+  <div class="nfc-dot" id="nfcDot"></div>
+</div>
+
+<!-- TAP SCREEN -->
+<div class="screen active" id="sTap">
+  <div class="tap-ring">🍺</div>
+  <div class="tap-title">TAP WRISTBAND</div>
+  <div class="tap-sub">Hold your wristband to the reader to check your drink ticket balance</div>
+  <div class="divider"></div>
+  <div class="manual-row">
+    <input type="text" class="manual-input" id="manualId"
+      placeholder="Enter wristband ID"
+      autocomplete="off" autocorrect="off" autocapitalize="characters">
+    <button class="manual-btn" onclick="manualLookup()">GO</button>
+  </div>
+</div>
+
+<!-- LOADING -->
+<div class="screen" id="sLoading">
+  <div class="spinner"></div>
+  <div class="load-text">LOOKING UP WRISTBAND…</div>
+</div>
+
+<!-- BALANCE -->
+<div class="screen" id="sBalance">
+  <div class="bal-top">
+    <div class="bal-big" id="balNum">0</div>
+    <div class="bal-unit">TICKETS<br>LEFT</div>
+  </div>
+  <div class="bal-name" id="balName">—</div>
+  <div class="bal-stats">
+    <div class="stat">
+      <div class="stat-val" id="balTotal">0</div>
+      <div class="stat-label">Purchased</div>
+    </div>
+    <div class="stat">
+      <div class="stat-val" id="balUsed">0</div>
+      <div class="stat-label">Used</div>
+    </div>
+  </div>
+  <div class="progress-wrap"><div class="progress-bar" id="progressBar" style="width:100%"></div></div>
+  <div id="ageBadge"></div>
+  <div class="countdown" id="cd1">Returning in 8s…</div>
+</div>
+
+<!-- NOT FOUND -->
+<div class="screen" id="sNotFound">
+  <div class="state-icon">🔍</div>
+  <div class="state-title" style="color:var(--red)">NOT FOUND</div>
+  <div class="state-sub">This wristband isn't registered.<br>Visit the ticket counter to get set up.</div>
+  <div class="state-cd" id="cd2">Returning in 5s…</div>
+</div>
+
+<!-- ERROR -->
+<div class="screen" id="sError">
+  <div class="state-icon">⚠️</div>
+  <div class="state-title" style="color:var(--orange)">CONNECTION ERROR</div>
+  <div class="state-sub" id="errMsg">Could not reach the server.</div>
+  <div class="state-cd" id="cd3">Returning in 5s…</div>
+</div>
+
+<script>
+const API = 'https://rodeo-fresh-production-7348.up.railway.app/api';
+let timer = null;
+
+// Kiosk lock
+history.pushState(null,'',location.href);
+window.addEventListener('popstate',()=>history.pushState(null,'',location.href));
+document.addEventListener('contextmenu',e=>e.preventDefault());
+document.addEventListener('selectstart',e=>e.preventDefault());
+
+function show(id) {
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+function nfcOn() { document.getElementById('nfcDot').classList.add('on'); }
+
+async function lookup(uid) {
+  uid = (uid||'').replace(/[^a-fA-F0-9]/g,'').toUpperCase();
+  if (!uid || uid.length < 4) return;
+  if (timer) clearTimeout(timer);
+  nfcOn();
+  show('sLoading');
+  try {
+    let r = await fetch(API + '/wristbands/balance/' + encodeURIComponent(uid));
+    if (r.ok) { showBal(await r.json()); return; }
+    if (r.status === 404) { showNotFound(); return; }
+
+    r = await fetch(API + '/wristbands?rfid_uid=' + encodeURIComponent(uid));
+    if (r.ok) {
+      const d = await r.json();
+      if (Array.isArray(d) && d.length > 0) {
+        showBal(d.find(w=>(w.rfid_uid||'').toUpperCase()===uid) || d[0]); return;
+      }
+    }
+
+    r = await fetch(API + '/bar-credits?rfid_tag_id=' + encodeURIComponent(uid));
+    if (r.ok) {
+      const d = await r.json();
+      if (Array.isArray(d) && d.length > 0) { showBal(d[0]); return; }
+    }
+
+    showNotFound();
+  } catch(e) {
+    document.getElementById('errMsg').textContent = e.message || 'Could not reach the server.';
+    show('sError'); autoReset('cd3', 5);
+  }
+}
+
+function showBal(w) {
+ const total = Math.max(0, Math.floor(parseFloat(w.credits || w.ticket_quantity || 0) / 7));
+const used = Math.max(0, Math.floor(parseFloat(w.credits_spent || w.drinks_redeemed || 0) / 7));
+const rem = Math.max(0, total - used);
+  const big = document.getElementById('balNum');
+  big.textContent = rem;
+  big.style.color = rem === 0 ? 'var(--red)' : rem <= 2 ? 'var(--orange)' : 'var(--gold2)';
+
+  document.getElementById('balName').textContent = w.customer_name || 'Guest';
+  document.getElementById('balTotal').textContent = total;
+  document.getElementById('balUsed').textContent = used;
+
+  const pct = total > 0 ? Math.round((rem/total)*100) : 0;
+  document.getElementById('progressBar').style.width = pct + '%';
+
+  document.getElementById('ageBadge').innerHTML = w.alcohol_approved
+    ? '<div class="age-badge over19">✓ 19+ VERIFIED</div>'
+    : '<div class="age-badge under19">✗ UNDER 19</div>';
+
+  show('sBalance'); autoReset('cd1', 8);
+}
+
+function showNotFound() { show('sNotFound'); autoReset('cd2', 5); }
+
+function autoReset(cdId, secs) {
+  let rem = secs;
+  const el = document.getElementById(cdId);
+  el.textContent = `Returning in ${rem}s…`;
+  if (timer) clearTimeout(timer);
+  const tick = () => {
+    rem--;
+    if (rem <= 0) { show('sTap'); return; }
+    el.textContent = `Returning in ${rem}s…`;
+    timer = setTimeout(tick, 1000);
+  };
+  timer = setTimeout(tick, 1000);
+}
+
+// Manual entry
+function manualLookup() {
+  const v = document.getElementById('manualId').value.trim();
+  if (v) { lookup(v); document.getElementById('manualId').value=''; document.getElementById('manualId').blur(); }
+}
+document.getElementById('manualId').addEventListener('keypress', e=>{ if(e.key==='Enter') manualLookup(); });
+
+// NFC: postMessage from RodeoNFC Android app
+window.addEventListener('message', e=>{ if(e.data?.type==='NFC_TAG') lookup(e.data.uid); });
+
+// NFC: Fully Kiosk
+window.fullyNfcTagDiscovered = tagId => lookup((tagId||'').replace(/:/g,''));
+if (window.fully) { try { window.fully.startNfcReader(); nfcOn(); } catch(e){} }
+
+// NFC: Web NFC API
+if ('NDEFReader' in window) {
+  (async()=>{ try { const r=new NDEFReader(); await r.scan(); nfcOn(); r.addEventListener('reading',e=>lookup(e.serialNumber.replace(/:/g,''))); } catch(e){} })();
+}
+
+// NFC: Keyboard wedge
+let buf='', kwt=null;
+document.addEventListener('keydown', e=>{
+  if (document.activeElement===document.getElementById('manualId')) return;
+  if (kwt) clearTimeout(kwt);
+  if (e.key==='Enter') { if(buf.length>4) lookup(buf); buf=''; return; }
+  if (e.key.length===1) buf+=e.key;
+  kwt = setTimeout(()=>{ buf=''; }, 120);
+});
+
+// NFC: URL param — primary method used by RodeoNFC Android app
+const uid = new URLSearchParams(location.search).get('uid');
+if (uid) { nfcOn(); lookup(uid); }
+</script>
+</body>
+</html>

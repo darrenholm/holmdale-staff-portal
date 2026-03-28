@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sponsors & Vendors — Holmdale Rodeo</title>
+<script>
+(function(){
+    const token = localStorage.getItem('auth_token');
+    if (!token) { window.location.href = 'login.html'; return; }
+    try {
+        const p = JSON.parse(atob(token.split('.')[1]));
+        if (p.exp && p.exp < Math.floor(Date.now()/1000)) { window.location.href = 'login.html'; }
+    } catch(e) { window.location.href = 'login.html'; }
+})();
+</script>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif; background:#111; color:#eee; min-height:100vh; }
+.header { background:#1a1a1a; border-bottom:1px solid #333; padding:16px 24px; display:flex; align-items:center; justify-content:space-between; }
+.header h1 { font-size:20px; color:#00B74A; }
+.header a { color:#888; text-decoration:none; font-size:14px; }
+.header a:hover { color:#fff; }
+.tabs { display:flex; gap:0; background:#1a1a1a; border-bottom:1px solid #333; padding:0 24px; }
+.tab { padding:12px 24px; cursor:pointer; font-size:14px; font-weight:600; color:#888; background:none; border:none; border-bottom:3px solid transparent; }
+.tab:hover { color:#ccc; }
+.tab.active { color:#00B74A; border-bottom-color:#00B74A; }
+.container { max-width:1400px; margin:0 auto; padding:20px; }
+.toolbar { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:16px; flex-wrap:wrap; }
+.toolbar-left { display:flex; gap:8px; flex-wrap:wrap; }
+input.search { background:#222; border:1px solid #444; border-radius:8px; padding:10px 16px; color:#fff; font-size:14px; width:280px; }
+input.search:focus { outline:none; border-color:#00B74A; }
+select.filter { background:#222; border:1px solid #444; border-radius:8px; padding:10px 12px; color:#fff; font-size:14px; }
+.btn { padding:10px 20px; border-radius:8px; border:none; font-size:14px; font-weight:600; cursor:pointer; }
+.btn-green { background:#00B74A; color:#fff; }
+.btn-green:hover { background:#00a040; }
+.btn-sm { padding:6px 12px; font-size:12px; border-radius:6px; }
+.btn-gray { background:#333; color:#fff; border:none; cursor:pointer; }
+.btn-gray:hover { background:#444; }
+.btn-red { background:#ef444433; color:#ef4444; border:none; cursor:pointer; }
+.btn-red:hover { background:#ef444455; }
+.summary { display:flex; gap:16px; margin-bottom:20px; flex-wrap:wrap; }
+.scard { background:#1a1a1a; border:1px solid #333; border-radius:10px; padding:14px 20px; flex:1; min-width:140px; }
+.scard .v { font-size:28px; font-weight:800; color:#00B74A; }
+.scard .l { font-size:11px; color:#888; text-transform:uppercase; letter-spacing:1px; margin-top:2px; }
+.scard.amber .v { color:#f59e0b; }
+.scard.blue .v { color:#3b82f6; }
+table { width:100%; border-collapse:collapse; background:#1a1a1a; border:1px solid #333; border-radius:12px; overflow:hidden; }
+th { background:#222; color:#999; font-size:11px; text-transform:uppercase; letter-spacing:1px; padding:12px 12px; text-align:left; white-space:nowrap; }
+td { padding:10px 12px; border-top:1px solid #282828; font-size:13px; max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+tr:hover td { background:#1f1f1f; }
+.name { font-weight:700; color:#fff; }
+.amt { font-weight:700; color:#00B74A; }
+.badge { display:inline-block; padding:2px 8px; border-radius:4px; font-size:11px; font-weight:600; }
+.bg { background:#00B74A22; color:#00B74A; }
+.br { background:#ef444422; color:#ef4444; }
+.by { background:#44403c44; color:#888; }
+.empty { text-align:center; padding:60px; color:#555; font-size:16px; }
+.toast { position:fixed; bottom:20px; right:20px; background:#00B74A; color:#fff; padding:12px 24px; border-radius:8px; font-weight:600; display:none; z-index:200; }
+
+/* Modal */
+.overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,.7); z-index:100; align-items:center; justify-content:center; }
+.overlay.open { display:flex; }
+.modal { background:#1a1a1a; border:1px solid #444; border-radius:16px; padding:24px; width:92%; max-width:620px; max-height:90vh; overflow-y:auto; }
+.modal h2 { font-size:18px; margin-bottom:16px; }
+.fg { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+.fi { display:flex; flex-direction:column; gap:4px; }
+.fi.full { grid-column:1/-1; }
+.fi label { font-size:11px; color:#888; text-transform:uppercase; letter-spacing:.5px; }
+.fi input,.fi select,.fi textarea { background:#222; border:1px solid #444; border-radius:6px; padding:8px 12px; color:#fff; font-size:14px; }
+.fi input:focus,.fi select:focus,.fi textarea:focus { outline:none; border-color:#00B74A; }
+.fi textarea { resize:vertical; min-height:60px; }
+.sched { margin-top:16px; border-top:1px solid #333; padding-top:16px; }
+.sched h3 { font-size:14px; color:#999; margin-bottom:10px; }
+.sr { display:flex; gap:8px; align-items:center; margin-bottom:6px; }
+.sr input,.sr select { font-size:13px; }
+.sr input[type=number] { width:80px; }
+.mactions { display:flex; gap:8px; justify-content:flex-end; margin-top:20px; }
+
+@media(max-width:768px) {
+    .container { padding:12px; }
+    input.search { width:100%; }
+    .fg { grid-template-columns:1fr; }
+    th,td { padding:8px 6px; font-size:12px; }
+}
+</style>
+</head>
+<body>
+
+<div class="header">
+    <h1>🤝 Sponsors & Vendors</h1>
+    <a href="index.html">← Back to Portal</a>
+</div>
+
+<div class="tabs" id="tabBar">
+    <button class="tab active" data-tab="sponsors">🏢 Sponsors</button>
+    <button class="tab" data-tab="vendors">🛒 Vendors</button>
+</div>
+
+<div class="container">
+    <div class="summary" id="summary"></div>
+    <div class="toolbar">
+        <div class="toolbar-left">
+            <input class="search" id="search" placeholder="Search..." oninput="render()">
+            <select class="filter" id="yearFilter" onchange="render()">
+                <option value="all">All Years</option>
+                <option value="2024">2024</option>
+                <option value="2025" selected>2025</option>
+                <option value="2026">2026</option>
+                <option value="2027">2027</option>
+                <option value="2028">2028</option>
+            </select>
+        </div>
+        <button class="btn btn-green" id="addBtn" onclick="openAdd()">+ Add Sponsor</button>
+    </div>
+    <div id="table"></div>
+</div>
+
+<div class="overlay" id="overlay">
+    <div class="modal">
+        <h2 id="mtitle">Add</h2>
+        <div class="fg" id="mform"></div>
+        <div class="sched" id="msched"></div>
+        <div class="mactions">
+            <button class="btn btn-gray" onclick="closeModal()">Cancel</button>
+            <button class="btn btn-green" onclick="save()">Save</button>
+        </div>
+    </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const API = 'https://rodeo-fresh-production-7348.up.railway.app/api';
+let tab = 'sponsors';
+let sponsors = [], vendors = [], signs = [];
+let sSched = [], vSched = [];
+let editId = null;
+
+const h = () => ({ 'Authorization':'Bearer '+localStorage.getItem('auth_token'), 'Content-Type':'application/json' });
+
+// ─── Tabs ───
+document.getElementById('tabBar').addEventListener('click', e => {
+    if (!e.target.dataset.tab) return;
+    tab = e.target.dataset.tab;
+    document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tab));
+    document.getElementById('yearFilter').style.display = tab === 'signs' ? 'none' : '';
+    document.getElementById('addBtn').textContent = tab === 'sponsors' ? '+ Add Sponsor' : tab === 'vendors' ? '+ Add Vendor' : '+ Add Location';
+    render();
+});
+
+// ─── Load ───
+async function load() {
+    try {
+        const [a,b,c,d,e] = await Promise.all([
+            fetch(API+'/sponsors',{headers:h()}).then(r=>r.json()),
+            fetch(API+'/vendors',{headers:h()}).then(r=>r.json()),
+            fetch(API+'/sign-locations',{headers:h()}).then(r=>r.json()),
+            fetch(API+'/sponsor-schedule',{headers:h()}).then(r=>r.json()),
+            fetch(API+'/vendor-schedule',{headers:h()}).then(r=>r.json()),
+        ]);
+        sponsors = Array.isArray(a)?a:[];
+        vendors = Array.isArray(b)?b:[];
+        signs = Array.isArray(c)?c:[];
+        sSched = Array.isArray(d)?d:[];
+        vSched = Array.isArray(e)?e:[];
+    } catch(err) { console.error('Load error', err); }
+    render();
+}
+
+// ─── Helpers ───
+function schedFor(type, id) {
+    const list = type==='sponsors' ? sSched : vSched;
+    const key = type==='sponsors' ? 'sponsor_id' : 'vendor_id';
+    return list.filter(s => s[key] === id);
+}
+function yearAmt(type, id, yr) {
+    const e = schedFor(type,id).find(s => s.year==yr);
+    return e ? parseFloat(e.amount)||0 : 0;
+}
+function toast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg; t.style.display = 'block';
+    setTimeout(() => t.style.display = 'none', 2500);
+}
+
+// ─── Render ───
+function render() {
+    const q = document.getElementById('search').value.toLowerCase();
+    const yr = document.getElementById('yearFilter').value;
+    renderSummary(yr);
+    if (tab==='sponsors') renderSponsors(q, yr);
+    else if (tab==='vendors') renderVendors(q, yr);
+    else renderSigns(q);
+}
+
+function renderSummary(yr) {
+    const el = document.getElementById('summary');
+    if (tab==='signs') {
+        const inst = signs.filter(s=>s.installed).length;
+        el.innerHTML = `<div class="scard"><div class="v">${signs.length}</div><div class="l">Locations</div></div>
+            <div class="scard"><div class="v">${inst}</div><div class="l">Installed</div></div>
+            <div class="scard amber"><div class="v">${signs.length-inst}</div><div class="l">Pending</div></div>`;
+        return;
+    }
+    const type = tab;
+    const list = type==='sponsors'?sSched:vSched;
+    const key = type==='sponsors'?'sponsor_id':'vendor_id';
+    const items = type==='sponsors'?sponsors:vendors;
+    if (yr==='all') {
+        el.innerHTML = `<div class="scard"><div class="v">${items.length}</div><div class="l">Total ${type}</div></div>`;
+    } else {
+        const yearItems = list.filter(s=>s.year==yr);
+        const total = yearItems.reduce((s,x) => s+(parseFloat(x.amount)||0), 0);
+        const count = new Set(yearItems.filter(x=>parseFloat(x.amount)>0).map(x=>x[key])).size;
+        const paid = yearItems.filter(x=>x.paid).length;
+        el.innerHTML = `<div class="scard"><div class="v">${items.length}</div><div class="l">Total</div></div>
+            <div class="scard blue"><div class="v">${count}</div><div class="l">Active ${yr}</div></div>
+            <div class="scard amber"><div class="v">$${total.toLocaleString()}</div><div class="l">Amount ${yr}</div></div>
+            ${type==='vendors'?`<div class="scard"><div class="v">${paid}/${yearItems.length}</div><div class="l">Paid ${yr}</div></div>`:''}`;
+    }
+}
+
+function renderSponsors(q, yr) {
+    let items = sponsors.filter(s =>
+        (s.name||'').toLowerCase().includes(q) ||
+        (s.contact_name||'').toLowerCase().includes(q) ||
+        (s.city||'').toLowerCase().includes(q) ||
+        (s.email||'').toLowerCase().includes(q)
+    );
+    if (yr!=='all') items.sort((a,b) => yearAmt('sponsors',b.id,yr) - yearAmt('sponsors',a.id,yr));
+
+    const el = document.getElementById('table');
+    if (!items.length) { el.innerHTML = '<div class="empty">No sponsors found</div>'; return; }
+    el.innerHTML = `<table><thead><tr>
+        <th>Name</th><th>Contact</th><th>City</th><th>Phone</th><th>Email</th>
+        ${yr!=='all'?`<th>${yr} Amt</th>`:'<th>Years</th>'}<th></th>
+    </tr></thead><tbody>${items.map(s => {
+        const a = yr!=='all' ? yearAmt('sponsors',s.id,yr) : 0;
+        const yrs = [...new Set(schedFor('sponsors',s.id).map(x=>x.year))].sort().join(', ');
+        return `<tr>
+            <td class="name">${s.name||''}</td>
+            <td>${s.contact_name||''}</td>
+            <td>${s.city||''}</td>
+            <td>${s.phone||''}</td>
+            <td>${s.email ? `<a href="mailto:${s.email}" style="color:#3b82f6;">${s.email}</a>` : ''}</td>
+            ${yr!=='all'?`<td class="amt">${a>0?'$'+a.toLocaleString():'-'}</td>`:`<td>${yrs||'-'}</td>`}
+            <td><button class="btn btn-sm btn-gray" onclick="openEdit('sponsors',${s.id})">Edit</button></td>
+        </tr>`;
+    }).join('')}</tbody></table>`;
+}
+
+function renderVendors(q, yr) {
+    let items = vendors.filter(v =>
+        (v.name||'').toLowerCase().includes(q) ||
+        (v.contact_name||'').toLowerCase().includes(q) ||
+        (v.product||'').toLowerCase().includes(q) ||
+        (v.email||'').toLowerCase().includes(q)
+    );
+    const el = document.getElementById('table');
+    if (!items.length) { el.innerHTML = '<div class="empty">No vendors found</div>'; return; }
+    el.innerHTML = `<table><thead><tr>
+        <th>Name</th><th>Contact</th><th>Phone</th><th>Email</th><th>Product</th><th>Booth</th>
+        ${yr!=='all'?`<th>${yr} Amt</th><th>Paid</th>`:'<th>Years</th>'}<th></th>
+    </tr></thead><tbody>${items.map(v => {
+        const entry = yr!=='all' ? schedFor('vendors',v.id).find(s=>s.year==yr) : null;
+        const yrs = [...new Set(schedFor('vendors',v.id).map(x=>x.year))].sort().join(', ');
+        return `<tr>
+            <td class="name">${v.name||''}</td>
+            <td>${v.contact_name||''}</td>
+            <td>${v.phone||''}</td>
+            <td>${v.email ? `<a href="mailto:${v.email}" style="color:#3b82f6;">${v.email}</a>` : ''}</td>
+            <td>${v.product||''}</td>
+            <td>${v.booth_size||''}</td>
+            ${yr!=='all'?`<td class="amt">${entry?'$'+parseFloat(entry.amount).toLocaleString():'-'}</td>
+                <td>${entry?(entry.paid?'<span class="badge bg">Paid</span>':'<span class="badge br">Unpaid</span>'):''}</td>`
+                :`<td>${yrs||'-'}</td>`}
+            <td><button class="btn btn-sm btn-gray" onclick="openEdit('vendors',${v.id})">Edit</button></td>
+        </tr>`;
+    }).join('')}</tbody></table>`;
+}
+
+function renderSigns(q) {
+    let items = signs.filter(s =>
+        (s.location||'').toLowerCase().includes(q) ||
+        (s.cross_street||'').toLowerCase().includes(q)
+    );
+    const el = document.getElementById('table');
+    if (!items.length) { el.innerHTML = '<div class="empty">No sign locations found</div>'; return; }
+    el.innerHTML = `<table><thead><tr>
+        <th>Location</th><th>Cross Street</th><th>Installed</th><th>Install Date</th><th>Removed</th><th></th>
+    </tr></thead><tbody>${items.map(s => `<tr>
+        <td class="name">${s.location||''}</td>
+        <td>${s.cross_street||''}</td>
+        <td>${s.installed?'<span class="badge bg">Yes</span>':'<span class="badge by">No</span>'}</td>
+        <td>${s.install_date?new Date(s.install_date).toLocaleDateString():''}</td>
+        <td>${s.removed?'<span class="badge br">Yes</span>':'<span class="badge by">No</span>'}</td>
+        <td><button class="btn btn-sm btn-gray" onclick="openEdit('signs',${s.id})">Edit</button></td>
+    </tr>`).join('')}</tbody></table>`;
+}
+
+// ─── Modal ───
+function closeModal() { document.getElementById('overlay').classList.remove('open'); editId=null; }
+
+function openAdd() {
+    editId = null;
+    document.getElementById('mtitle').textContent = tab==='sponsors'?'Add Sponsor':tab==='vendors'?'Add Vendor':'Add Sign Location';
+    buildForm({});
+    buildSched([]);
+    document.getElementById('overlay').classList.add('open');
+}
+
+function openEdit(type, id) {
+    // Ensure we're on the right tab
+    if (type !== tab) { tab = type; document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('active',t.dataset.tab===tab)); }
+    editId = id;
+    const list = type==='sponsors'?sponsors:type==='vendors'?vendors:signs;
+    const item = list.find(x=>x.id===id);
+    if (!item) return;
+    document.getElementById('mtitle').textContent = 'Edit '+(item.name||item.location||'');
+    buildForm(item);
+    buildSched(type==='signs'?[]:schedFor(type,id));
+    document.getElementById('overlay').classList.add('open');
+}
+
+function buildForm(item) {
+    const f = document.getElementById('mform');
+    if (tab==='sponsors') {
+        f.innerHTML = `
+            <div class="fi"><label>Name</label><input id="f_name" value="${item.name||''}"></div>
+            <div class="fi"><label>Contact</label><input id="f_contact" value="${item.contact_name||''}"></div>
+            <div class="fi"><label>Phone</label><input id="f_phone" value="${item.phone||''}"></div>
+            <div class="fi"><label>Email</label><input id="f_email" value="${item.email||''}"></div>
+            <div class="fi"><label>City</label><input id="f_city" value="${item.city||''}"></div>
+            <div class="fi"><label>Province</label><input id="f_province" value="${item.province||''}"></div>
+            <div class="fi"><label>Address</label><input id="f_address" value="${item.address||''}"></div>
+            <div class="fi"><label>Postal Code</label><input id="f_postal" value="${item.postal_code||''}"></div>
+            <div class="fi full"><label>Notes</label><textarea id="f_notes">${item.notes||''}</textarea></div>`;
+    } else if (tab==='vendors') {
+        f.innerHTML = `
+            <div class="fi"><label>Name</label><input id="f_name" value="${item.name||''}"></div>
+            <div class="fi"><label>Contact</label><input id="f_contact" value="${item.contact_name||''}"></div>
+            <div class="fi"><label>Phone</label><input id="f_phone" value="${item.phone||''}"></div>
+            <div class="fi"><label>Email</label><input id="f_email" value="${item.email||''}"></div>
+            <div class="fi"><label>City</label><input id="f_city" value="${item.city||''}"></div>
+            <div class="fi"><label>Province</label><input id="f_province" value="${item.province||''}"></div>
+            <div class="fi"><label>Product</label><input id="f_product" value="${item.product||''}"></div>
+            <div class="fi"><label>Booth Size</label><input id="f_booth" value="${item.booth_size||''}"></div>
+            <div class="fi full"><label>Comment</label><textarea id="f_notes">${item.comment||''}"></textarea></div>`;
+    } else {
+        f.innerHTML = `
+            <div class="fi"><label>Location</label><input id="f_location" value="${item.location||''}"></div>
+            <div class="fi"><label>Cross Street</label><input id="f_cross" value="${item.cross_street||''}"></div>
+            <div class="fi"><label>Installed</label><select id="f_installed"><option value="false" ${!item.installed?'selected':''}>No</option><option value="true" ${item.installed?'selected':''}>Yes</option></select></div>
+            <div class="fi"><label>Install Date</label><input type="date" id="f_idate" value="${item.install_date?(item.install_date+'').split('T')[0]:''}"></div>
+            <div class="fi"><label>Removed</label><select id="f_removed"><option value="false" ${!item.removed?'selected':''}>No</option><option value="true" ${item.removed?'selected':''}>Yes</option></select></div>`;
+    }
+}
+
+function buildSched(entries) {
+    const el = document.getElementById('msched');
+    if (tab==='signs') { el.innerHTML=''; return; }
+    const rows = entries.map(e => schedRow(e.year, parseFloat(e.amount)||0, e.paid)).join('');
+    el.innerHTML = `<h3>💰 Yearly Schedule</h3><div id="srows">${rows}</div>
+        <button class="btn btn-sm btn-gray" onclick="addRow()" style="margin-top:8px">+ Add Year</button>`;
+}
+
+function schedRow(year, amount, paid) {
+    const paidSel = tab==='vendors' ? `<select class="sp"><option value="false" ${!paid?'selected':''}>Unpaid</option><option value="true" ${paid?'selected':''}>Paid</option></select>` : '';
+    return `<div class="sr">
+        <input type="number" class="sy" value="${year||2026}" style="width:80px">
+        <input type="number" class="sa" value="${amount||''}" placeholder="$" style="width:110px">
+        ${paidSel}
+        <button class="btn btn-sm btn-red" onclick="this.parentElement.remove()">✕</button>
+    </div>`;
+}
+
+function addRow() {
+    document.getElementById('srows').insertAdjacentHTML('beforeend', schedRow(2026, '', false));
+}
+
+// ─── Save ───
+async function save() {
+    try {
+        let body, url, method;
+
+        if (tab==='sponsors') {
+            body = {
+                name: document.getElementById('f_name').value,
+                contact_name: document.getElementById('f_contact').value,
+                phone: document.getElementById('f_phone').value,
+                email: document.getElementById('f_email').value,
+                city: document.getElementById('f_city').value,
+                province: document.getElementById('f_province').value,
+                address: document.getElementById('f_address').value,
+                postal_code: document.getElementById('f_postal').value,
+                notes: document.getElementById('f_notes').value,
+            };
+            url = editId ? API+'/sponsors/'+editId : API+'/sponsors';
+            method = editId ? 'PUT' : 'POST';
+        } else if (tab==='vendors') {
+            body = {
+                name: document.getElementById('f_name').value,
+                contact_name: document.getElementById('f_contact').value,
+                phone: document.getElementById('f_phone').value,
+                email: document.getElementById('f_email').value,
+                city: document.getElementById('f_city').value,
+                province: document.getElementById('f_province').value,
+                product: document.getElementById('f_product').value,
+                booth_size: document.getElementById('f_booth').value,
+                comment: document.getElementById('f_notes').value,
+            };
+            url = editId ? API+'/vendors/'+editId : API+'/vendors';
+            method = editId ? 'PUT' : 'POST';
+        } else {
+            body = {
+                location: document.getElementById('f_location').value,
+                cross_street: document.getElementById('f_cross').value,
+                installed: document.getElementById('f_installed').value==='true',
+                install_date: document.getElementById('f_idate').value || null,
+                removed: document.getElementById('f_removed').value==='true',
+            };
+            url = editId ? API+'/sign-locations/'+editId : API+'/sign-locations';
+            method = editId ? 'PUT' : 'POST';
+        }
+
+        // Save main record
+        const resp = await fetch(url, { method, headers:h(), body:JSON.stringify(body) });
+        const saved = await resp.json();
+        const recordId = editId || saved.id;
+
+        // Save schedule entries if not signs
+        if (tab !== 'signs') {
+            const rows = document.querySelectorAll('#srows .sr');
+            const entries = [];
+            rows.forEach(r => {
+                const year = parseInt(r.querySelector('.sy').value);
+                const amount = parseFloat(r.querySelector('.sa').value) || 0;
+                const paidEl = r.querySelector('.sp');
+                const paid = paidEl ? paidEl.value === 'true' : false;
+                if (year) entries.push({ year, amount, paid });
+            });
+
+            const schedUrl = tab==='sponsors' ? API+'/sponsor-schedule/'+recordId : API+'/vendor-schedule/'+recordId;
+            await fetch(schedUrl, { method:'PUT', headers:h(), body:JSON.stringify({entries}) });
+        }
+
+        closeModal();
+        toast('Saved!');
+        await load();
+    } catch(err) {
+        console.error('Save error:', err);
+        alert('Error saving: ' + err.message);
+    }
+}
+
+// ─── Init ───
+load();
+</script>
+</body>
+</html>

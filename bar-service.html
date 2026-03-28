@@ -1,436 +1,458 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Bar Service - Holmdale Pro Rodeo</title>
-<style>
-* { margin: 0; padding: 0; box-sizing: border-box; }
-body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: linear-gradient(135deg, #00B74A 0%, #2A2A2A 100%); min-height: 100vh; padding: 20px; }
-.container { max-width: 700px; margin: 0 auto; }
-.header { background: white; padding: 20px; border-radius: 15px; margin-bottom: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); text-align: center; }
-.header h1 { color: #00B74A; font-size: 28px; font-weight: bold; margin-bottom: 5px; }
-.header h2 { color: #3A3A3A; font-size: 20px; margin-bottom: 5px; }
-.header p { color: #666; font-size: 14px; }
-.stat-box { display: inline-block; background: #00B74A; color: white; padding: 10px 20px; border-radius: 8px; font-size: 14px; font-weight: bold; margin-top: 10px; }
-.card { background: white; padding: 25px; border-radius: 15px; margin-bottom: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); }
-.alert { padding: 20px; border-radius: 10px; margin-bottom: 20px; font-weight: 600; font-size: 18px; text-align: center; }
-.alert-success { background: #c6f6d5; color: #22543d; border: 3px solid #48bb78; }
-.alert-error { background: #fed7d7; color: #742a2a; border: 3px solid #f56565; }
-.alert-warning { background: #feebc8; color: #7c2d12; border: 3px solid #ed8936; }
-.scan-prompt { text-align: center; font-size: 22px; font-weight: bold; color: #00B74A; padding: 10px 0 5px; }
-.nfc-status { text-align: center; font-size: 12px; color: #999; margin-bottom: 15px; }
-.input-group { margin-bottom: 15px; }
-.input-group label { display: block; margin-bottom: 6px; color: #555; font-weight: 600; font-size: 13px; }
-.input-group input { width: 100%; padding: 16px; border: 2px solid #e0e0e0; border-radius: 10px; font-size: 20px; text-align: center; font-weight: bold; }
-.input-group input:focus { outline: none; border-color: #00B74A; }
-.divider { text-align: center; color: #aaa; font-size: 13px; margin: 5px 0 15px; }
-.search-results { border: 2px solid #e0e0e0; border-radius: 10px; max-height: 200px; overflow-y: auto; margin-top: 5px; }
-.search-result-item { padding: 14px 16px; border-bottom: 1px solid #f0f0f0; cursor: pointer; display: flex; justify-content: space-between; align-items: center; }
-.search-result-item:last-child { border-bottom: none; }
-.search-result-item:hover { background: #f0fdf4; }
-.search-result-name { font-weight: bold; color: #333; font-size: 16px; }
-.search-result-meta { font-size: 12px; color: #666; margin-top: 2px; }
-.search-result-badge { font-size: 11px; padding: 3px 8px; border-radius: 10px; font-weight: bold; }
-.badge-verified { background: #c6f6d5; color: #22543d; }
-.badge-unverified { background: #fed7d7; color: #742a2a; }
-.customer-info { background: #f0fdf4; padding: 20px; border-radius: 10px; margin-bottom: 20px; border-left: 5px solid #00B74A; }
-.customer-info h3 { color: #00B74A; font-size: 20px; margin-bottom: 10px; }
-.balance-display { background: white; padding: 25px; border-radius: 15px; text-align: center; margin-bottom: 20px; border: 3px solid #00B74A; }
-.balance-amount { font-size: 48px; font-weight: bold; color: #00B74A; margin-bottom: 5px; }
-.balance-label { color: #666; font-size: 14px; font-weight: 600; }
-.btn-done-top { width: 100%; padding: 16px; background: #3A3A3A; color: white; border: none; border-radius: 10px; font-size: 18px; font-weight: bold; cursor: pointer; margin-bottom: 20px; }
-.btn-done-top:hover { background: #2A2A2A; }
-.transactions { background: #fffbeb; padding: 15px; border-radius: 10px; margin-bottom: 20px; border-left: 4px solid #f59e0b; }
-.transactions h4 { color: #92400e; font-size: 14px; margin-bottom: 10px; font-weight: 600; }
-.transaction-item { display: flex; justify-content: space-between; align-items: center; padding: 10px; background: white; border-radius: 8px; margin-bottom: 8px; }
-.transaction-info { flex: 1; font-size: 14px; color: #333; }
-.transaction-time { font-size: 12px; color: #666; }
-.btn-refund { background: #dc2626; color: white; border: none; padding: 8px 16px; border-radius: 6px; font-size: 12px; font-weight: bold; cursor: pointer; }
-.drink-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; margin-bottom: 20px; }
-.drink-btn { background: #00B74A; color: white; border: none; padding: 25px 15px; border-radius: 12px; font-size: 18px; font-weight: bold; cursor: pointer; transition: all 0.2s; box-shadow: 0 4px 6px rgba(0,0,0,0.1); position: relative; }
-.drink-btn:hover { background: #009639; transform: translateY(-2px); }
-.drink-btn:active { transform: translateY(0); }
-.drink-btn:disabled { background: #ccc; color: #666; cursor: not-allowed; transform: none; }
-.drink-btn .drink-name { display: block; margin-bottom: 5px; }
-.drink-btn .drink-price { display: block; font-size: 16px; opacity: 0.9; }
-.drink-counter { position: absolute; top: 8px; right: 8px; background: #dc2626; color: white; border-radius: 50%; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: bold; }
-.info-row { display: flex; justify-content: space-between; padding: 8px 0; font-size: 14px; }
-.info-label { color: #166534; font-weight: 600; }
-.info-value { color: #14532d; font-weight: bold; }
-.status-badge { display: inline-block; padding: 6px 12px; border-radius: 20px; font-size: 12px; font-weight: bold; }
-.status-approved { background: #c6f6d5; color: #22543d; }
-.status-denied { background: #fed7d7; color: #742a2a; }
-.hidden { display: none; }
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bar Service - Holmdale Pro Rodeo</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #00B74A 0%, #2A2A2A 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container { max-width: 700px; margin: 0 auto; }
+        .header { background: white; padding: 20px; border-radius: 15px; margin-bottom: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); text-align: center; }
+        .header h1 { color: #00B74A; font-size: 28px; font-weight: bold; margin-bottom: 5px; }
+        .header h2 { color: #3A3A3A; font-size: 20px; margin-bottom: 5px; }
+        .header p { color: #666; font-size: 14px; }
+        .card { background: white; padding: 25px; border-radius: 15px; margin-bottom: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); }
+        .scan-mode-toggle { display: flex; gap: 10px; margin-bottom: 20px; }
+        .scan-mode-toggle button { flex: 1; padding: 12px; border: 2px solid #e0e0e0; background: white; border-radius: 8px; font-weight: 600; cursor: pointer; font-size: 16px; }
+        .scan-mode-toggle button.active { background: #00B74A; color: white; border-color: #00B74A; }
+        .input-group { margin-bottom: 20px; }
+        .input-group label { display: block; margin-bottom: 8px; color: #333; font-weight: 600; font-size: 14px; }
+        .input-group input { width: 100%; padding: 20px; border: 3px solid #e0e0e0; border-radius: 10px; font-size: 20px; font-weight: bold; }
+        .input-group input:focus { outline: none; border-color: #00B74A; }
+        .search-results { max-height: 400px; overflow-y: auto; border: 2px solid #e0e0e0; border-radius: 10px; margin-top: 10px; }
+        .search-result-item { padding: 15px; border-bottom: 1px solid #e0e0e0; cursor: pointer; transition: background 0.2s; }
+        .search-result-item:hover { background: #f0fdf4; }
+        .search-result-item:last-child { border-bottom: none; }
+        .search-result-name { font-weight: bold; color: #333; font-size: 18px; margin-bottom: 5px; }
+        .search-result-details { color: #666; font-size: 14px; }
+        .alert { padding: 20px; border-radius: 10px; margin-bottom: 20px; font-weight: 600; font-size: 18px; text-align: center; }
+        .alert-success { background: #c6f6d5; color: #22543d; border: 3px solid #48bb78; }
+        .alert-error { background: #fed7d7; color: #742a2a; border: 3px solid #f56565; }
+        .alert-warning { background: #feebc8; color: #7c2d12; border: 3px solid #ed8936; }
+        .customer-info { background: #f0fdf4; padding: 20px; border-radius: 10px; margin-bottom: 20px; border-left: 5px solid #00B74A; }
+        .customer-info h3 { color: #00B74A; font-size: 20px; margin-bottom: 10px; }
+        .balance-display { background: white; padding: 25px; border-radius: 15px; text-align: center; margin-bottom: 20px; border: 3px solid #00B74A; }
+        .balance-amount { font-size: 48px; font-weight: bold; color: #00B74A; margin-bottom: 5px; }
+        .balance-label { color: #666; font-size: 14px; font-weight: 600; }
+        .transactions { background: #fffbeb; padding: 15px; border-radius: 10px; margin-bottom: 20px; border-left: 4px solid #f59e0b; }
+        .transactions h4 { color: #92400e; font-size: 14px; margin-bottom: 10px; font-weight: 600; }
+        .transaction-item { display: flex; justify-content: space-between; align-items: center; padding: 10px; background: white; border-radius: 8px; margin-bottom: 8px; }
+        .transaction-info { flex: 1; font-size: 14px; color: #333; }
+        .transaction-time { font-size: 12px; color: #666; }
+        .btn-refund { background: #dc2626; color: white; border: none; padding: 8px 16px; border-radius: 6px; font-size: 12px; font-weight: bold; cursor: pointer; }
+        .btn-refund:hover { background: #b91c1c; }
+        .drink-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; margin-bottom: 20px; }
+        .drink-btn { background: #00B74A; color: white; border: none; padding: 25px 15px; border-radius: 12px; font-size: 18px; font-weight: bold; cursor: pointer; transition: all 0.2s; box-shadow: 0 4px 6px rgba(0,0,0,0.1); position: relative; }
+        .drink-btn:hover { background: #009639; transform: translateY(-2px); box-shadow: 0 6px 12px rgba(0,0,0,0.15); }
+        .drink-btn:active { transform: translateY(0); }
+        .drink-btn:disabled { background: #ccc; color: #666; cursor: not-allowed; transform: none; }
+        .drink-btn .drink-name { display: block; margin-bottom: 5px; }
+        .drink-btn .drink-price { display: block; font-size: 16px; opacity: 0.9; }
+        .drink-counter { position: absolute; top: 8px; right: 8px; background: #dc2626; color: white; border-radius: 50%; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: bold; box-shadow: 0 2px 4px rgba(0,0,0,0.2); }
+        .btn-done { width: 100%; padding: 18px; background: #3A3A3A; color: white; border: none; border-radius: 10px; font-size: 18px; font-weight: bold; cursor: pointer; }
+        .btn-done:hover { background: #2A2A2A; }
+        .info-row { display: flex; justify-content: space-between; padding: 8px 0; font-size: 14px; }
+        .info-label { color: #166534; font-weight: 600; }
+        .info-value { color: #14532d; font-weight: bold; }
+        .status-badge { display: inline-block; padding: 6px 12px; border-radius: 20px; font-size: 12px; font-weight: bold; }
+        .status-approved { background: #c6f6d5; color: #22543d; }
+        .status-denied { background: #fed7d7; color: #742a2a; }
+        .hidden { display: none; }
+        .stat-box { display: inline-block; background: #00B74A; color: white; padding: 10px 20px; border-radius: 8px; font-size: 14px; font-weight: bold; margin-top: 10px; }
+        .nfc-status { text-align: center; padding: 20px; background: #f0fdf4; border-radius: 10px; margin-bottom: 20px; border: 2px solid #00B74A; }
+        .nfc-status.scanning { animation: pulse 2s infinite; }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.7; } }
+    </style>
 </head>
 <body>
-<div class="container">
-  <div class="header">
-    <h1>HOLMDALE PRO RODEO</h1>
-    <h2>🍺 Bar Service</h2>
-    <p>All Drinks - 1 Ticket</p>
-    <div class="stat-box" id="servedCount">0 Served Today</div>
-  </div>
+    <div class="container">
+        <div class="header">
+            <h1>HOLMDALE PRO RODEO</h1>
+            <h2>🍺 Bar Service</h2>
+            <p>All Drinks - 1 Ticket</p>
+            <div class="stat-box" id="servedCount">0 Served Today</div>
+        </div>
 
-  <div id="alertContainer"></div>
+        <div id="alertContainer"></div>
 
-  <!-- SCAN / SEARCH CARD -->
-  <div id="scanCard" class="card">
-    <div class="scan-prompt" id="nfcPrompt">📳 Tap Wristband to Scan</div>
-    <div class="nfc-status" id="nfcStatus">Starting NFC...</div>
+        <div id="scanCard" class="card">
+            <div class="scan-mode-toggle">
+                <button id="nfcBtn" class="active" onclick="switchToNFC()">📱 NFC Scan</button>
+                <button id="nameBtn" onclick="switchToName()">👤 Name Search</button>
+            </div>
 
-    <div class="divider">— or search by name —</div>
+            <div id="nfcMode">
+                <div class="nfc-status scanning">
+                    <h3 style="color: #00B74A; margin-bottom: 10px;">📱 NFC Ready</h3>
+                    <p style="color: #166534;">Tap wristband to scan</p>
+                </div>
+            </div>
 
-    <div class="input-group">
-      <label for="nameSearch">Customer Name</label>
-      <input type="text" id="nameSearch" placeholder="Type name to search..." autocomplete="off">
-      <div class="search-results hidden" id="searchResults"></div>
+            <div id="nameMode" class="hidden">
+                <div class="input-group">
+                    <label for="customerName">Customer Name</label>
+                    <input type="text" id="customerName" placeholder="Start typing name..." autocomplete="off">
+                </div>
+                <div id="searchResults" class="search-results hidden"></div>
+            </div>
+        </div>
+
+        <div id="customerCard" class="card hidden">
+            <div class="customer-info">
+                <h3 id="customerNameDisplay"></h3>
+                <div class="info-row">
+                    <span class="info-label">Wristband:</span>
+                    <span class="info-value" id="wristbandDisplay"></span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Age Verified:</span>
+                    <span id="ageStatus"></span>
+                </div>
+            </div>
+
+            <div class="balance-display">
+                <div class="balance-amount" id="balanceAmount">0 Tickets</div>
+                <div class="balance-label">Available Tickets</div>
+            </div>
+
+            <div id="transactionsContainer" class="transactions hidden">
+                <h4>Recent Orders (tap to cancel):</h4>
+                <div id="transactionsList"></div>
+            </div>
+
+            <h3 style="margin-bottom: 15px; color: #333;">Select Drink:</h3>
+            <div class="drink-grid" id="drinkGrid"></div>
+
+            <button class="btn-done" onclick="reset()">✓ Done</button>
+        </div>
     </div>
 
+    <script>
+        const API = 'https://rodeo-fresh-production-7348.up.railway.app/api';
+        let token = '';
+        let currentBand = null;
+        let drinks = [];
+        let servedCount = 0;
+        let recentTransactions = [];
+        let nfcReader = null;
+        let isProcessing = false;
+        let currentMode = 'nfc';
+        let allWristbands = [];
 
-  </div>
+        // ── Normalize UID so all devices produce the same result ──
+        function normalizeUid(uid) {
+            const cleaned = uid.replace(/[^a-fA-F0-9]/g, '').toUpperCase();
+            const bytes = cleaned.match(/.{2}/g);
+            return bytes ? bytes.sort().join('') : cleaned;
+        }
 
-  <!-- CUSTOMER CARD -->
-  <div id="customerCard" class="card hidden">
+        window.onload = async function() {
+            console.log('Bar app starting...');
+            try {
+                token = localStorage.getItem('auth_token');
+                if (!token) { window.location.href = 'login.html'; return; }
+                console.log('Logged in');
+                await loadDrinks();
+                await loadAllWristbands();
+                loadServedCount();
+                if ('NDEFReader' in window) {
+                    startNFC();
+                } else {
+                    switchToName();
+                    showMessage('⚠️ NFC not supported - using name search', 'warning');
+                }
+            } catch(err) {
+                console.error('Login failed:', err);
+                showMessage('❌ Failed to connect. Check internet.', 'error');
+            }
+        };
 
-    <!-- ✅ DONE BUTTON AT TOP -->
-    <button class="btn-done-top" onclick="reset()">✓ Done</button>
+        async function loadAllWristbands() {
+            try {
+                const r = await fetch(API + '/wristbands', { headers: {'Authorization': 'Bearer ' + token} });
+                allWristbands = await r.json();
+                console.log('Loaded', allWristbands.length, 'wristbands');
+            } catch(err) { console.error('Error loading wristbands:', err); }
+        }
 
-    <div class="customer-info">
-      <h3 id="customerName"></h3>
-      <div class="info-row">
-        <span class="info-label">Wristband:</span>
-        <span class="info-value" id="wristbandDisplay"></span>
-      </div>
-      <div class="info-row">
-        <span class="info-label">Age Verified:</span>
-        <span id="ageStatus"></span>
-      </div>
-    </div>
+        async function startNFC() {
+            if (isProcessing || currentMode !== 'nfc') return;
+            try {
+                nfcReader = new NDEFReader();
+                nfcReader.onreading = async (event) => {
+                    if (isProcessing) return;
+                    isProcessing = true;
+                    const uid = normalizeUid(event.serialNumber);
+                    console.log('NFC read, normalized:', uid);
+                    await lookupWristband(uid);
+                    setTimeout(() => { isProcessing = false; }, 1000);
+                };
+                await nfcReader.scan();
+                console.log('NFC scanning started');
+            } catch(err) {
+                console.error('NFC error:', err);
+                switchToName();
+                showMessage('⚠️ NFC failed - switched to name search', 'warning');
+            }
+        }
 
-    <div class="balance-display">
-      <div class="balance-amount" id="balanceAmount">0 Tickets</div>
-      <div class="balance-label">Available Tickets</div>
-    </div>
+        function stopNFC() {
+            if (nfcReader) {
+                try { nfcReader.onreading = null; nfcReader = null; } catch(err) {}
+            }
+            isProcessing = false;
+        }
 
-    <h3 style="margin-bottom: 15px; color: #333;">Select Drink:</h3>
-    <div class="drink-grid" id="drinkGrid"></div>
+        function switchToNFC() {
+            if (!('NDEFReader' in window)) { showMessage('❌ NFC not supported on this device', 'error'); return; }
+            currentMode = 'nfc';
+            document.getElementById('nfcMode').classList.remove('hidden');
+            document.getElementById('nameMode').classList.add('hidden');
+            document.getElementById('nfcBtn').classList.add('active');
+            document.getElementById('nameBtn').classList.remove('active');
+            stopNFC();
+            setTimeout(() => startNFC(), 100);
+        }
 
-    <div id="transactionsContainer" class="transactions hidden">
-      <h4>Recent Orders (tap to cancel):</h4>
-      <div id="transactionsList"></div>
-    </div>
+        function switchToName() {
+            currentMode = 'name';
+            document.getElementById('nfcMode').classList.add('hidden');
+            document.getElementById('nameMode').classList.remove('hidden');
+            document.getElementById('nfcBtn').classList.remove('active');
+            document.getElementById('nameBtn').classList.add('active');
+            stopNFC();
+            document.getElementById('customerName').focus();
+        }
 
-  </div>
-</div>
+        document.addEventListener('DOMContentLoaded', () => {
+            const nameInput = document.getElementById('customerName');
+            if (nameInput) {
+                nameInput.addEventListener('input', function() {
+                    const query = this.value.trim().toLowerCase();
+                    if (query.length < 2) { document.getElementById('searchResults').classList.add('hidden'); return; }
+                    const matches = allWristbands.filter(band => (band.customer_name || '').toLowerCase().includes(query));
+                    displaySearchResults(matches);
+                });
+            }
+        });
 
-<script>
-const API = 'https://rodeo-fresh-production-7348.up.railway.app/api';
-let token = '';
-let currentBand = null;
-let drinks = [];
-let servedCount = 0;
-let recentTransactions = [];
-let nfcReader = null;
-let isProcessing = false;
-let allWristbands = [];
+        function displaySearchResults(matches) {
+            const resultsDiv = document.getElementById('searchResults');
+            if (matches.length === 0) {
+                resultsDiv.innerHTML = '<div style="padding: 20px; text-align: center; color: #666;">No customers found</div>';
+                resultsDiv.classList.remove('hidden');
+                return;
+            }
+            resultsDiv.innerHTML = matches.map(band => {
+                const tickets = Math.floor((band.credits || 0) / 7);
+                const ageStatus = band.alcohol_approved ? '✓ 19+' : '✗ Not verified';
+                return `<div class="search-result-item" onclick="selectCustomer('${band.rfid_uid}')">
+                    <div class="search-result-name">${band.customer_name || 'Unknown'}</div>
+                    <div class="search-result-details">${tickets} tickets • ${ageStatus}</div>
+                </div>`;
+            }).join('');
+            resultsDiv.classList.remove('hidden');
+        }
 
-// ── Beep on scan ──────────────────────────────────
-function beep(type = 'success') {
-  try {
-    const ctx = new (window.AudioContext || window.webkitAudioContext)();
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.connect(gain);
-    gain.connect(ctx.destination);
-    if (type === 'success') {
-      // Two quick rising tones — found!
-      osc.frequency.setValueAtTime(880, ctx.currentTime);
-      osc.frequency.setValueAtTime(1200, ctx.currentTime + 0.1);
-      gain.gain.setValueAtTime(0.3, ctx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.3);
-      osc.start(ctx.currentTime);
-      osc.stop(ctx.currentTime + 0.3);
-    } else {
-      // Low single tone — not found
-      osc.frequency.setValueAtTime(300, ctx.currentTime);
-      gain.gain.setValueAtTime(0.3, ctx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.4);
-      osc.start(ctx.currentTime);
-      osc.stop(ctx.currentTime + 0.4);
-    }
-  } catch(e) { /* Audio not supported */ }
-}
+        async function selectCustomer(uid) {
+            if (isProcessing) return;
+            isProcessing = true;
+            document.getElementById('searchResults').classList.add('hidden');
+            document.getElementById('customerName').value = '';
+            await lookupWristband(normalizeUid(uid));
+            isProcessing = false;
+        }
 
-window.onload = async function() {
-  token = localStorage.getItem('auth_token');
-  if (!token) { window.location.href = 'login.html'; return; }
-  await loadDrinks();
-  await loadWristbands();
-  loadServedCount();
-  startNFC();
-};
+        async function loadDrinks() {
+            try {
+                const r = await fetch(API + '/drinks', { headers: {'Authorization': 'Bearer ' + token} });
+                drinks = await r.json();
+                console.log('Loaded', drinks.length, 'drinks');
+            } catch(err) { console.error('Error loading drinks:', err); }
+        }
 
-// ── NFC ──────────────────────────────────────────
-async function startNFC() {
-  if (typeof NDEFReader === 'undefined') {
-    document.getElementById('nfcStatus').textContent = 'NFC unavailable — use name search or ID below';
-    document.getElementById('nfcPrompt').style.color = '#999';
-    return;
-  }
-  try {
-    nfcReader = new NDEFReader();
-    nfcReader.onreading = async (event) => {
-      if (isProcessing) return;
-      isProcessing = true;
-      const uid = event.serialNumber.replace(/[^a-fA-F0-9]/g, '').toUpperCase();
-      await lookupWristband(uid);
-      setTimeout(() => { isProcessing = false; }, 1000);
-    };
-    await nfcReader.scan();
-    document.getElementById('nfcStatus').textContent = '✓ NFC active — tap a wristband';
-  } catch(err) {
-    document.getElementById('nfcStatus').textContent = 'NFC unavailable — use name search or ID below';
-    document.getElementById('nfcPrompt').style.color = '#999';
-  }
-}
+        async function loadServedCount() {
+            try {
+                const r = await fetch(API + '/wristbands', { headers: {'Authorization': 'Bearer ' + token} });
+                const bands = await r.json();
+                const totalSpent = bands.reduce((total, b) => total + (parseFloat(b.credits_spent) || 0), 0);
+                servedCount = Math.floor(totalSpent / 7);
+                updateCount();
+            } catch(err) { servedCount = 0; updateCount(); }
+        }
 
-function stopNFC() {
-  if (nfcReader) { try { nfcReader.onreading = null; nfcReader = null; } catch(e) {} }
-  isProcessing = false;
-}
+        function updateCount() {
+            document.getElementById('servedCount').textContent = Math.floor(servedCount) + ' Served Today';
+        }
 
-// ── Data loading ─────────────────────────────────
-async function loadDrinks() {
-  try {
-    const r = await fetch(API + '/drinks', { headers: {'Authorization': 'Bearer ' + token} });
-    if (r.status === 401) { window.location.href = 'login.html'; return; }
-    drinks = await r.json();
-  } catch(err) { console.error('Error loading drinks:', err); }
-}
+        async function lookupWristband(uid) {
+            console.log('Looking up wristband:', uid);
+            try {
+                const r = await fetch(API + '/wristbands/rfid/' + encodeURIComponent(uid), {
+                    headers: {'Authorization': 'Bearer ' + token}
+                });
+                if (!r.ok) { showMessage('❌ Wristband not found', 'error'); return; }
+                const band = await r.json();
+                currentBand = band;
+                await loadRecentTransactions(band.id);
+                displayCustomer(band);
+            } catch(err) {
+                console.error('Lookup error:', err);
+                showMessage('❌ Error looking up wristband', 'error');
+            }
+        }
 
-async function loadWristbands() {
-  try {
-    const r = await fetch(API + '/wristbands', { headers: {'Authorization': 'Bearer ' + token} });
-    allWristbands = await r.json();
-  } catch(err) { console.error('Error loading wristbands:', err); }
-}
+        async function loadRecentTransactions(wristbandId) {
+            recentTransactions = [];
+        }
 
-async function loadServedCount() {
-  try {
-    const totalSpent = allWristbands.reduce((total, b) => total + (parseFloat(b.credits_spent) || 0), 0);
-    servedCount = Math.floor(totalSpent / 7);
-    updateCount();
-  } catch(err) { servedCount = 0; updateCount(); }
-}
+        function displayCustomer(band) {
+            document.getElementById('customerNameDisplay').textContent = band.customer_name || 'Customer';
+            document.getElementById('wristbandDisplay').textContent = band.rfid_uid;
 
-function updateCount() {
-  document.getElementById('servedCount').textContent = Math.floor(servedCount) + ' Served Today';
-}
+            const ageStatus = document.getElementById('ageStatus');
+            if (band.alcohol_approved) {
+                ageStatus.innerHTML = '<span class="status-badge status-approved">✓ 19+ VERIFIED</span>';
+            } else {
+                ageStatus.innerHTML = '<span class="status-badge status-denied">✗ NOT VERIFIED</span>';
+            }
 
-// ── Name search ───────────────────────────────────
-document.getElementById('nameSearch').addEventListener('input', function() {
-  const query = this.value.trim().toLowerCase();
-  const resultsDiv = document.getElementById('searchResults');
-  if (query.length < 2) { resultsDiv.classList.add('hidden'); return; }
+            const balance = parseFloat(band.credits || 0);
+            const ticketCount = Math.floor(balance / 7);
+            document.getElementById('balanceAmount').textContent = ticketCount + (ticketCount === 1 ? ' Ticket' : ' Tickets');
 
-  const matches = allWristbands.filter(w =>
-    w.customer_name && w.customer_name.toLowerCase().includes(query)
-  );
+            displayTransactions();
 
-  if (matches.length === 0) { resultsDiv.classList.add('hidden'); return; }
+            const drinkGrid = document.getElementById('drinkGrid');
+            drinkGrid.innerHTML = '';
 
-  resultsDiv.innerHTML = matches.slice(0, 8).map(w => {
-    const tickets = Math.max(0, Math.floor((parseFloat(w.credits || 0) - parseFloat(w.credits_spent || 0)) / 7));
-    const verified = w.alcohol_approved;
-    return `<div class="search-result-item" onclick="selectFromSearch('${w.rfid_uid}')">
-      <div>
-        <div class="search-result-name">${w.customer_name}</div>
-        <div class="search-result-meta">${w.rfid_uid} · ${tickets} ticket(s)</div>
-      </div>
-      <span class="search-result-badge ${verified ? 'badge-verified' : 'badge-unverified'}">${verified ? '✓ 19+' : 'Not Verified'}</span>
-    </div>`;
-  }).join('');
-  resultsDiv.classList.remove('hidden');
-});
+            if (!band.alcohol_approved) {
+                showMessage('⚠️ Customer must visit Age Verification Gate first', 'warning');
+                drinkGrid.innerHTML = '<p style="grid-column: 1/-1; text-align: center; padding: 40px; color: #999;">Age verification required</p>';
+            } else if (balance < 7) {
+                showMessage('⚠️ Customer needs to purchase more tickets', 'warning');
+                drinkGrid.innerHTML = '<p style="grid-column: 1/-1; text-align: center; padding: 40px; color: #999;">No tickets available</p>';
+            } else {
+                drinks.forEach(drink => {
+                    const btn = document.createElement('button');
+                    btn.className = 'drink-btn';
+                    const drinkPrice = parseFloat(drink.price);
+                    const outOfStock = drink.stock_remaining < 1;
+                    const orderCount = recentTransactions.filter(t => t.drink === drink.name).length;
+                    if (outOfStock) {
+                        btn.disabled = true;
+                        btn.innerHTML = `<span class="drink-name">${drink.name}</span><span class="drink-price">OUT OF STOCK</span>`;
+                    } else if (balance < drinkPrice) {
+                        btn.disabled = true;
+                        btn.innerHTML = `${orderCount > 0 ? `<div class="drink-counter">${orderCount}</div>` : ''}<span class="drink-name">${drink.name}</span><span class="drink-price">1 Ticket</span>`;
+                    } else {
+                        btn.innerHTML = `${orderCount > 0 ? `<div class="drink-counter">${orderCount}</div>` : ''}<span class="drink-name">${drink.name}</span><span class="drink-price">1 Ticket</span>`;
+                        btn.onclick = () => serveDrink(drink);
+                    }
+                    drinkGrid.appendChild(btn);
+                });
+            }
 
-async function selectFromSearch(uid) {
-  document.getElementById('nameSearch').value = '';
-  document.getElementById('searchResults').classList.add('hidden');
-  await lookupWristband(uid);
-}
+            document.getElementById('scanCard').classList.add('hidden');
+            document.getElementById('customerCard').classList.remove('hidden');
+            stopNFC();
+        }
 
+        function displayTransactions() {
+            const container = document.getElementById('transactionsContainer');
+            const list = document.getElementById('transactionsList');
+            if (recentTransactions.length === 0) { container.classList.add('hidden'); return; }
+            container.classList.remove('hidden');
+            list.innerHTML = '';
+            recentTransactions.forEach(trans => {
+                const item = document.createElement('div');
+                item.className = 'transaction-item';
+                item.innerHTML = `<div class="transaction-info"><strong>${trans.drink}</strong><div class="transaction-time">${trans.time}</div></div><button class="btn-refund" onclick="cancelDrink('${trans.id}')">Cancel</button>`;
+                list.appendChild(item);
+            });
+        }
 
-// ── Wristband lookup ──────────────────────────────
-async function lookupWristband(uid) {
-  try {
-    const r = await fetch(API + '/wristbands/rfid/' + encodeURIComponent(uid), {
-      headers: {'Authorization': 'Bearer ' + token}
-    });
-    if (!r.ok) {
-      beep('error');
-      showMessage('❌ Wristband not found', 'error');
-      setTimeout(clearMessage, 3000);
-      return;
-    }
-    const band = await r.json();
-    beep('success');
-    currentBand = band;
-    recentTransactions = [];
-    displayCustomer(band);
-    stopNFC();
-  } catch(err) {
-    beep('error');
-    showMessage('❌ Error looking up wristband', 'error');
-  }
-}
+        async function serveDrink(drink) {
+            console.log('Serving:', drink.name);
+            try {
+                const r = await fetch(API + '/drinks/serve', {
+                    method: 'POST',
+                    headers: {'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json'},
+                    body: JSON.stringify({ rfid_uid: normalizeUid(currentBand.rfid_uid), drink_id: drink.id })
+                });
+                const d = await r.json();
+                if (r.ok) {
+                    currentBand.credits = d.new_balance;
+                    const newTickets = Math.floor(d.new_balance / 7);
+                    showMessage(`✅ ${drink.name} served! ${newTickets > 0 ? newTickets + ' more ticket(s) available' : 'No tickets remaining'}`, 'success');
+                    const now = new Date();
+                    recentTransactions.unshift({ id: 'trans_' + Date.now(), drink: drink.name, drink_id: drink.id, time: now.toLocaleTimeString('en-US', {hour: '2-digit', minute: '2-digit'}), timestamp: now });
+                    if (recentTransactions.length > 5) recentTransactions = recentTransactions.slice(0, 5);
+                    servedCount++;
+                    updateCount();
+                    await loadDrinks();
+                    displayCustomer(currentBand);
+                } else {
+                    showMessage('❌ ' + d.error, 'error');
+                }
+            } catch(err) {
+                console.error('Serve error:', err);
+                showMessage('❌ Error serving drink', 'error');
+            }
+        }
 
-// ── Display customer ──────────────────────────────
-function displayCustomer(band) {
-  document.getElementById('customerName').textContent = band.customer_name || 'Customer';
-  document.getElementById('wristbandDisplay').textContent = band.rfid_uid;
+        async function cancelDrink(transId) {
+            const trans = recentTransactions.find(t => t.id === transId);
+            if (!trans) return;
+            try {
+                const r = await fetch(API + '/wristbands/cancel-drink', {
+                    method: 'POST',
+                    headers: {'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json'},
+                    body: JSON.stringify({ rfid_uid: normalizeUid(currentBand.rfid_uid) })
+                });
+                const d = await r.json();
+                if (r.ok) {
+                    const refreshR = await fetch(API + '/wristbands/rfid/' + normalizeUid(currentBand.rfid_uid), { headers: {'Authorization': 'Bearer ' + token} });
+                    if (refreshR.ok) currentBand = await refreshR.json();
+                    recentTransactions = recentTransactions.filter(t => t.id !== transId);
+                    servedCount--;
+                    updateCount();
+                    showMessage(`✅ ${trans.drink} canceled! 1 ticket returned`, 'success');
+                    await loadDrinks();
+                    displayCustomer(currentBand);
+                } else {
+                    showMessage('❌ Cancel failed: ' + d.error, 'error');
+                }
+            } catch(err) {
+                console.error('Cancel error:', err);
+                showMessage('❌ Error canceling drink', 'error');
+            }
+        }
 
-  const ageStatus = document.getElementById('ageStatus');
-  ageStatus.innerHTML = band.alcohol_approved
-    ? '<span class="status-badge status-approved">✓ 19+ VERIFIED</span>'
-    : '<span class="status-badge status-denied">✗ NOT VERIFIED</span>';
+        function reset() {
+            currentBand = null;
+            recentTransactions = [];
+            document.getElementById('scanCard').classList.remove('hidden');
+            document.getElementById('customerCard').classList.add('hidden');
+            document.getElementById('customerName').value = '';
+            document.getElementById('searchResults').classList.add('hidden');
+            clearMessage();
+            if (currentMode === 'nfc') { setTimeout(() => startNFC(), 100); }
+            else { document.getElementById('customerName').focus(); }
+        }
 
-  // ✅ Correct balance
-  const balance = Math.max(0, parseFloat(band.credits || 0) - parseFloat(band.credits_spent || 0));
-  const ticketCount = Math.floor(balance / 7);
-  document.getElementById('balanceAmount').textContent = ticketCount + (ticketCount === 1 ? ' Ticket' : ' Tickets');
+        function showMessage(msg, type) {
+            document.getElementById('alertContainer').innerHTML = `<div class="alert alert-${type}">${msg}</div>`;
+            if (type === 'success') setTimeout(clearMessage, 3000);
+        }
 
-  displayTransactions();
-
-  const drinkGrid = document.getElementById('drinkGrid');
-  drinkGrid.innerHTML = '';
-
-  if (!band.alcohol_approved) {
-    showMessage('⚠️ Customer must visit Age Verification Gate first', 'warning');
-    drinkGrid.innerHTML = '<p style="grid-column:1/-1;text-align:center;padding:40px;color:#999;">Age verification required</p>';
-  } else if (balance < 7) {
-    showMessage('⚠️ Customer needs to purchase more tickets', 'warning');
-    drinkGrid.innerHTML = '<p style="grid-column:1/-1;text-align:center;padding:40px;color:#999;">No tickets available</p>';
-  } else {
-    drinks.forEach(drink => {
-      const btn = document.createElement('button');
-      btn.className = 'drink-btn';
-      const drinkPrice = parseFloat(drink.price);
-      const outOfStock = drink.stock_remaining < 1;
-      const orderCount = recentTransactions.filter(t => t.drink === drink.name).length;
-      if (outOfStock) {
-        btn.disabled = true;
-        btn.innerHTML = `<span class="drink-name">${drink.name}</span><span class="drink-price">OUT OF STOCK</span>`;
-      } else if (balance < drinkPrice) {
-        btn.disabled = true;
-        btn.innerHTML = `${orderCount > 0 ? `<div class="drink-counter">${orderCount}</div>` : ''}<span class="drink-name">${drink.name}</span><span class="drink-price">1 Ticket</span>`;
-      } else {
-        btn.innerHTML = `${orderCount > 0 ? `<div class="drink-counter">${orderCount}</div>` : ''}<span class="drink-name">${drink.name}</span><span class="drink-price">1 Ticket</span>`;
-        btn.onclick = () => serveDrink(drink);
-      }
-      drinkGrid.appendChild(btn);
-    });
-  }
-
-  document.getElementById('scanCard').classList.add('hidden');
-  document.getElementById('customerCard').classList.remove('hidden');
-}
-
-function displayTransactions() {
-  const container = document.getElementById('transactionsContainer');
-  const list = document.getElementById('transactionsList');
-  if (recentTransactions.length === 0) { container.classList.add('hidden'); return; }
-  container.classList.remove('hidden');
-  list.innerHTML = '';
-  recentTransactions.forEach(trans => {
-    const item = document.createElement('div');
-    item.className = 'transaction-item';
-    item.innerHTML = `<div class="transaction-info"><strong>${trans.drink}</strong><div class="transaction-time">${trans.time}</div></div><button class="btn-refund" onclick="cancelDrink('${trans.id}')">Cancel</button>`;
-    list.appendChild(item);
-  });
-}
-
-// ── Serve drink ───────────────────────────────────
-async function serveDrink(drink) {
-  try {
-    const r = await fetch(API + '/drinks/serve', {
-      method: 'POST',
-      headers: {'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json'},
-      body: JSON.stringify({ rfid_uid: currentBand.rfid_uid, drink_id: drink.id })
-    });
-    const d = await r.json();
-    if (r.ok) {
-      currentBand.credits = d.new_balance;
-      const newBalance = Math.max(0, parseFloat(d.new_balance || 0) - parseFloat(currentBand.credits_spent || 0));
-      const newTickets = Math.floor(newBalance / 7);
-      showMessage(`✅ ${drink.name} served! ${newTickets > 0 ? newTickets + ' ticket(s) left' : 'No tickets remaining'}`, 'success');
-      const now = new Date();
-      recentTransactions.unshift({ id: 'trans_' + Date.now(), drink: drink.name, drink_id: drink.id, time: now.toLocaleTimeString('en-US', {hour:'2-digit', minute:'2-digit'}), timestamp: now });
-      if (recentTransactions.length > 5) recentTransactions = recentTransactions.slice(0, 5);
-      servedCount++;
-      updateCount();
-      await loadDrinks();
-      displayCustomer(currentBand);
-    } else {
-      showMessage('❌ ' + d.error, 'error');
-    }
-  } catch(err) { showMessage('❌ Error serving drink', 'error'); }
-}
-
-// ── Cancel drink ──────────────────────────────────
-async function cancelDrink(transId) {
-  const trans = recentTransactions.find(t => t.id === transId);
-  if (!trans) return;
-  try {
-    // Use new cancel-drink endpoint which reverses both credits AND credits_spent
-    const r = await fetch(API + '/wristbands/cancel-drink', {
-      method: 'POST',
-      headers: {'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json'},
-      body: JSON.stringify({ rfid_uid: currentBand.rfid_uid })
-    });
-    const d = await r.json();
-    if (r.ok) {
-      // Re-fetch wristband to get accurate balance
-      const refreshR = await fetch(API + '/wristbands/rfid/' + currentBand.rfid_uid, {
-        headers: {'Authorization': 'Bearer ' + token}
-      });
-      if (refreshR.ok) currentBand = await refreshR.json();
-      recentTransactions = recentTransactions.filter(t => t.id !== transId);
-      servedCount--;
-      updateCount();
-      showMessage(`✅ ${trans.drink} canceled! 1 ticket returned`, 'success');
-      await loadDrinks();
-      displayCustomer(currentBand);
-    } else { showMessage('❌ Cancel failed: ' + d.error, 'error'); }
-  } catch(err) { showMessage('❌ Error canceling drink', 'error'); }
-}
-
-// ── Reset ─────────────────────────────────────────
-function reset() {
-  currentBand = null;
-  recentTransactions = [];
-  document.getElementById('scanCard').classList.remove('hidden');
-  document.getElementById('customerCard').classList.add('hidden');
-  document.getElementById('nameSearch').value = '';
-  document.getElementById('searchResults').classList.add('hidden');
-  clearMessage();
-  setTimeout(() => startNFC(), 100);
-}
-
-function showMessage(msg, type) {
-  document.getElementById('alertContainer').innerHTML = `<div class="alert alert-${type}">${msg}</div>`;
-  if (type === 'success') setTimeout(clearMessage, 3000);
-}
-function clearMessage() { document.getElementById('alertContainer').innerHTML = ''; }
-
-// Fullscreen on first tap (Android)
-document.addEventListener('click', function() {
-  const el = document.documentElement;
-  if (!document.fullscreenElement) {
-    (el.requestFullscreen || el.webkitRequestFullscreen || el.mozRequestFullScreen || el.msRequestFullscreen || function(){}).call(el);
-  }
-}, { once: true });
-</script>
+        function clearMessage() { document.getElementById('alertContainer').innerHTML = ''; }
+    </script>
 </body>
 </html>

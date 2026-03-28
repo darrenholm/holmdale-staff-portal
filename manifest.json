@@ -1,0 +1,9 @@
+{
+  "name": "Bar Service",
+  "short_name": "Bar",
+  "start_url": "/bar-service.html",
+  "display": "standalone",
+  "background_color": "#00B74A",
+  "theme_color": "#00B74A",
+  "orientation": "portrait"
+}
