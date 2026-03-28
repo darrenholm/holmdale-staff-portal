@@ -260,45 +260,64 @@
 
 
 
-  /* ── WRISTBAND LIST ── */
-  .wristband-list { margin-top: 4px; }
+  /* ── WRISTBAND GALLERY ── */
+  .wristband-list {
+    margin-top: 8px;
+    display: flex;
+    gap: 10px;
+    overflow-x: auto;
+    overflow-y: visible;
+    padding-bottom: 6px;
+    /* smooth momentum scroll on iOS */
+    -webkit-overflow-scrolling: touch;
+    scroll-snap-type: x mandatory;
+  }
+  /* hide scrollbar but keep scrollable */
+  .wristband-list::-webkit-scrollbar { display: none; }
+  .wristband-list { scrollbar-width: none; }
+
   .wristband-item {
+    flex: 0 0 140px;
     display: flex;
     flex-direction: column;
     gap: 8px;
-    padding: 10px 12px;
+    padding: 12px;
     background: var(--surface);
-    border-radius: 8px;
-    margin-bottom: 6px;
-    border-left: 3px solid var(--green);
+    border-radius: 10px;
+    border-top: 3px solid var(--green);
+    scroll-snap-align: start;
     animation: slideIn 0.25s ease;
   }
-  .wristband-item.child { border-left-color: var(--gold); }
+  .wristband-item.child { border-top-color: var(--gold); }
   @keyframes slideIn {
-    from { opacity: 0; transform: translateY(-6px); }
-    to   { opacity: 1; transform: translateY(0); }
+    from { opacity: 0; transform: translateX(10px); }
+    to   { opacity: 1; transform: translateX(0); }
   }
-  .wristband-item:last-child { margin-bottom: 0; }
 
-  /* top info row */
+  /* top info */
   .wb-row {
     display: flex;
-    align-items: center;
-    gap: 8px;
+    flex-direction: column;
+    gap: 4px;
   }
-  .wb-check { font-size: 16px; flex-shrink: 0; }
+  .wb-top-line {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .wb-check { font-size: 14px; flex-shrink: 0; }
   .wb-num {
     font-family: 'Bebas Neue', sans-serif;
-    font-size: 16px;
-    color: var(--txt-dim);
-    flex-shrink: 0;
+    font-size: 20px;
+    color: var(--txt);
+    line-height: 1;
   }
   .wb-badge {
-    font-size: 10px;
+    font-size: 9px;
     font-weight: 700;
     letter-spacing: 1px;
     text-transform: uppercase;
-    padding: 2px 7px;
+    padding: 2px 6px;
     border-radius: 4px;
     flex-shrink: 0;
   }
@@ -313,39 +332,37 @@
     border: 1px solid rgba(245,166,35,0.3);
   }
   .wb-uid {
-    font-size: 11px;
+    font-size: 10px;
     font-weight: 600;
     color: var(--txt-dim);
     letter-spacing: 1px;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-    flex: 1;
   }
 
-  /* 19+ toggle — full width, tall, hard to miss */
+  /* 19+ toggle — fills bottom of adult card */
   .toggle-19 {
+    margin-top: auto;
     width: 100%;
-    padding: 10px;
-    border-radius: 8px;
+    padding: 9px 4px;
+    border-radius: 7px;
     border: 2px dashed rgba(255,255,255,0.15);
     background: transparent;
     color: var(--txt-dim);
     font-family: 'Bebas Neue', sans-serif;
-    font-size: 18px;
-    letter-spacing: 2px;
+    font-size: 15px;
+    letter-spacing: 1px;
     cursor: pointer;
     transition: all 0.18s ease;
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 8px;
+    gap: 5px;
+    white-space: nowrap;
   }
-  .toggle-19:hover {
-    border-color: var(--gold);
-    border-style: solid;
-    color: var(--gold);
-    background: rgba(245,166,35,0.06);
+  .toggle-19:active {
+    transform: scale(0.97);
   }
   .toggle-19.on {
     background: rgba(245,166,35,0.15);
@@ -772,12 +789,14 @@ function updateWristbandDisplay() {
     row.id = `wb-row-${i}`;
     row.innerHTML = `
       <div class="wb-row">
-        <span class="wb-check">${checkIcon}</span>
-        <span class="wb-num">#${i + 1}</span>
-        <span class="wb-badge ${b.type}">${b.type}</span>
+        <div class="wb-top-line">
+          <span class="wb-check">${checkIcon}</span>
+          <span class="wb-num">#${i + 1}</span>
+          <span class="wb-badge ${b.type}">${b.type}</span>
+        </div>
         <span class="wb-uid">${b.uid}</span>
       </div>
-      ${b.type === 'adult' ? `<button class="toggle-19${b.of_age ? ' on' : ''}" data-index="${i}">🍺 ${b.of_age ? '19+ VERIFIED' : 'TAP TO FLAG 19+'}</button>` : ''}
+      ${b.type === 'adult' ? `<button class="toggle-19${b.of_age ? ' on' : ''}" data-index="${i}">🍺 ${b.of_age ? '19+ ✓' : 'TAP 19+'}</button>` : ''}
     `;
 
     if (b.type === 'adult') {
@@ -805,7 +824,7 @@ async function toggle19Plus(index) {
     if (r.ok) {
       b.of_age = true;
       btn.classList.add('on');
-      btn.textContent = '🍺 19+ VERIFIED';
+      btn.textContent = '🍺 19+ ✓';
     } else {
       const d = await r.json();
       showMessage('❌ ' + (d.error || 'Could not approve age'), 'error');
