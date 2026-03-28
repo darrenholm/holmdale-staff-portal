@@ -273,30 +273,102 @@
     border-left: 3px solid var(--green);
     animation: slideIn 0.25s ease;
   }
+  .wristband-item.child {
+    border-left-color: var(--gold);
+    background: rgba(245,166,35,0.06);
+  }
   @keyframes slideIn {
     from { opacity: 0; transform: translateY(-6px); }
     to   { opacity: 1; transform: translateY(0); }
   }
   .wristband-item:last-child { margin-bottom: 0; }
-  .wb-left { display: flex; flex-direction: column; gap: 2px; }
+  .wb-left { display: flex; flex-direction: column; gap: 3px; }
   .wb-name {
     font-weight: 700;
     font-size: 14px;
     color: var(--txt);
+    display: flex;
+    align-items: center;
+    gap: 8px;
   }
-  .wb-type {
+  .wb-badge {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    padding: 2px 7px;
+    border-radius: 4px;
+  }
+  .wb-badge.adult {
+    background: rgba(0,201,87,0.15);
+    color: var(--green);
+    border: 1px solid rgba(0,201,87,0.3);
+  }
+  .wb-badge.child {
+    background: rgba(245,166,35,0.15);
+    color: var(--gold);
+    border: 1px solid rgba(245,166,35,0.3);
+  }
+  .wb-uid {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--txt-dim);
+    letter-spacing: 1px;
+  }
+  .wb-check { font-size: 20px; }
+
+  /* ── NEXT ASSIGNMENT PROMPT ── */
+  .next-up {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 14px;
+    border-radius: 8px;
+    margin-top: 10px;
+    font-size: 14px;
+    font-weight: 600;
+    border: 1px dashed;
+  }
+  .next-up.adult {
+    background: rgba(0,201,87,0.06);
+    border-color: rgba(0,201,87,0.25);
+    color: var(--green);
+  }
+  .next-up.child {
+    background: rgba(245,166,35,0.06);
+    border-color: rgba(245,166,35,0.25);
+    color: var(--gold);
+  }
+  .next-up .next-icon { font-size: 18px; }
+
+  /* ── TYPE SUMMARY ── */
+  .type-summary {
+    display: flex;
+    justify-content: center;
+    gap: 20px;
+    margin-top: 6px;
+    margin-bottom: 4px;
+  }
+  .type-pill {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    font-weight: 600;
+  }
+  .type-pill .pill-count {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 20px;
+    line-height: 1;
+  }
+  .type-pill.adult .pill-count { color: var(--green); }
+  .type-pill.child .pill-count  { color: var(--gold); }
+  .type-pill .pill-label {
     font-size: 11px;
     text-transform: uppercase;
     letter-spacing: 1px;
     color: var(--txt-dim);
   }
-  .wb-uid {
-    font-size: 12px;
-    font-weight: 600;
-    color: var(--green);
-    letter-spacing: 1px;
-  }
-  .wb-check { font-size: 20px; }
 
   /* ── SUCCESS ── */
   .success-screen {
@@ -439,12 +511,25 @@
           <div class="sep">/</div>
           <div class="total" id="totalCount">0</div>
         </div>
+        <div class="type-summary">
+          <div class="type-pill adult">
+            <span class="pill-count" id="adultAssigned">0</span>
+            <span>👤</span>
+            <span class="pill-label">Adults</span>
+          </div>
+          <div class="type-pill child">
+            <span class="pill-count" id="childAssigned">0</span>
+            <span>🧒</span>
+            <span class="pill-label">Children</span>
+          </div>
+        </div>
         <div class="progress-track">
           <div class="progress-fill" id="progressFill"></div>
         </div>
         <div class="nfc-status-line" id="nfcStatus">Initializing…</div>
       </div>
 
+      <div id="nextUpPrompt" class="hidden"></div>
       <div id="wristbandList" class="wristband-list hidden"></div>
 
       <!-- NFC button & manual input injected here by JS -->
@@ -612,16 +697,36 @@ function updateWristbandDisplay() {
   document.getElementById('assignedCount').textContent = bands.length;
   document.getElementById('progressFill').style.width = pct + '%';
 
+  const adultCount = bands.filter(b => b.type === 'adult').length;
+  const childCount = bands.filter(b => b.type === 'child').length;
+  document.getElementById('adultAssigned').textContent = adultCount;
+  document.getElementById('childAssigned').textContent = childCount;
+
+  // Next-up prompt
+  const nextPrompt = document.getElementById('nextUpPrompt');
+  if (bands.length < totalNeeded) {
+    const nextType = (bands.length + 1) <= (ticket.quantity_adult || 0) ? 'adult' : 'child';
+    const icon = nextType === 'adult' ? '👤' : '🧒';
+    const label = nextType === 'adult' ? 'Adult wristband' : 'Child wristband';
+    nextPrompt.className = `next-up ${nextType}`;
+    nextPrompt.innerHTML = `<span class="next-icon">${icon}</span> Next scan: <strong>${label}</strong>`;
+    nextPrompt.classList.remove('hidden');
+  } else {
+    nextPrompt.classList.add('hidden');
+  }
+
   const list = document.getElementById('wristbandList');
   list.classList.remove('hidden');
   list.innerHTML = bands.map((b, i) => `
-    <div class="wristband-item">
+    <div class="wristband-item ${b.type}">
       <div class="wb-left">
-        <span class="wb-name">Wristband #${i + 1}</span>
-        <span class="wb-type">${b.type}</span>
+        <span class="wb-name">
+          Wristband #${i + 1}
+          <span class="wb-badge ${b.type}">${b.type}</span>
+        </span>
         <span class="wb-uid">${b.uid}</span>
       </div>
-      <span class="wb-check">✅</span>
+      <span class="wb-check">${b.type === 'adult' ? '✅' : '🟡'}</span>
     </div>
   `).join('');
 }
@@ -652,6 +757,9 @@ function reset() {
   document.getElementById('wristbandList').classList.add('hidden');
   document.getElementById('wristbandList').innerHTML = '';
   document.getElementById('ticketInfo').innerHTML = '';
+  document.getElementById('adultAssigned').textContent = '0';
+  document.getElementById('childAssigned').textContent = '0';
+  document.getElementById('nextUpPrompt').classList.add('hidden');
 
   document.getElementById('scanningScreen').classList.remove('hidden');
   document.getElementById('assignmentScreen').classList.add('hidden');
