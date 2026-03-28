@@ -1,429 +1,670 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Entry Scanner - Holmdale Pro Rodeo</title>
-    <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: linear-gradient(135deg, #00B74A 0%, #2A2A2A 100%);
-            min-height: 100vh;
-            padding: 20px;
-        }
-        .container { max-width: 600px; margin: 0 auto; }
-        .header {
-            background: white;
-            padding: 20px;
-            border-radius: 15px;
-            margin-bottom: 20px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
-            text-align: center;
-        }
-        .header h1 { color: #00B74A; font-size: 28px; font-weight: bold; margin-bottom: 5px; }
-        .header h2 { color: #3A3A3A; font-size: 20px; margin-bottom: 5px; }
-        .header p { color: #666; font-size: 14px; }
-        .card {
-            background: white;
-            padding: 25px;
-            border-radius: 15px;
-            margin-bottom: 20px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
-        }
-        .ticket-info {
-            background: #f0fdf4;
-            padding: 20px;
-            border-radius: 10px;
-            margin-bottom: 20px;
-            border-left: 5px solid #00B74A;
-        }
-        .ticket-info h3 { color: #00B74A; margin-bottom: 15px; font-size: 22px; }
-        .info-row {
-            display: flex;
-            justify-content: space-between;
-            padding: 12px 0;
-            border-bottom: 1px solid #d1fae5;
-            font-size: 16px;
-        }
-        .info-row:last-child { border-bottom: none; }
-        .info-label { color: #166534; font-weight: 600; }
-        .info-value { color: #14532d; font-weight: bold; }
-        .wristband-status {
-            background: #fffbeb;
-            padding: 25px;
-            border-radius: 10px;
-            margin-bottom: 20px;
-            text-align: center;
-            border-left: 5px solid #f59e0b;
-        }
-        .wristband-status h3 {
-            color: #92400e;
-            font-size: 24px;
-            margin-bottom: 15px;
-        }
-        .wristband-status .count {
-            font-size: 48px;
-            font-weight: bold;
-            color: #f59e0b;
-        }
-        .wristband-list {
-            background: #e6fffa;
-            padding: 20px;
-            border-radius: 10px;
-            margin-bottom: 20px;
-        }
-        .wristband-item {
-            background: white;
-            padding: 15px;
-            border-radius: 8px;
-            margin-bottom: 10px;
-            border-left: 4px solid #48bb78;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        .wristband-item:last-child { margin-bottom: 0; }
-        .success-screen {
-            background: #c6f6d5;
-            padding: 40px;
-            border-radius: 15px;
-            text-align: center;
-            border: 5px solid #48bb78;
-        }
-        .success-screen .icon {
-            font-size: 80px;
-            margin-bottom: 20px;
-        }
-        .success-screen h2 {
-            color: #22543d;
-            font-size: 32px;
-            margin-bottom: 10px;
-        }
-        .success-screen .countdown {
-            color: #166534;
-            font-size: 18px;
-            font-weight: 600;
-        }
-        .alert {
-            padding: 15px;
-            border-radius: 10px;
-            margin-bottom: 20px;
-            font-weight: 500;
-            font-size: 16px;
-        }
-        .alert-error {
-            background: #fed7d7;
-            color: #742a2a;
-            border-left: 4px solid #f56565;
-        }
-        .hidden { display: none; }
-        #qr-reader {
-            border: 5px solid #00B74A;
-            border-radius: 15px;
-            overflow: hidden;
-            margin-bottom: 20px;
-        }
-        .scanning-prompt {
-            text-align: center;
-            padding: 30px;
-            background: #f0fdf4;
-            border-radius: 10px;
-            margin-bottom: 20px;
-        }
-        .scanning-prompt h3 {
-            color: #00B74A;
-            font-size: 24px;
-            margin-bottom: 10px;
-        }
-        .scanning-prompt p {
-            color: #166534;
-            font-size: 16px;
-        }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Entry Scanner - Holmdale Pro Rodeo</title>
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --green:    #00C957;
+    --green-dk: #009940;
+    --gold:     #F5A623;
+    --gold-lt:  #FFD07A;
+    --dark:     #111712;
+    --panel:    #1B2420;
+    --surface:  #243028;
+    --line:     rgba(255,255,255,0.08);
+    --txt:      #E8F0EB;
+    --txt-dim:  #7A9A85;
+    --danger:   #FF4D4D;
+    --warn:     #F5A623;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--dark);
+    min-height: 100vh;
+    color: var(--txt);
+    padding: 16px;
+    /* subtle grain texture */
+    background-image:
+      radial-gradient(ellipse 80% 60% at 50% -10%, rgba(0,201,87,0.12) 0%, transparent 60%),
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
+  }
+
+  .container { max-width: 520px; margin: 0 auto; }
+
+  /* ── HEADER ── */
+  .header {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    padding: 24px 0 20px;
+    text-align: center;
+    position: relative;
+  }
+  .header::after {
+    content: '';
+    display: block;
+    width: 48px;
+    height: 3px;
+    background: var(--green);
+    border-radius: 2px;
+    margin-top: 12px;
+  }
+  .header .eyebrow {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 11px;
+    letter-spacing: 4px;
+    color: var(--green);
+    text-transform: uppercase;
+  }
+  .header h1 {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 40px;
+    letter-spacing: 3px;
+    color: var(--txt);
+    line-height: 1;
+  }
+  .header h2 {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 20px;
+    letter-spacing: 2px;
+    color: var(--gold);
+  }
+
+  /* ── CARD ── */
+  .card {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    padding: 24px;
+    margin-bottom: 16px;
+  }
+
+  /* ── SCANNING PROMPT ── */
+  .scanning-prompt {
+    text-align: center;
+    padding: 20px 0 10px;
+  }
+  .scanning-prompt .icon-ring {
+    width: 72px;
+    height: 72px;
+    border-radius: 50%;
+    background: rgba(0,201,87,0.1);
+    border: 2px solid var(--green);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 32px;
+    margin: 0 auto 16px;
+    animation: pulse 2.4s ease-in-out infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(0,201,87,0.35); }
+    50%       { box-shadow: 0 0 0 16px rgba(0,201,87,0); }
+  }
+  .scanning-prompt h3 {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 22px;
+    letter-spacing: 2px;
+    color: var(--green);
+    margin-bottom: 4px;
+  }
+  .scanning-prompt p {
+    color: var(--txt-dim);
+    font-size: 14px;
+  }
+
+  /* QR reader */
+  #qr-reader {
+    border: 2px solid var(--surface);
+    border-radius: 12px;
+    overflow: hidden;
+    margin-top: 20px;
+    background: #000;
+  }
+  #qr-reader video { border-radius: 12px; }
+
+  /* ── TICKET INFO ── */
+  .ticket-info {
+    background: var(--surface);
+    border-left: 4px solid var(--green);
+    border-radius: 10px;
+    padding: 18px 20px;
+    margin-bottom: 18px;
+  }
+  .ticket-info .ti-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 14px;
+  }
+  .ticket-info .ti-badge {
+    background: var(--green);
+    color: var(--dark);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    padding: 3px 8px;
+    border-radius: 4px;
+  }
+  .ticket-info h3 {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 18px;
+    letter-spacing: 1px;
+    color: var(--txt);
+  }
+  .info-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 9px 0;
+    border-bottom: 1px solid var(--line);
+    font-size: 14px;
+  }
+  .info-row:last-child { border-bottom: none; }
+  .info-label { color: var(--txt-dim); font-weight: 500; }
+  .info-value { color: var(--txt); font-weight: 600; }
+
+  /* ── WRISTBAND STATUS ── */
+  .wristband-status {
+    background: var(--surface);
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 18px;
+    text-align: center;
+    border: 1px solid var(--line);
+  }
+  .wristband-status h3 {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 14px;
+    letter-spacing: 3px;
+    color: var(--txt-dim);
+    text-transform: uppercase;
+    margin-bottom: 10px;
+  }
+  .band-counter {
+    display: flex;
+    align-items: baseline;
+    justify-content: center;
+    gap: 6px;
+    margin-bottom: 8px;
+  }
+  .band-counter .current {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 64px;
+    color: var(--gold);
+    line-height: 1;
+  }
+  .band-counter .sep {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 32px;
+    color: var(--txt-dim);
+  }
+  .band-counter .total {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 32px;
+    color: var(--txt-dim);
+  }
+  .progress-track {
+    height: 6px;
+    background: rgba(255,255,255,0.08);
+    border-radius: 3px;
+    overflow: hidden;
+    margin: 8px 0 12px;
+  }
+  .progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--green-dk), var(--green));
+    border-radius: 3px;
+    transition: width 0.4s ease;
+    width: 0%;
+  }
+  .nfc-status-line {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--green);
+  }
+
+  /* NFC button */
+  .nfc-btn {
+    width: 100%;
+    padding: 18px;
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 20px;
+    letter-spacing: 2px;
+    background: var(--green);
+    color: var(--dark);
+    border: none;
+    border-radius: 12px;
+    margin-top: 14px;
+    cursor: pointer;
+    transition: background 0.2s, transform 0.1s;
+  }
+  .nfc-btn:active { transform: scale(0.98); }
+  .nfc-btn.active {
+    background: var(--green-dk);
+    color: var(--txt);
+  }
+  .nfc-btn.error {
+    background: var(--danger);
+    color: white;
+  }
+
+
+
+  /* ── WRISTBAND LIST ── */
+  .wristband-list { margin-top: 4px; }
+  .wristband-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 14px;
+    background: var(--surface);
+    border-radius: 8px;
+    margin-bottom: 8px;
+    border-left: 3px solid var(--green);
+    animation: slideIn 0.25s ease;
+  }
+  @keyframes slideIn {
+    from { opacity: 0; transform: translateY(-6px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  .wristband-item:last-child { margin-bottom: 0; }
+  .wb-left { display: flex; flex-direction: column; gap: 2px; }
+  .wb-name {
+    font-weight: 700;
+    font-size: 14px;
+    color: var(--txt);
+  }
+  .wb-type {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--txt-dim);
+  }
+  .wb-uid {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--green);
+    letter-spacing: 1px;
+  }
+  .wb-check { font-size: 20px; }
+
+  /* ── SUCCESS ── */
+  .success-screen {
+    background: linear-gradient(160deg, #0a2316 0%, #0e2b1c 100%);
+    border: 2px solid var(--green);
+    border-radius: 16px;
+    padding: 48px 32px;
+    text-align: center;
+    animation: popIn 0.35s cubic-bezier(0.34,1.56,0.64,1);
+  }
+  @keyframes popIn {
+    from { opacity: 0; transform: scale(0.88); }
+    to   { opacity: 1; transform: scale(1); }
+  }
+  .success-icon {
+    font-size: 72px;
+    margin-bottom: 16px;
+    display: block;
+    animation: bounceIn 0.5s cubic-bezier(0.34,1.56,0.64,1) 0.1s both;
+  }
+  @keyframes bounceIn {
+    from { transform: scale(0); }
+    to   { transform: scale(1); }
+  }
+  .success-screen h2 {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 42px;
+    letter-spacing: 3px;
+    color: var(--green);
+    margin-bottom: 8px;
+  }
+  .success-screen .customer-name {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--txt);
+    margin-bottom: 20px;
+  }
+  .countdown-ring {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid var(--line);
+    border-radius: 100px;
+    padding: 8px 18px;
+    font-size: 14px;
+    color: var(--txt-dim);
+  }
+  .countdown-ring span {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 20px;
+    color: var(--green);
+  }
+
+  /* ── ALERTS ── */
+  .alert {
+    padding: 14px 16px;
+    border-radius: 10px;
+    margin-bottom: 14px;
+    font-size: 14px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .alert-error {
+    background: rgba(255,77,77,0.12);
+    border: 1px solid rgba(255,77,77,0.4);
+    color: #ff8c8c;
+  }
+  .alert-success {
+    background: rgba(0,201,87,0.1);
+    border: 1px solid rgba(0,201,87,0.3);
+    color: var(--green);
+  }
+
+  .hidden { display: none; }
+
+  /* ── SECTION LABEL ── */
+  .section-label {
+    font-size: 11px;
+    letter-spacing: 3px;
+    color: var(--txt-dim);
+    text-transform: uppercase;
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .section-label::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--line);
+  }
+</style>
 </head>
 <body>
-    <div class="container">
-        <div class="header">
-            <h1>HOLMDALE PRO RODEO</h1>
-            <h2>🎫 Entry Scanner</h2>
-            <p>Automated Check-In</p>
-        </div>
-        
-        <div id="alertContainer"></div>
+<div class="container">
 
-        <!-- QR Scanning Screen -->
-        <div id="scanningScreen">
-            <div class="card">
-                <div class="scanning-prompt">
-                    <h3>📷 Ready to Scan</h3>
-                    <p>Point camera at ticket QR code</p>
-                </div>
-                <div id="qr-reader"></div>
-            </div>
-        </div>
+  <!-- HEADER -->
+  <header class="header">
+    <div class="eyebrow">Staff Portal</div>
+    <h1>Holmdale Pro Rodeo</h1>
+    <h2>🎫 Entry Scanner</h2>
+  </header>
 
-        <!-- Ticket Details & Wristband Assignment -->
-        <div id="assignmentScreen" class="card hidden">
-            <div class="ticket-info" id="ticketInfo"></div>
-            
-            <div class="wristband-status">
-                <h3>Scan Wristbands</h3>
-                <div class="count"><span id="assignedCount">0</span> / <span id="totalCount">0</span></div>
-                <p style="color: #92400e; margin-top: 10px;">Tap or scan wristband NFC tags</p><p id="nfcStatus" style="color:#00B74A;font-weight:bold;margin-top:10px;">Initializing NFC...</p>
-            </div>
+  <!-- ALERTS -->
+  <div id="alertContainer"></div>
 
-            <div id="wristbandList" class="wristband-list hidden"></div>
-        </div>
-
-        <!-- Success Screen -->
-        <div id="successScreen" class="card hidden">
-            <div class="success-screen">
-                <div class="icon">✅</div>
-                <h2>Entry Complete!</h2>
-                <p class="countdown">Next scan in <span id="countdown">4</span> seconds...</p>
-            </div>
-        </div>
+  <!-- SCANNING SCREEN -->
+  <div id="scanningScreen">
+    <div class="card">
+      <div class="scanning-prompt">
+        <div class="icon-ring">📷</div>
+        <h3>Ready to Scan</h3>
+        <p>Point camera at ticket QR code</p>
+      </div>
+      <div id="qr-reader"></div>
     </div>
-    
-    <script>
-        const API = 'https://rodeo-fresh-production-7348.up.railway.app/api';
-        let token = '';
-        let ticket = null;
-        let bands = [];
-        let html5QrcodeScanner = null;
-        let totalNeeded = 0;
-        let wristbandInputActive = false;
+  </div>
 
-        window.onload = async () => {
-            token = localStorage.getItem('auth_token');
-    if (!token) {
-        window.location.href = 'login.html';
-        return;
+  <!-- TICKET + WRISTBAND ASSIGNMENT -->
+  <div id="assignmentScreen" class="hidden">
+
+    <!-- Ticket Info -->
+    <div class="card">
+      <div class="section-label">Ticket Verified</div>
+      <div class="ticket-info" id="ticketInfo"></div>
+    </div>
+
+    <!-- Wristband Assignment -->
+    <div class="card">
+      <div class="section-label">Wristband Assignment</div>
+
+      <div class="wristband-status">
+        <h3>Wristbands Assigned</h3>
+        <div class="band-counter">
+          <div class="current" id="assignedCount">0</div>
+          <div class="sep">/</div>
+          <div class="total" id="totalCount">0</div>
+        </div>
+        <div class="progress-track">
+          <div class="progress-fill" id="progressFill"></div>
+        </div>
+        <div class="nfc-status-line" id="nfcStatus">Initializing…</div>
+      </div>
+
+      <div id="wristbandList" class="wristband-list hidden"></div>
+
+      <!-- NFC button & manual input injected here by JS -->
+    </div>
+  </div>
+
+  <!-- SUCCESS SCREEN -->
+  <div id="successScreen" class="hidden">
+    <div class="success-screen">
+      <span class="success-icon">✅</span>
+      <h2>Entry Complete!</h2>
+      <div class="customer-name" id="successName"></div>
+      <div class="countdown-ring">
+        Next scan in <span id="countdown">4</span>s
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const API = 'https://rodeo-fresh-production-7348.up.railway.app/api';
+let token = '';
+let ticket = null;
+let bands = [];
+let html5QrcodeScanner = null;
+let totalNeeded = 0;
+let wristbandInputActive = false;
+
+window.onload = async () => {
+  token = localStorage.getItem('auth_token');
+  if (!token) { window.location.href = 'login.html'; return; }
+  startQRScanner();
+};
+
+function startQRScanner() {
+  html5QrcodeScanner = new Html5Qrcode("qr-reader");
+  html5QrcodeScanner.start(
+    { facingMode: "environment" },
+    { fps: 10, qrbox: { width: 250, height: 250 } },
+    onQRScanSuccess,
+    () => {}
+  ).catch(() => showMessage('❌ Camera not available', 'error'));
+}
+
+function onQRScanSuccess(decodedText) {
+  if (html5QrcodeScanner) html5QrcodeScanner.stop();
+  lookupTicket(decodedText);
+}
+
+async function lookupTicket(code) {
+  code = code.trim().toUpperCase();
+  try {
+    const r = await fetch(API + '/ticket-orders', {
+      headers: { 'Authorization': 'Bearer ' + token }
+    });
+    const tickets = await r.json();
+    ticket = tickets.find(t => t.confirmation_code === code);
+
+    if (!ticket) {
+      showMessage('❌ Ticket not found: ' + code, 'error');
+      setTimeout(reset, 3000);
+      return;
     }
-            console.log('Logged in');
-            
-            startQRScanner();
+
+    totalNeeded = (ticket.quantity_adult || 0) + (ticket.quantity_child || 0);
+
+    document.getElementById('ticketInfo').innerHTML = `
+      <div class="ti-header">
+        <span class="ti-badge">✓ Found</span>
+        <h3>${ticket.customer_name}</h3>
+      </div>
+      <div class="info-row">
+        <span class="info-label">Confirmation</span>
+        <span class="info-value">${ticket.confirmation_code}</span>
+      </div>
+      <div class="info-row">
+        <span class="info-label">Adults</span>
+        <span class="info-value">${ticket.quantity_adult || 0}</span>
+      </div>
+      <div class="info-row">
+        <span class="info-label">Children</span>
+        <span class="info-value">${ticket.quantity_child || 0}</span>
+      </div>
+    `;
+
+    document.getElementById('totalCount').textContent = totalNeeded;
+    document.getElementById('assignedCount').textContent = '0';
+    document.getElementById('progressFill').style.width = '0%';
+
+    document.getElementById('scanningScreen').classList.add('hidden');
+    document.getElementById('assignmentScreen').classList.remove('hidden');
+
+    wristbandInputActive = true;
+    listenForWristbands();
+  } catch(err) {
+    showMessage('❌ Error looking up ticket', 'error');
+    setTimeout(reset, 3000);
+  }
+}
+
+function listenForWristbands() {
+  const assignmentCard = document.getElementById('assignmentScreen').querySelector('.card:last-child');
+
+  if ('NDEFReader' in window) {
+    document.getElementById('nfcStatus').textContent = 'Tap below to enable NFC scanning';
+    const nfcBtn = document.createElement('button');
+    nfcBtn.id = 'nfcStartBtn';
+    nfcBtn.className = 'nfc-btn';
+    nfcBtn.textContent = '📶 Enable NFC Scanning';
+    assignmentCard.appendChild(nfcBtn);
+
+    nfcBtn.addEventListener('click', async function() {
+      try {
+        const ndef = new NDEFReader();
+        await ndef.scan();
+        nfcBtn.textContent = '✓ NFC Active — Tap Wristband';
+        nfcBtn.className = 'nfc-btn active';
+        document.getElementById('nfcStatus').textContent = 'NFC ready — tap wristband to phone';
+        ndef.onreading = async (event) => {
+          if (!wristbandInputActive) return;
+          const uid = event.serialNumber.replace(/:/g, '').toUpperCase();
+          await assignBand(uid);
         };
+        ndef.onreadingerror = () => {
+          document.getElementById('nfcStatus').textContent = 'Read error — try again';
+        };
+      } catch(err) {
+        nfcBtn.textContent = '✕ NFC Failed: ' + err.message;
+        nfcBtn.className = 'nfc-btn error';
+        document.getElementById('nfcStatus').textContent = 'NFC unavailable on this device';
+      }
+    });
+  } else {
+    document.getElementById('nfcStatus').textContent = 'NFC not supported on this browser';
+  }
+}
 
-        function startQRScanner() {
-            html5QrcodeScanner = new Html5Qrcode("qr-reader");
-            
-            html5QrcodeScanner.start(
-                { facingMode: "environment" },
-                {
-                    fps: 10,
-                    qrbox: { width: 250, height: 250 }
-                },
-                onQRScanSuccess,
-                onScanError
-            ).catch(err => {
-                console.error("Camera error:", err);
-                showMessage('❌ Camera not available', 'error');
-            });
-        }
+async function assignBand(uid) {
+  if (bands.length >= totalNeeded) return;
+  const bandNum = bands.length + 1;
+  const type = bandNum <= (ticket.quantity_adult || 0) ? 'adult' : 'child';
 
-        function onQRScanSuccess(decodedText) {
-            console.log("QR Code detected:", decodedText);
-            if (html5QrcodeScanner) {
-                html5QrcodeScanner.stop();
-            }
-            lookupTicket(decodedText);
-        }
+  try {
+    const r = await fetch(API + '/wristbands/link', {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ rfid_uid: uid, ticket_order_id: ticket.id, ticket_type: type })
+    });
+    const d = await r.json();
+    if (r.ok) {
+      bands.push({ uid, type });
+      updateWristbandDisplay();
+      if (bands.length === totalNeeded) completeEntry();
+    } else {
+      showMessage('❌ ' + (d.error || 'Assignment failed'), 'error');
+    }
+  } catch(err) {
+    showMessage('❌ Error assigning wristband', 'error');
+  }
+}
 
-        function onScanError(errorMessage) {
-            // Ignore constant scanning errors
-        }
+function updateWristbandDisplay() {
+  const pct = totalNeeded > 0 ? (bands.length / totalNeeded) * 100 : 0;
+  document.getElementById('assignedCount').textContent = bands.length;
+  document.getElementById('progressFill').style.width = pct + '%';
 
-        async function lookupTicket(code) {
-            code = code.trim().toUpperCase();
-            
-            try {
-                const r = await fetch(API + '/ticket-orders', {
-                    headers: {'Authorization': 'Bearer ' + token}
-                });
-                const tickets = await r.json();
-                ticket = tickets.find(t => t.confirmation_code === code);
+  const list = document.getElementById('wristbandList');
+  list.classList.remove('hidden');
+  list.innerHTML = bands.map((b, i) => `
+    <div class="wristband-item">
+      <div class="wb-left">
+        <span class="wb-name">Wristband #${i + 1}</span>
+        <span class="wb-type">${b.type}</span>
+        <span class="wb-uid">${b.uid}</span>
+      </div>
+      <span class="wb-check">✅</span>
+    </div>
+  `).join('');
+}
 
-                if (!ticket) { 
-                    showMessage('❌ Ticket not found: ' + code, 'error');
-                    setTimeout(reset, 3000);
-                    return; 
-                }
+function completeEntry() {
+  wristbandInputActive = false;
+  document.getElementById('successName').textContent = ticket.customer_name;
+  document.getElementById('assignmentScreen').classList.add('hidden');
+  document.getElementById('successScreen').classList.remove('hidden');
 
-                totalNeeded = (ticket.quantity_adult || 0) + (ticket.quantity_child || 0);
-                
-                document.getElementById('ticketInfo').innerHTML = `
-                    <h3>✓ Ticket Found</h3>
-                    <div class="info-row"><span class="info-label">Customer:</span><span class="info-value">${ticket.customer_name}</span></div>
-                    <div class="info-row"><span class="info-label">Code:</span><span class="info-value">${ticket.confirmation_code}</span></div>
-                    <div class="info-row"><span class="info-label">Adults:</span><span class="info-value">${ticket.quantity_adult || 0}</span></div>
-                    <div class="info-row"><span class="info-label">Children:</span><span class="info-value">${ticket.quantity_child || 0}</span></div>
-                `;
-                
-                document.getElementById('totalCount').textContent = totalNeeded;
-                document.getElementById('assignedCount').textContent = '0';
+  let countdown = 4;
+  document.getElementById('countdown').textContent = countdown;
+  const timer = setInterval(() => {
+    countdown--;
+    document.getElementById('countdown').textContent = countdown;
+    if (countdown <= 0) { clearInterval(timer); reset(); }
+  }, 1000);
+}
 
-                document.getElementById('scanningScreen').classList.add('hidden');
-                document.getElementById('assignmentScreen').classList.remove('hidden');
-                
-                // Activate wristband input mode
-                wristbandInputActive = true;
-                listenForWristbands();
-                
-            } catch(err) {
-                console.error('Lookup error:', err);
-                showMessage('❌ Error looking up ticket', 'error');
-                setTimeout(reset, 3000);
-            }
-        }
+function reset() {
+  ticket = null;
+  bands = [];
+  totalNeeded = 0;
+  wristbandInputActive = false;
 
-        function listenForWristbands() {
-            showManualInput();
-            if ('NDEFReader' in window) {
-                document.getElementById('nfcStatus').textContent = 'Tap the button below to enable NFC';
-                let nfcBtn = document.createElement('button');
-                nfcBtn.id = 'nfcStartBtn';
-                nfcBtn.innerHTML = '?? Tap Here to Enable NFC Scanning';
-                nfcBtn.style.cssText = 'width:100%;padding:20px;font-size:18px;font-weight:bold;background:#00B74A;color:white;border:none;border-radius:15px;margin-top:15px;cursor:pointer;';
-                document.getElementById('assignmentScreen').insertBefore(nfcBtn, document.getElementById('manualWristband'));
-                nfcBtn.addEventListener('click', async function() {
-                    try {
-                        const ndef = new NDEFReader();
-                        await ndef.scan();
-                        nfcBtn.innerHTML = '? NFC Active - Tap Wristband Now';
-                        nfcBtn.style.background = '#2d7a4f';
-                        document.getElementById('nfcStatus').textContent = 'NFC ready - tap wristband to phone';
-                        ndef.onreading = async (event) => {
-                            if (!wristbandInputActive) return;
-                            const uid = event.serialNumber.replace(/:/g, '').toUpperCase();
-                            console.log("NFC tag read:", uid);
-                            await assignBand(uid);
-                        };
-                        ndef.onreadingerror = () => {
-                            console.log("NFC read error");
-                            document.getElementById('nfcStatus').textContent = 'Read error - try again';
-                        };
-                    } catch(err) {
-                        console.error("NFC error:", err);
-                        nfcBtn.innerHTML = '? NFC Failed: ' + err.message;
-                        nfcBtn.style.background = '#e53e3e';
-                        document.getElementById('nfcStatus').textContent = 'Use manual input below';
-                    }
-                });
-            } else {
-                document.getElementById('nfcStatus').textContent = 'NFC not supported on this browser - use manual input';
-            }
-        }
+  // Clean up injected elements
+  document.getElementById('nfcStartBtn')?.remove();
+  document.getElementById('wristbandList').classList.add('hidden');
+  document.getElementById('wristbandList').innerHTML = '';
+  document.getElementById('ticketInfo').innerHTML = '';
 
-        function showManualInput() {
-            let manualDiv = document.getElementById('manualWristband');
-            if (!manualDiv) {
-                manualDiv = document.createElement('div');
-                manualDiv.id = 'manualWristband';
-                manualDiv.style.marginTop = '15px';
-                manualDiv.innerHTML = '<input type="text" id="manualUidInput" placeholder="Type wristband UID and press Enter" style="width:100%;padding:15px;font-size:18px;border:2px solid #00B74A;border-radius:10px;text-align:center;">';
-                document.getElementById('assignmentScreen').appendChild(manualDiv);
-                document.getElementById('manualUidInput').onkeydown = async function(e) {
-                    if (e.key === 'Enter') {
-                        e.preventDefault();
-                        const uid = this.value.trim().toUpperCase();
-                        if (uid) {
-                            await assignBand(uid);
-                            this.value = '';
-                        }
-                    }
-                };
-            }
-            document.getElementById('manualUidInput').focus();
-        }
+  document.getElementById('scanningScreen').classList.remove('hidden');
+  document.getElementById('assignmentScreen').classList.add('hidden');
+  document.getElementById('successScreen').classList.add('hidden');
 
-        async function assignBand(uid) {
-            if (bands.length >= totalNeeded) {
-                return;
-            }
-            
-            const bandNum = bands.length + 1;
-            const type = bandNum <= (ticket.quantity_adult || 0) ? 'adult' : 'child';
-            
-            try {
-                const r = await fetch(API + '/wristbands/link', {
-                    method: 'POST',
-                    headers: {'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json'},
-                    body: JSON.stringify({rfid_uid: uid, ticket_order_id: ticket.id, ticket_type: type})
-                });
-                
-                const d = await r.json();
-                
-                if (r.ok) {
-                    bands.push({uid, type});
-                    updateWristbandDisplay();
-                    
-                    if (bands.length === totalNeeded) {
-                        completeEntry();
-                    }
-                } else {
-                    showMessage('❌ Error: ' + d.error, 'error');
-                }
-            } catch(err) {
-                console.error('Assignment error:', err);
-                showMessage('❌ Error assigning wristband', 'error');
-            }
-        }
+  startQRScanner();
+}
 
-        function updateWristbandDisplay() {
-            document.getElementById('assignedCount').textContent = bands.length;
-            
-            const list = document.getElementById('wristbandList');
-            list.classList.remove('hidden');
-            list.innerHTML = bands.map((b, i) => 
-                `<div class="wristband-item">
-                    <span><strong>Wristband #${i + 1}</strong> (${b.type})</span>
-                    <span style="color: #48bb78; font-weight: bold;">✓ ${b.uid}</span>
-                </div>`
-            ).join('');
-        }
-
-        function completeEntry() {
-            wristbandInputActive = false;
-            
-            document.getElementById('assignmentScreen').classList.add('hidden');
-            document.getElementById('successScreen').classList.remove('hidden');
-            
-            let countdown = 4;
-            document.getElementById('countdown').textContent = countdown;
-            
-            const timer = setInterval(() => {
-                countdown--;
-                document.getElementById('countdown').textContent = countdown;
-                
-                if (countdown <= 0) {
-                    clearInterval(timer);
-                    reset();
-                }
-            }, 1000);
-        }
-
-        function reset() {
-            ticket = null;
-            bands = [];
-            totalNeeded = 0;
-            wristbandInputActive = false;
-            
-            document.getElementById('scanningScreen').classList.remove('hidden');
-            document.getElementById('assignmentScreen').classList.add('hidden');
-            document.getElementById('successScreen').classList.add('hidden');
-            document.getElementById('wristbandList').classList.add('hidden');
-            
-            startQRScanner();
-        }
-
-        function showMessage(msg, type) {
-            const alertDiv = document.getElementById('alertContainer');
-            alertDiv.innerHTML = `<div class="alert alert-${type}">${msg}</div>`;
-            setTimeout(() => alertDiv.innerHTML = '', 5000);
-        }
-    </script>
+function showMessage(msg, type) {
+  const alertDiv = document.getElementById('alertContainer');
+  alertDiv.innerHTML = `<div class="alert alert-${type}">${msg}</div>`;
+  setTimeout(() => alertDiv.innerHTML = '', 5000);
+}
+</script>
 </body>
 </html>
