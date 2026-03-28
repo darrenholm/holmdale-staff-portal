@@ -1,725 +1,290 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Entry Scanner - Holmdale Pro Rodeo</title>
-<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
-<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
-<style>
-  :root {
-    --green:    #00C957;
-    --green-dk: #009940;
-    --gold:     #F5A623;
-    --gold-lt:  #FFD07A;
-    --dark:     #111712;
-    --panel:    #1B2420;
-    --surface:  #243028;
-    --line:     rgba(255,255,255,0.08);
-    --txt:      #E8F0EB;
-    --txt-dim:  #7A9A85;
-    --danger:   #FF4D4D;
-    --warn:     #F5A623;
-  }
+const express = require('express');
+const router = express.Router();
+const pool = require('../config/database');
+const { authenticateToken } = require('../middleware/auth');
 
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-
-  body {
-    font-family: 'DM Sans', sans-serif;
-    background: var(--dark);
-    min-height: 100vh;
-    color: var(--txt);
-    padding: 16px;
-    /* subtle grain texture */
-    background-image:
-      radial-gradient(ellipse 80% 60% at 50% -10%, rgba(0,201,87,0.12) 0%, transparent 60%),
-      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
-  }
-
-  .container { max-width: 520px; margin: 0 auto; }
-
-  /* ── HEADER ── */
-  .header {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 2px;
-    padding: 24px 0 20px;
-    text-align: center;
-    position: relative;
-  }
-  .header::after {
-    content: '';
-    display: block;
-    width: 48px;
-    height: 3px;
-    background: var(--green);
-    border-radius: 2px;
-    margin-top: 12px;
-  }
-  .header .eyebrow {
-    font-family: 'Bebas Neue', sans-serif;
-    font-size: 11px;
-    letter-spacing: 4px;
-    color: var(--green);
-    text-transform: uppercase;
-  }
-  .header h1 {
-    font-family: 'Bebas Neue', sans-serif;
-    font-size: 40px;
-    letter-spacing: 3px;
-    color: var(--txt);
-    line-height: 1;
-  }
-  .header h2 {
-    font-family: 'Bebas Neue', sans-serif;
-    font-size: 20px;
-    letter-spacing: 2px;
-    color: var(--gold);
-  }
-
-  /* ── CARD ── */
-  .card {
-    background: var(--panel);
-    border: 1px solid var(--line);
-    border-radius: 16px;
-    padding: 24px;
-    margin-bottom: 16px;
-  }
-
-  /* ── SCANNING PROMPT ── */
-  .scanning-prompt {
-    text-align: center;
-    padding: 20px 0 10px;
-  }
-  .scanning-prompt .icon-ring {
-    width: 72px;
-    height: 72px;
-    border-radius: 50%;
-    background: rgba(0,201,87,0.1);
-    border: 2px solid var(--green);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 32px;
-    margin: 0 auto 16px;
-    animation: pulse 2.4s ease-in-out infinite;
-  }
-  @keyframes pulse {
-    0%, 100% { box-shadow: 0 0 0 0 rgba(0,201,87,0.35); }
-    50%       { box-shadow: 0 0 0 16px rgba(0,201,87,0); }
-  }
-  .scanning-prompt h3 {
-    font-family: 'Bebas Neue', sans-serif;
-    font-size: 22px;
-    letter-spacing: 2px;
-    color: var(--green);
-    margin-bottom: 4px;
-  }
-  .scanning-prompt p {
-    color: var(--txt-dim);
-    font-size: 14px;
-  }
-
-  /* QR reader */
-  #qr-reader {
-    border: 2px solid var(--surface);
-    border-radius: 12px;
-    overflow: hidden;
-    margin-top: 20px;
-    background: #000;
-  }
-  #qr-reader video { border-radius: 12px; }
-
-  /* ── TICKET INFO ── */
-  .ticket-info {
-    background: var(--surface);
-    border-left: 4px solid var(--green);
-    border-radius: 10px;
-    padding: 18px 20px;
-    margin-bottom: 18px;
-  }
-  .ticket-info .ti-header {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    margin-bottom: 14px;
-  }
-  .ticket-info .ti-badge {
-    background: var(--green);
-    color: var(--dark);
-    font-size: 10px;
-    font-weight: 700;
-    letter-spacing: 1px;
-    text-transform: uppercase;
-    padding: 3px 8px;
-    border-radius: 4px;
-  }
-  .ticket-info h3 {
-    font-family: 'Bebas Neue', sans-serif;
-    font-size: 18px;
-    letter-spacing: 1px;
-    color: var(--txt);
-  }
-  .info-row {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 9px 0;
-    border-bottom: 1px solid var(--line);
-    font-size: 14px;
-  }
-  .info-row:last-child { border-bottom: none; }
-  .info-label { color: var(--txt-dim); font-weight: 500; }
-  .info-value { color: var(--txt); font-weight: 600; }
-
-  /* ── COMPACT PROGRESS CHIP ── */
-  .progress-chip {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 10px;
-    margin-bottom: 10px;
-  }
-  .progress-chip .chip-label {
-    font-family: 'Bebas Neue', sans-serif;
-    font-size: 13px;
-    letter-spacing: 2px;
-    color: var(--txt-dim);
-    white-space: nowrap;
-  }
-  .progress-track {
-    flex: 1;
-    height: 5px;
-    background: rgba(255,255,255,0.08);
-    border-radius: 3px;
-    overflow: hidden;
-  }
-  .progress-fill {
-    height: 100%;
-    background: linear-gradient(90deg, var(--green-dk), var(--green));
-    border-radius: 3px;
-    transition: width 0.4s ease;
-    width: 0%;
-  }
-  .progress-chip .chip-count {
-    font-family: 'Bebas Neue', sans-serif;
-    font-size: 16px;
-    color: var(--green);
-    white-space: nowrap;
-  }
-  .nfc-status-line {
-    font-size: 12px;
-    font-weight: 600;
-    color: var(--green);
-    margin-bottom: 10px;
-  }
-
-  /* NFC button */
-  .nfc-btn {
-    width: 100%;
-    padding: 18px;
-    font-family: 'Bebas Neue', sans-serif;
-    font-size: 20px;
-    letter-spacing: 2px;
-    background: var(--green);
-    color: var(--dark);
-    border: none;
-    border-radius: 12px;
-    margin-top: 14px;
-    cursor: pointer;
-    transition: background 0.2s, transform 0.1s;
-  }
-  .nfc-btn:active { transform: scale(0.98); }
-  .nfc-btn.active {
-    background: var(--green-dk);
-    color: var(--txt);
-  }
-  .nfc-btn.error {
-    background: var(--danger);
-    color: white;
-  }
-
-  /* ── WRISTBAND LIST — vertical scroll, one row per band ── */
-  .wristband-list {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-    max-height: 320px;
-    overflow-y: auto;
-    -webkit-overflow-scrolling: touch;
-  }
-  .wristband-list::-webkit-scrollbar { width: 3px; }
-  .wristband-list::-webkit-scrollbar-track { background: transparent; }
-  .wristband-list::-webkit-scrollbar-thumb { background: var(--line); border-radius: 2px; }
-
-  .wristband-item {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    padding: 16px 16px;
-    background: var(--surface);
-    border-radius: 10px;
-    border-left: 4px solid var(--green);
-    animation: slideIn 0.2s ease;
-    flex-shrink: 0;
-  }
-  .wristband-item.child { border-left-color: var(--gold); }
-  @keyframes slideIn {
-    from { opacity: 0; transform: translateY(-4px); }
-    to   { opacity: 1; transform: translateY(0); }
-  }
-
-  .wb-label {
-    font-family: 'Bebas Neue', sans-serif;
-    font-size: 28px;
-    letter-spacing: 1px;
-    color: var(--txt);
-    white-space: nowrap;
-  }
-  .wb-label.child-label { color: var(--gold); }
-
-  /* 19+ toggle — right side of row */
-  .toggle-19 {
-    flex-shrink: 0;
-    padding: 12px 22px;
-    border-radius: 8px;
-    border: 2px dashed rgba(255,255,255,0.2);
-    background: transparent;
-    color: var(--txt-dim);
-    font-family: 'Bebas Neue', sans-serif;
-    font-size: 22px;
-    letter-spacing: 1px;
-    cursor: pointer;
-    transition: all 0.15s ease;
-    white-space: nowrap;
-  }
-  .toggle-19:active { transform: scale(0.96); }
-  .toggle-19.on {
-    background: rgba(245,166,35,0.15);
-    border-color: var(--gold);
-    border-style: solid;
-    color: var(--gold);
-  }
-  .toggle-19.loading { opacity: 0.4; pointer-events: none; }
-
-  /* Complete entry button */
-  .complete-btn {
-    width: 100%;
-    padding: 18px;
-    margin-top: 12px;
-    font-family: 'Bebas Neue', sans-serif;
-    font-size: 22px;
-    letter-spacing: 2px;
-    background: var(--green);
-    color: var(--dark);
-    border: none;
-    border-radius: 12px;
-    cursor: pointer;
-    transition: background 0.2s, transform 0.1s;
-    display: none;
-  }
-  .complete-btn:active { transform: scale(0.98); }
-  .complete-btn.visible { display: block; }
-
-  /* ── SUCCESS ── */
-  .success-screen {
-    background: linear-gradient(160deg, #0a2316 0%, #0e2b1c 100%);
-    border: 2px solid var(--green);
-    border-radius: 16px;
-    padding: 48px 32px;
-    text-align: center;
-    animation: popIn 0.35s cubic-bezier(0.34,1.56,0.64,1);
-  }
-  @keyframes popIn {
-    from { opacity: 0; transform: scale(0.88); }
-    to   { opacity: 1; transform: scale(1); }
-  }
-  .success-icon {
-    font-size: 72px;
-    margin-bottom: 16px;
-    display: block;
-    animation: bounceIn 0.5s cubic-bezier(0.34,1.56,0.64,1) 0.1s both;
-  }
-  @keyframes bounceIn {
-    from { transform: scale(0); }
-    to   { transform: scale(1); }
-  }
-  .success-screen h2 {
-    font-family: 'Bebas Neue', sans-serif;
-    font-size: 42px;
-    letter-spacing: 3px;
-    color: var(--green);
-    margin-bottom: 8px;
-  }
-  .success-screen .customer-name {
-    font-size: 18px;
-    font-weight: 600;
-    color: var(--txt);
-    margin-bottom: 20px;
-  }
-  .countdown-ring {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    background: rgba(255,255,255,0.05);
-    border: 1px solid var(--line);
-    border-radius: 100px;
-    padding: 8px 18px;
-    font-size: 14px;
-    color: var(--txt-dim);
-  }
-  .countdown-ring span {
-    font-family: 'Bebas Neue', sans-serif;
-    font-size: 20px;
-    color: var(--green);
-  }
-
-  /* ── ALERTS ── */
-  .alert {
-    padding: 14px 16px;
-    border-radius: 10px;
-    margin-bottom: 14px;
-    font-size: 14px;
-    font-weight: 600;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-  }
-  .alert-error {
-    background: rgba(255,77,77,0.12);
-    border: 1px solid rgba(255,77,77,0.4);
-    color: #ff8c8c;
-  }
-  .alert-success {
-    background: rgba(0,201,87,0.1);
-    border: 1px solid rgba(0,201,87,0.3);
-    color: var(--green);
-  }
-
-  .hidden { display: none; }
-
-  /* ── SECTION LABEL ── */
-  .section-label {
-    font-size: 11px;
-    letter-spacing: 3px;
-    color: var(--txt-dim);
-    text-transform: uppercase;
-    margin-bottom: 12px;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-  }
-  .section-label::after {
-    content: '';
-    flex: 1;
-    height: 1px;
-    background: var(--line);
-  }
-</style>
-</head>
-<body>
-<div class="container">
-
-  <!-- HEADER -->
-  <header class="header">
-    <div class="eyebrow">Staff Portal</div>
-    <h1>Holmdale Pro Rodeo</h1>
-    <h2>🎫 Entry Scanner</h2>
-  </header>
-
-  <!-- ALERTS -->
-  <div id="alertContainer"></div>
-  <!-- DEV MODE BANNER -->
-  <div id="devBanner" style="display:none;align-items:center;justify-content:center;gap:8px;background:rgba(255,77,77,0.15);border:1px solid rgba(255,77,77,0.4);color:#ff8c8c;font-size:12px;font-weight:700;letter-spacing:1px;padding:8px 14px;border-radius:8px;margin-bottom:12px;text-transform:uppercase;">⚠️ Dev Mode — Duplicate wristbands allowed</div>
-
-  <!-- SCANNING SCREEN -->
-  <div id="scanningScreen">
-    <div class="card">
-      <div class="scanning-prompt">
-        <div class="icon-ring">📷</div>
-        <h3>Ready to Scan</h3>
-        <p>Point camera at ticket QR code</p>
-      </div>
-      <div id="qr-reader"></div>
-    </div>
-  </div>
-
-  <!-- TICKET + WRISTBAND ASSIGNMENT -->
-  <div id="assignmentScreen" class="hidden">
-
-    <!-- Ticket Info -->
-    <div class="card">
-      <div class="section-label">Ticket Verified</div>
-      <div class="ticket-info" id="ticketInfo"></div>
-    </div>
-
-    <!-- Wristband Assignment -->
-    <div class="card">
-      <div class="progress-chip">
-        <span class="chip-label">Wristbands</span>
-        <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
-        <span class="chip-count"><span id="assignedCount">0</span> / <span id="totalCount">0</span></span>
-      </div>
-      <div class="nfc-status-line" id="nfcStatus">Initializing…</div>
-      <div id="wristbandList" class="wristband-list hidden"></div>
-      <button class="complete-btn" id="completeBtn" onclick="completeEntry()">✓ Complete Entry</button>
-    </div>
-  </div>
-
-  <!-- SUCCESS SCREEN -->
-  <div id="successScreen" class="hidden">
-    <div class="success-screen">
-      <span class="success-icon">✅</span>
-      <h2>Entry Complete!</h2>
-      <div class="customer-name" id="successName"></div>
-      <div class="countdown-ring">
-        Next scan in <span id="countdown">4</span>s
-      </div>
-    </div>
-  </div>
-
-</div>
-
-<script>
-const API = 'https://rodeo-fresh-production-7348.up.railway.app/api';
-const DEV_MODE = true; // ⚠️ SET TO false BEFORE RODEO — allows duplicate wristbands for testing
-let token = '';
-let ticket = null;
-let bands = [];
-let html5QrcodeScanner = null;
-let totalNeeded = 0;
-let wristbandInputActive = false;
-
-window.onload = async () => {
-  token = localStorage.getItem('auth_token');
-  if (!token) { window.location.href = 'login.html'; return; }
-  if (DEV_MODE) document.getElementById('devBanner').style.display = 'flex';
-  startQRScanner();
-};
-
-function startQRScanner() {
-  html5QrcodeScanner = new Html5Qrcode("qr-reader");
-  html5QrcodeScanner.start(
-    { facingMode: "environment" },
-    { fps: 10, qrbox: { width: 250, height: 250 } },
-    onQRScanSuccess,
-    () => {}
-  ).catch(() => showMessage('❌ Camera not available', 'error'));
+// ── Normalize UID so all devices produce the same result ──
+function normalizeUid(uid) {
+  const cleaned = uid.replace(/[^a-fA-F0-9]/g, '').toUpperCase();
+  const bytes = cleaned.match(/.{2}/g);
+  return bytes ? bytes.sort().join('') : cleaned;
 }
 
-function onQRScanSuccess(decodedText) {
-  if (html5QrcodeScanner) html5QrcodeScanner.stop();
-  lookupTicket(decodedText);
-}
+// ============================================
+// WRISTBAND ROUTES
+// ============================================
 
-async function lookupTicket(code) {
-  code = code.trim().toUpperCase();
+// GET wristband by RFID UID
+router.get('/rfid/:uid', authenticateToken, async (req, res) => {
   try {
-    const r = await fetch(API + '/ticket-orders', {
-      headers: { 'Authorization': 'Bearer ' + token }
-    });
-    const tickets = await r.json();
-    ticket = tickets.find(t => t.confirmation_code === code);
-
-    if (!ticket) {
-      showMessage('❌ Ticket not found: ' + code, 'error');
-      setTimeout(reset, 3000);
-      return;
+    const uid = normalizeUid(req.params.uid);
+    const result = await pool.query(
+      `SELECT w.*, t.event_id, t.status as ticket_status
+       FROM wristbands w
+       LEFT JOIN ticket_orders t ON w.ticket_order_id = t.id
+       WHERE UPPER(w.rfid_uid) = $1`,
+      [uid]
+    );
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Wristband not found' });
     }
-
-    totalNeeded = (ticket.quantity_adult || 0) + (ticket.quantity_child || 0);
-
-    document.getElementById('ticketInfo').innerHTML = `
-      <div class="ti-header">
-        <span class="ti-badge">✓ Found</span>
-        <h3>${ticket.customer_name}</h3>
-      </div>
-      <div class="info-row">
-        <span class="info-label">Confirmation</span>
-        <span class="info-value">${ticket.confirmation_code}</span>
-      </div>
-      <div class="info-row">
-        <span class="info-label">Adults</span>
-        <span class="info-value">${ticket.quantity_adult || 0}</span>
-      </div>
-      <div class="info-row">
-        <span class="info-label">Children</span>
-        <span class="info-value">${ticket.quantity_child || 0}</span>
-      </div>
-    `;
-
-    document.getElementById('totalCount').textContent = totalNeeded;
-    document.getElementById('assignedCount').textContent = '0';
-    document.getElementById('progressFill').style.width = '0%';
-
-    document.getElementById('scanningScreen').classList.add('hidden');
-    document.getElementById('assignmentScreen').classList.remove('hidden');
-
-    wristbandInputActive = true;
-    listenForWristbands();
-  } catch(err) {
-    showMessage('❌ Error looking up ticket', 'error');
-    setTimeout(reset, 3000);
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error('Error fetching wristband:', error);
+    res.status(500).json({ error: 'Failed to fetch wristband' });
   }
-}
+});
 
-function listenForWristbands() {
-  if ('NDEFReader' in window) {
-    document.getElementById('nfcStatus').textContent = 'Starting NFC…';
-    const ndef = new NDEFReader();
-    ndef.scan().then(() => {
-      document.getElementById('nfcStatus').textContent = '📶 NFC ready — tap wristband';
-      ndef.onreading = async (event) => {
-        if (!wristbandInputActive) return;
-        const uid = event.serialNumber.replace(/:/g, '').toUpperCase();
-        await assignBand(uid);
-      };
-      ndef.onreadingerror = () => {
-        document.getElementById('nfcStatus').textContent = 'Read error — try again';
-      };
-    }).catch(err => {
-      document.getElementById('nfcStatus').textContent = 'NFC unavailable: ' + err.message;
-    });
-  } else {
-    document.getElementById('nfcStatus').textContent = 'NFC not supported on this browser';
-  }
-}
-
-async function assignBand(uid) {
-  if (bands.length >= totalNeeded) return;
-  const bandNum = bands.length + 1;
-  const type = bandNum <= (ticket.quantity_adult || 0) ? 'adult' : 'child';
-  const sendUid = DEV_MODE ? uid + '_TEST' + Math.random().toString(36).slice(2,6).toUpperCase() : uid;
-
+// POST link wristband to ticket (Gate 1)
+router.post('/link', authenticateToken, async (req, res) => {
   try {
-    const r = await fetch(API + '/wristbands/link', {
-      method: 'POST',
-      headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ rfid_uid: sendUid, ticket_order_id: ticket.id, ticket_type: type })
-    });
-    const d = await r.json();
-    if (r.ok) {
-      bands.push({ uid, sendUid, type });
-      updateWristbandDisplay();
-      if (bands.length === totalNeeded) {
-        document.getElementById('completeBtn').classList.add('visible');
-        document.getElementById('nfcStatus').textContent = '✓ All wristbands scanned — set 19+ flags then tap Complete';
-        wristbandInputActive = false;
-      }
-    } else {
-      showMessage('❌ ' + (d.error || 'Assignment failed'), 'error');
+    const { rfid_uid, ticket_order_id, ticket_type } = req.body;
+    if (!rfid_uid || !ticket_order_id) {
+      return res.status(400).json({ error: 'Missing required fields' });
     }
-  } catch(err) {
-    showMessage('❌ Error assigning wristband', 'error');
+
+    const uid = normalizeUid(rfid_uid);
+
+    const ticketResult = await pool.query(
+      'SELECT customer_name, customer_email FROM ticket_orders WHERE id = $1',
+      [ticket_order_id]
+    );
+    if (ticketResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Ticket not found' });
+    }
+    const ticket = ticketResult.rows[0];
+
+    const id = `wristband_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const result = await pool.query(
+      `INSERT INTO wristbands (
+        id, rfid_uid, ticket_order_id, customer_name, customer_email, ticket_type
+      ) VALUES ($1, $2, $3, $4, $5, $6)
+      RETURNING *`,
+      [id, uid, ticket_order_id, ticket.customer_name, ticket.customer_email, ticket_type || 'adult']
+    );
+
+    console.log(`✓ Wristband linked: ${uid} → ${ticket_order_id}`);
+    res.json({ success: true, wristband: result.rows[0] });
+
+  } catch (error) {
+    console.error('Error linking wristband:', error);
+    if (error.code === '23505') {
+      return res.status(400).json({ error: 'This wristband is already registered' });
+    }
+    res.status(500).json({ error: 'Failed to link wristband' });
   }
-}
+});
 
-function updateWristbandDisplay() {
-  const pct = totalNeeded > 0 ? (bands.length / totalNeeded) * 100 : 0;
-  document.getElementById('assignedCount').textContent = bands.length;
-  document.getElementById('progressFill').style.width = pct + '%';
-
-  const list = document.getElementById('wristbandList');
-  list.classList.remove('hidden');
-
-  // Append only new rows — preserves existing toggle state
-  bands.forEach((b, i) => {
-    if (document.getElementById(`wb-row-${i}`)) return;
-
-    const row = document.createElement('div');
-    row.className = `wristband-item ${b.type}`;
-    row.id = `wb-row-${i}`;
-
-    const adultNum = bands.slice(0, i + 1).filter(x => x.type === 'adult').length;
-    const childNum = bands.slice(0, i + 1).filter(x => x.type === 'child').length;
-    const label = b.type === 'adult'
-      ? `Adult #${adultNum}`
-      : `Child #${childNum}`;
-
-    row.innerHTML = `
-      <span class="wb-label${b.type === 'child' ? ' child-label' : ''}">${label}</span>
-      ${b.type === 'adult' ? `<button class="toggle-19${b.of_age ? ' on' : ''}" data-index="${i}">🍺 ${b.of_age ? '19+ ✓' : '19+'}</button>` : ''}
-    `;
-
-    if (b.type === 'adult') {
-      row.querySelector('.toggle-19').addEventListener('click', () => toggle19Plus(i));
-    }
-
-    list.appendChild(row);
-  });
-}
-
-async function toggle19Plus(index) {
-  const b = bands[index];
-  if (b.of_age) return; // already approved — approve-age is one-way
-  const btn = document.querySelector(`#wb-row-${index} .toggle-19`);
-  if (!btn) return;
-
-  btn.classList.add('loading');
-
+// POST approve age 19+ (Gate 2)
+router.post('/approve-age', authenticateToken, async (req, res) => {
   try {
-    const r = await fetch(API + '/wristbands/approve-age', {
-      method: 'POST',
-      headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ rfid_uid: b.sendUid || b.uid })
-    });
-    if (r.ok) {
-      b.of_age = true;
-      btn.classList.add('on');
-      btn.textContent = '🍺 19+ ✓';
-    } else {
-      const d = await r.json();
-      showMessage('❌ ' + (d.error || 'Could not approve age'), 'error');
+    const { rfid_uid } = req.body;
+    if (!rfid_uid) {
+      return res.status(400).json({ error: 'Missing rfid_uid' });
     }
-  } catch(err) {
-    showMessage('❌ Error approving 19+ flag', 'error');
-  } finally {
-    btn.classList.remove('loading');
+
+    const uid = normalizeUid(rfid_uid);
+    const result = await pool.query(
+      `UPDATE wristbands 
+       SET alcohol_approved = true, 
+           approved_date = NOW(), 
+           approved_by = $1
+       WHERE UPPER(rfid_uid) = $2
+       RETURNING *`,
+      [req.user.email, uid]
+    );
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Wristband not found' });
+    }
+
+    console.log(`✓ Age approved: ${uid} by ${req.user.email}`);
+    res.json({ success: true, wristband: result.rows[0] });
+
+  } catch (error) {
+    console.error('Error approving age:', error);
+    res.status(500).json({ error: 'Failed to approve age' });
   }
-}
+});
 
-function completeEntry() {
-  wristbandInputActive = false;
-  document.getElementById('successName').textContent = ticket.customer_name;
-  document.getElementById('assignmentScreen').classList.add('hidden');
-  document.getElementById('successScreen').classList.remove('hidden');
+// POST revoke age 19+ (Gate 2 — undo accidental approval)
+router.post('/revoke-age', authenticateToken, async (req, res) => {
+  try {
+    const { rfid_uid } = req.body;
+    if (!rfid_uid) {
+      return res.status(400).json({ error: 'Missing rfid_uid' });
+    }
 
-  let countdown = 4;
-  document.getElementById('countdown').textContent = countdown;
-  const timer = setInterval(() => {
-    countdown--;
-    document.getElementById('countdown').textContent = countdown;
-    if (countdown <= 0) { clearInterval(timer); reset(); }
-  }, 1000);
-}
+    const uid = normalizeUid(rfid_uid);
+    const result = await pool.query(
+      `UPDATE wristbands 
+       SET alcohol_approved = false,
+           approved_date = NULL,
+           approved_by = NULL
+       WHERE UPPER(rfid_uid) = $1
+       RETURNING *`,
+      [uid]
+    );
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Wristband not found' });
+    }
 
-function reset() {
-  ticket = null;
-  bands = [];
-  totalNeeded = 0;
-  wristbandInputActive = false;
+    console.log(`✓ Age revoked: ${uid} by ${req.user.email}`);
+    res.json({ success: true, wristband: result.rows[0] });
 
-  // Clean up injected elements
-  document.getElementById('nfcStartBtn')?.remove();
-  document.getElementById('wristbandList').classList.add('hidden');
-  document.getElementById('wristbandList').innerHTML = '';
-  document.getElementById('ticketInfo').innerHTML = '';
-  document.getElementById('completeBtn').classList.remove('visible');
+  } catch (error) {
+    console.error('Error revoking age:', error);
+    res.status(500).json({ error: 'Failed to revoke age' });
+  }
+});
 
-  document.getElementById('scanningScreen').classList.remove('hidden');
-  document.getElementById('assignmentScreen').classList.add('hidden');
-  document.getElementById('successScreen').classList.add('hidden');
+// POST add credits (Credit Booth)
+router.post('/add-credits', authenticateToken, async (req, res) => {
+  try {
+    const { rfid_uid, amount } = req.body;
+    if (!rfid_uid || !amount) {
+      return res.status(400).json({ error: 'Missing required fields' });
+    }
 
-  startQRScanner();
-}
+    const uid = normalizeUid(rfid_uid);
+    const checkResult = await pool.query(
+      'SELECT * FROM wristbands WHERE UPPER(rfid_uid) = $1',
+      [uid]
+    );
+    if (checkResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Wristband not found' });
+    }
+    const wristband = checkResult.rows[0];
 
-function showMessage(msg, type) {
-  const alertDiv = document.getElementById('alertContainer');
-  alertDiv.innerHTML = `<div class="alert alert-${type}">${msg}</div>`;
-  setTimeout(() => alertDiv.innerHTML = '', 5000);
-}
-</script>
-</body>
-</html>
+    if (!wristband.alcohol_approved) {
+      return res.status(403).json({ error: 'Age not verified. Please visit Gate 2.' });
+    }
+
+    const result = await pool.query(
+      `UPDATE wristbands SET credits = credits + $1 WHERE UPPER(rfid_uid) = $2 RETURNING *`,
+      [amount, uid]
+    );
+
+    const transactionId = `transaction_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    await pool.query(
+      `INSERT INTO bar_transactions (id, wristband_id, amount, transaction_type, description, created_by)
+       VALUES ($1, $2, $3, 'purchase', 'Credit purchase', $4)`,
+      [transactionId, wristband.id, amount, req.user.email]
+    );
+
+    console.log(`✓ Credits added: ${uid} +$${amount}`);
+    res.json({ success: true, wristband: result.rows[0], new_balance: result.rows[0].credits });
+
+  } catch (error) {
+    console.error('Error adding credits:', error);
+    res.status(500).json({ error: 'Failed to add credits' });
+  }
+});
+
+// POST redeem drink (Bar)
+router.post('/redeem', authenticateToken, async (req, res) => {
+  try {
+    const { rfid_uid, amount = 7.00 } = req.body;
+    if (!rfid_uid) {
+      return res.status(400).json({ error: 'Missing rfid_uid' });
+    }
+
+    const uid = normalizeUid(rfid_uid);
+    const wristbandResult = await pool.query(
+      'SELECT * FROM wristbands WHERE UPPER(rfid_uid) = $1',
+      [uid]
+    );
+    if (wristbandResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Wristband not found' });
+    }
+    const wristband = wristbandResult.rows[0];
+
+    if (!wristband.alcohol_approved) {
+      return res.status(403).json({ error: 'Not approved for alcohol' });
+    }
+    if (wristband.credits < amount) {
+      return res.status(400).json({ error: 'Insufficient credits', available: wristband.credits, required: amount });
+    }
+
+    const result = await pool.query(
+      `UPDATE wristbands 
+       SET credits = credits - $1, credits_spent = credits_spent + $1
+       WHERE UPPER(rfid_uid) = $2 RETURNING *`,
+      [amount, uid]
+    );
+
+    const transactionId = `transaction_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    await pool.query(
+      `INSERT INTO bar_transactions (id, wristband_id, amount, transaction_type, description, created_by)
+       VALUES ($1, $2, $3, 'drink', 'Drink served', $4)`,
+      [transactionId, wristband.id, amount, req.user.email]
+    );
+
+    console.log(`✓ Drink served: ${uid} -$${amount}, balance: $${result.rows[0].credits}`);
+    res.json({ success: true, wristband: result.rows[0], new_balance: result.rows[0].credits, message: 'Drink served successfully' });
+
+  } catch (error) {
+    console.error('Error redeeming drink:', error);
+    res.status(500).json({ error: 'Failed to redeem drink' });
+  }
+});
+
+// GET all wristbands (Admin)
+router.get('/', authenticateToken, async (req, res) => {
+  try {
+    const result = await pool.query(
+      `SELECT w.*, t.confirmation_code, t.event_id
+       FROM wristbands w
+       LEFT JOIN ticket_orders t ON w.ticket_order_id = t.id
+       ORDER BY w.created_date DESC`
+    );
+    res.json(result.rows);
+  } catch (error) {
+    console.error('Error fetching wristbands:', error);
+    res.status(500).json({ error: 'Failed to fetch wristbands' });
+  }
+});
+
+// POST cancel/refund a drink (Bar)
+router.post('/cancel-drink', authenticateToken, async (req, res) => {
+  try {
+    const { rfid_uid } = req.body;
+    if (!rfid_uid) return res.status(400).json({ error: 'Missing rfid_uid' });
+
+    const uid = normalizeUid(rfid_uid);
+    const result = await pool.query(
+      `UPDATE wristbands 
+       SET credits = credits + 7,
+           credits_spent = GREATEST(0, credits_spent - 7)
+       WHERE UPPER(rfid_uid) = $1 RETURNING *`,
+      [uid]
+    );
+    if (result.rows.length === 0) return res.status(404).json({ error: 'Wristband not found' });
+
+    console.log(`✓ Drink cancelled: ${uid} +$7`);
+    res.json({ success: true, wristband: result.rows[0] });
+
+  } catch (error) {
+    console.error('Error cancelling drink:', error);
+    res.status(500).json({ error: 'Failed to cancel drink' });
+  }
+});
+
+// GET wristband balance (for kiosk balance checker)
+router.get('/balance/:uid', async (req, res) => {
+  try {
+    const uid = normalizeUid(req.params.uid);
+    const result = await pool.query(
+      'SELECT rfid_uid, customer_name, credits, credits_spent, alcohol_approved FROM wristbands WHERE UPPER(rfid_uid) = $1',
+      [uid]
+    );
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Wristband not found' });
+    }
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error('Error fetching balance:', error);
+    res.status(500).json({ error: 'Failed to fetch balance' });
+  }
+});
+
+module.exports = router;
