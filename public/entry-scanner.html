@@ -257,11 +257,11 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 10px;
-    padding: 10px 14px;
+    gap: 12px;
+    padding: 16px 16px;
     background: var(--surface);
-    border-radius: 8px;
-    border-left: 3px solid var(--green);
+    border-radius: 10px;
+    border-left: 4px solid var(--green);
     animation: slideIn 0.2s ease;
     flex-shrink: 0;
   }
@@ -273,23 +273,23 @@
 
   .wb-label {
     font-family: 'Bebas Neue', sans-serif;
-    font-size: 17px;
+    font-size: 28px;
     letter-spacing: 1px;
     color: var(--txt);
     white-space: nowrap;
   }
   .wb-label.child-label { color: var(--gold); }
 
-  /* 19+ toggle — right side of row, compact */
+  /* 19+ toggle — right side of row */
   .toggle-19 {
     flex-shrink: 0;
-    padding: 7px 14px;
-    border-radius: 7px;
-    border: 1.5px dashed rgba(255,255,255,0.2);
+    padding: 12px 22px;
+    border-radius: 8px;
+    border: 2px dashed rgba(255,255,255,0.2);
     background: transparent;
     color: var(--txt-dim);
     font-family: 'Bebas Neue', sans-serif;
-    font-size: 14px;
+    font-size: 22px;
     letter-spacing: 1px;
     cursor: pointer;
     transition: all 0.15s ease;
@@ -303,6 +303,25 @@
     color: var(--gold);
   }
   .toggle-19.loading { opacity: 0.4; pointer-events: none; }
+
+  /* Complete entry button */
+  .complete-btn {
+    width: 100%;
+    padding: 18px;
+    margin-top: 12px;
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 22px;
+    letter-spacing: 2px;
+    background: var(--green);
+    color: var(--dark);
+    border: none;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: background 0.2s, transform 0.1s;
+    display: none;
+  }
+  .complete-btn:active { transform: scale(0.98); }
+  .complete-btn.visible { display: block; }
 
   /* ── SUCCESS ── */
   .success-screen {
@@ -445,7 +464,7 @@
       </div>
       <div class="nfc-status-line" id="nfcStatus">Initializing…</div>
       <div id="wristbandList" class="wristband-list hidden"></div>
-      <!-- NFC button injected here by JS -->
+      <button class="complete-btn" id="completeBtn" onclick="completeEntry()">✓ Complete Entry</button>
     </div>
   </div>
 
@@ -584,7 +603,11 @@ async function assignBand(uid) {
     if (r.ok) {
       bands.push({ uid, sendUid, type });
       updateWristbandDisplay();
-      if (bands.length === totalNeeded) completeEntry();
+      if (bands.length === totalNeeded) {
+        document.getElementById('completeBtn').classList.add('visible');
+        document.getElementById('nfcStatus').textContent = '✓ All wristbands scanned — set 19+ flags then tap Complete';
+        wristbandInputActive = false;
+      }
     } else {
       showMessage('❌ ' + (d.error || 'Assignment failed'), 'error');
     }
@@ -683,6 +706,7 @@ function reset() {
   document.getElementById('wristbandList').classList.add('hidden');
   document.getElementById('wristbandList').innerHTML = '';
   document.getElementById('ticketInfo').innerHTML = '';
+  document.getElementById('completeBtn').classList.remove('visible');
 
   document.getElementById('scanningScreen').classList.remove('hidden');
   document.getElementById('assignmentScreen').classList.add('hidden');
