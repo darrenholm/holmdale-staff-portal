@@ -88,22 +88,7 @@
     text-align: center; line-height: 1; margin-bottom: 12px;
   }
   .tap-sub { font-size: 20px; color: var(--dim); text-align: center; line-height: 1.4; max-width: 420px; margin-bottom: 24px; }
-  .divider { width: 80px; height: 1px; background: var(--border); margin-bottom: 20px; }
-  .manual-row { display: flex; gap: 12px; width: 480px; }
-  .manual-input {
-    flex: 1; padding: 14px 18px; border-radius: 10px;
-    border: 2px solid var(--border); background: var(--surface);
-    color: var(--text); font-size: 20px;
-    font-family: 'Barlow Condensed', sans-serif; letter-spacing: 1px;
-  }
-  .manual-input:focus { outline: none; border-color: var(--gold); }
-  .manual-btn {
-    padding: 14px 28px; border-radius: 10px; border: none;
-    background: var(--gold); color: #100d06;
-    font-family: 'Bebas Neue', sans-serif; font-size: 24px; letter-spacing: 1px;
-    cursor: pointer; flex-shrink: 0;
-  }
-  .manual-btn:active { opacity: 0.75; }
+
 
   /* LOADING */
   #sLoading { flex-direction: column; align-items: center; justify-content: center; gap: 24px; }
@@ -168,13 +153,7 @@
   <div class="tap-ring">🍺</div>
   <div class="tap-title">TAP WRISTBAND</div>
   <div class="tap-sub">Hold your wristband to the reader to check your drink ticket balance</div>
-  <div class="divider"></div>
-  <div class="manual-row">
-    <input type="text" class="manual-input" id="manualId"
-      placeholder="Enter wristband ID"
-      autocomplete="off" autocorrect="off" autocapitalize="characters">
-    <button class="manual-btn" onclick="manualLookup()">GO</button>
-  </div>
+
 </div>
 
 <!-- LOADING -->
@@ -305,11 +284,7 @@ function autoReset(cdId, secs) {
   timer = setTimeout(tick, 1000);
 }
 
-function manualLookup() {
-  const v = document.getElementById('manualId').value.trim();
-  if (v) { lookup(v); document.getElementById('manualId').value=''; document.getElementById('manualId').blur(); }
-}
-document.getElementById('manualId').addEventListener('keypress', e=>{ if(e.key==='Enter') manualLookup(); });
+
 
 window.addEventListener('message', e=>{ if(e.data?.type==='NFC_TAG') lookup(e.data.uid); });
 window.fullyNfcTagDiscovered = tagId => lookup((tagId||'').replace(/:/g,''));
