@@ -1,0 +1,764 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manage Events — Holmdale Pro Rodeo</title>
+    <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Barlow:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --green: #16a34a;
+            --green-dark: #15803d;
+            --green-light: #22c55e;
+            --red: #dc2626;
+            --red-dark: #b91c1c;
+            --amber: #f59e0b;
+            --bg: #f0fdf4;
+            --card: #ffffff;
+            --text: #1a1a1a;
+            --text-muted: #6b7280;
+            --border: #d1d5db;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Barlow', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+        }
+
+        .header {
+            background: var(--green);
+            color: white;
+            padding: 20px 30px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+        }
+
+        .header h1 {
+            font-family: 'Bebas Neue', sans-serif;
+            font-size: 28px;
+            letter-spacing: 2px;
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            font-family: 'Barlow', sans-serif;
+            font-weight: 600;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .btn-primary {
+            background: var(--green);
+            color: white;
+        }
+        .btn-primary:hover { background: var(--green-dark); }
+
+        .btn-white {
+            background: white;
+            color: var(--green-dark);
+        }
+        .btn-white:hover { background: #f0f0f0; }
+
+        .btn-danger {
+            background: var(--red);
+            color: white;
+        }
+        .btn-danger:hover { background: var(--red-dark); }
+
+        .btn-outline {
+            background: transparent;
+            color: var(--green);
+            border: 2px solid var(--green);
+        }
+        .btn-outline:hover { background: var(--green); color: white; }
+
+        .btn-back {
+            background: rgba(255,255,255,0.2);
+            color: white;
+            font-size: 13px;
+            padding: 8px 14px;
+        }
+        .btn-back:hover { background: rgba(255,255,255,0.3); }
+
+        .btn-sm { padding: 6px 14px; font-size: 13px; }
+
+        .container {
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 30px 20px;
+        }
+
+        .toolbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        .toolbar h2 {
+            font-family: 'Bebas Neue', sans-serif;
+            font-size: 24px;
+            letter-spacing: 1px;
+        }
+
+        .event-list { display: flex; flex-direction: column; gap: 16px; }
+
+        .event-card {
+            background: var(--card);
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            padding: 20px 24px;
+            display: grid;
+            grid-template-columns: 1fr auto;
+            gap: 16px;
+            align-items: center;
+            transition: box-shadow 0.2s;
+        }
+        .event-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
+
+        .event-info h3 {
+            font-size: 18px;
+            font-weight: 700;
+            margin-bottom: 4px;
+        }
+
+        .event-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 16px;
+            color: var(--text-muted);
+            font-size: 14px;
+            margin-top: 6px;
+        }
+
+        .event-meta span { display: flex; align-items: center; gap: 4px; }
+
+        .badge {
+            display: inline-block;
+            padding: 3px 10px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+        .badge-featured { background: #fef3c7; color: #92400e; }
+        .badge-active { background: #dcfce7; color: #166534; }
+
+        .event-actions {
+            display: flex;
+            gap: 8px;
+            flex-shrink: 0;
+        }
+
+        /* Modal */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
+            justify-content: center;
+            align-items: flex-start;
+            padding: 40px 20px;
+            overflow-y: auto;
+        }
+        .modal-overlay.active { display: flex; }
+
+        .modal {
+            background: white;
+            border-radius: 16px;
+            width: 100%;
+            max-width: 700px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+            animation: slideUp 0.3s ease;
+        }
+
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .modal-header {
+            padding: 20px 24px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .modal-header h2 {
+            font-family: 'Bebas Neue', sans-serif;
+            font-size: 22px;
+            letter-spacing: 1px;
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            color: var(--text-muted);
+            padding: 4px;
+        }
+        .modal-close:hover { color: var(--text); }
+
+        .modal-body { padding: 24px; }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .form-group.full { grid-column: 1 / -1; }
+
+        .form-group label {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .form-group input,
+        .form-group textarea,
+        .form-group select {
+            padding: 10px 12px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            font-family: 'Barlow', sans-serif;
+            font-size: 15px;
+            transition: border-color 0.2s;
+        }
+
+        .form-group input:focus,
+        .form-group textarea:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: var(--green);
+            box-shadow: 0 0 0 3px rgba(22,163,74,0.1);
+        }
+
+        .form-group textarea { resize: vertical; min-height: 80px; }
+
+        .section-label {
+            font-family: 'Bebas Neue', sans-serif;
+            font-size: 16px;
+            letter-spacing: 1px;
+            color: var(--green-dark);
+            margin-top: 12px;
+            margin-bottom: 4px;
+            grid-column: 1 / -1;
+            border-top: 1px solid #e5e7eb;
+            padding-top: 16px;
+        }
+
+        .modal-footer {
+            padding: 16px 24px;
+            border-top: 1px solid var(--border);
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 60px;
+            color: var(--text-muted);
+            font-size: 16px;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px;
+            color: var(--text-muted);
+        }
+        .empty-state h3 { font-size: 20px; margin-bottom: 8px; color: var(--text); }
+
+        .toast {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            padding: 14px 24px;
+            border-radius: 10px;
+            color: white;
+            font-weight: 600;
+            z-index: 2000;
+            animation: slideIn 0.3s ease;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        }
+        .toast-success { background: var(--green); }
+        .toast-error { background: var(--red); }
+
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateX(30px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+
+        .tier-row {
+            display: grid;
+            grid-template-columns: auto 1fr 1fr 1fr;
+            gap: 10px;
+            align-items: end;
+            grid-column: 1 / -1;
+        }
+
+        .tier-label {
+            font-weight: 700;
+            font-size: 14px;
+            padding-bottom: 10px;
+            color: var(--green-dark);
+        }
+
+        .confirm-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 2000;
+            justify-content: center;
+            align-items: center;
+        }
+        .confirm-overlay.active { display: flex; }
+
+        .confirm-box {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            max-width: 400px;
+            text-align: center;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+        }
+        .confirm-box h3 { margin-bottom: 10px; }
+        .confirm-box p { color: var(--text-muted); margin-bottom: 20px; }
+        .confirm-actions { display: flex; gap: 10px; justify-content: center; }
+
+        @media (max-width: 600px) {
+            .form-grid { grid-template-columns: 1fr; }
+            .event-card { grid-template-columns: 1fr; }
+            .event-actions { justify-content: flex-end; }
+            .tier-row { grid-template-columns: 1fr 1fr; }
+            .tier-label { grid-column: 1 / -1; }
+            .header { flex-direction: column; gap: 12px; text-align: center; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="header">
+    <h1>📅 MANAGE EVENTS</h1>
+    <div class="header-actions">
+        <button class="btn btn-back" onclick="window.location.href='/index.html'">← Staff Portal</button>
+        <button class="btn btn-white" onclick="openModal()">+ New Event</button>
+    </div>
+</div>
+
+<div class="container">
+    <div class="toolbar">
+        <h2 id="eventCount">Events</h2>
+    </div>
+
+    <div id="loading" class="loading">Loading events...</div>
+    <div id="eventList" class="event-list" style="display:none;"></div>
+    <div id="emptyState" class="empty-state" style="display:none;">
+        <h3>No events yet</h3>
+        <p>Create your first event to get started.</p>
+        <button class="btn btn-primary" onclick="openModal()" style="margin-top:16px;">+ Create Event</button>
+    </div>
+</div>
+
+<!-- Create/Edit Modal -->
+<div class="modal-overlay" id="modalOverlay">
+    <div class="modal">
+        <div class="modal-header">
+            <h2 id="modalTitle">New Event</h2>
+            <button class="modal-close" onclick="closeModal()">✕</button>
+        </div>
+        <div class="modal-body">
+            <div class="form-grid">
+                <div class="form-group full">
+                    <label>Event Title</label>
+                    <input type="text" id="f_title" placeholder="e.g. Holmdale Pro Rodeo 2026">
+                </div>
+                <div class="form-group">
+                    <label>Date</label>
+                    <input type="date" id="f_date">
+                </div>
+                <div class="form-group">
+                    <label>Time</label>
+                    <input type="text" id="f_time" placeholder="e.g. 6:00 PM">
+                </div>
+                <div class="form-group">
+                    <label>Venue</label>
+                    <input type="text" id="f_venue" placeholder="e.g. Main Arena">
+                </div>
+                <div class="form-group">
+                    <label>Image URL</label>
+                    <input type="text" id="f_image_url" placeholder="https://...">
+                </div>
+                <div class="form-group full">
+                    <label>Description</label>
+                    <textarea id="f_description" placeholder="Event description..."></textarea>
+                </div>
+                <div class="form-group">
+                    <label>Featured?</label>
+                    <select id="f_is_featured">
+                        <option value="false">No</option>
+                        <option value="true">Yes</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>General Available</label>
+                    <input type="number" id="f_general_available" placeholder="1000">
+                </div>
+
+                <div class="section-label">TIER 1 PRICING</div>
+                <div class="tier-row">
+                    <div class="form-group">
+                        <label>Quantity</label>
+                        <input type="number" id="f_tier1_quantity" placeholder="500">
+                    </div>
+                    <div class="form-group">
+                        <label>Adult Price</label>
+                        <input type="number" step="0.01" id="f_tier1_adult_price" placeholder="30.00">
+                    </div>
+                    <div class="form-group">
+                        <label>Family Price</label>
+                        <input type="number" step="0.01" id="f_tier1_family_price" placeholder="70.00">
+                    </div>
+                </div>
+
+                <div class="section-label">TIER 2 PRICING</div>
+                <div class="tier-row">
+                    <div class="form-group">
+                        <label>Quantity</label>
+                        <input type="number" id="f_tier2_quantity" placeholder="300">
+                    </div>
+                    <div class="form-group">
+                        <label>Adult Price</label>
+                        <input type="number" step="0.01" id="f_tier2_adult_price" placeholder="35.00">
+                    </div>
+                    <div class="form-group">
+                        <label>Family Price</label>
+                        <input type="number" step="0.01" id="f_tier2_family_price" placeholder="80.00">
+                    </div>
+                </div>
+
+                <div class="section-label">TIER 3 PRICING</div>
+                <div class="tier-row">
+                    <div class="form-group">
+                        <label>Quantity</label>
+                        <input type="number" id="f_tier3_quantity" placeholder="200">
+                    </div>
+                    <div class="form-group">
+                        <label>Adult Price</label>
+                        <input type="number" step="0.01" id="f_tier3_adult_price" placeholder="40.00">
+                    </div>
+                    <div class="form-group">
+                        <label>Family Price</label>
+                        <input type="number" step="0.01" id="f_tier3_family_price" placeholder="90.00">
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-outline" onclick="closeModal()">Cancel</button>
+            <button class="btn btn-primary" id="saveBtn" onclick="saveEvent()">Save Event</button>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Confirmation -->
+<div class="confirm-overlay" id="confirmOverlay">
+    <div class="confirm-box">
+        <h3>Delete Event?</h3>
+        <p id="confirmText">Are you sure you want to delete this event? This cannot be undone.</p>
+        <div class="confirm-actions">
+            <button class="btn btn-outline" onclick="closeConfirm()">Cancel</button>
+            <button class="btn btn-danger" id="confirmDeleteBtn">Delete</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    const API = 'https://rodeo-fresh-production-7348.up.railway.app';
+    let events = [];
+    let editingId = null;
+
+    function getToken() {
+        return localStorage.getItem('auth_token');
+    }
+
+    // Auth check on load
+    (function() {
+        const token = getToken();
+        if (!token) {
+            window.location.href = 'login.html';
+            return;
+        }
+        try {
+            const payload = JSON.parse(atob(token.split('.')[1]));
+            const now = Math.floor(Date.now() / 1000);
+            if (payload.exp && payload.exp < now) {
+                localStorage.removeItem('auth_token');
+                window.location.href = 'login.html';
+                return;
+            }
+        } catch(e) {
+            localStorage.removeItem('auth_token');
+            window.location.href = 'login.html';
+            return;
+        }
+        loadEvents();
+    })();
+
+    function authHeaders() {
+        const token = getToken();
+        return {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+        };
+    }
+
+    async function loadEvents() {
+        try {
+            const res = await fetch(`${API}/api/events`, {
+                headers: authHeaders()
+            });
+            events = await res.json();
+            renderEvents();
+        } catch (err) {
+            console.error('Failed to load events:', err);
+            document.getElementById('loading').textContent = 'Failed to load events. Check your connection.';
+        }
+    }
+
+    function renderEvents() {
+        const loading = document.getElementById('loading');
+        const list = document.getElementById('eventList');
+        const empty = document.getElementById('emptyState');
+        const count = document.getElementById('eventCount');
+
+        loading.style.display = 'none';
+
+        if (!events || events.length === 0) {
+            list.style.display = 'none';
+            empty.style.display = 'block';
+            count.textContent = 'Events (0)';
+            return;
+        }
+
+        list.style.display = 'flex';
+        empty.style.display = 'none';
+        count.textContent = `Events (${events.length})`;
+
+        list.innerHTML = events.map(ev => {
+            const dateStr = ev.date ? new Date(ev.date).toLocaleDateString('en-CA', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' }) : 'No date';
+            const sold = ev.tickets_sold || 0;
+            const available = ev.general_available || 0;
+
+            return `
+                <div class="event-card">
+                    <div class="event-info">
+                        <h3>${escHtml(ev.title || 'Untitled Event')}</h3>
+                        <div class="event-meta">
+                            <span>📅 ${dateStr}</span>
+                            <span>🕐 ${escHtml(ev.time || 'TBD')}</span>
+                            <span>📍 ${escHtml(ev.venue || 'TBD')}</span>
+                            <span>🎟️ ${sold} sold / ${available} available</span>
+                        </div>
+                        <div style="margin-top:8px; display:flex; gap:6px;">
+                            ${ev.is_featured ? '<span class="badge badge-featured">⭐ Featured</span>' : ''}
+                            <span class="badge badge-active">Active</span>
+                        </div>
+                    </div>
+                    <div class="event-actions">
+                        <button class="btn btn-outline btn-sm" onclick="editEvent('${ev.id}')">✏️ Edit</button>
+                        <button class="btn btn-danger btn-sm" onclick="confirmDelete('${ev.id}', '${escHtml(ev.title || '')}')">🗑️</button>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    }
+
+    function openModal(id) {
+        editingId = id || null;
+        document.getElementById('modalTitle').textContent = id ? 'Edit Event' : 'New Event';
+        document.getElementById('saveBtn').textContent = id ? 'Update Event' : 'Save Event';
+
+        // Clear form
+        const fields = ['title','date','time','venue','image_url','description','is_featured','general_available',
+            'tier1_quantity','tier1_adult_price','tier1_family_price',
+            'tier2_quantity','tier2_adult_price','tier2_family_price',
+            'tier3_quantity','tier3_adult_price','tier3_family_price'];
+
+        fields.forEach(f => {
+            const el = document.getElementById('f_' + f);
+            if (el) el.value = '';
+        });
+
+        if (id) {
+            const ev = events.find(e => e.id === id);
+            if (ev) {
+                document.getElementById('f_title').value = ev.title || '';
+                document.getElementById('f_date').value = ev.date ? ev.date.substring(0, 10) : '';
+                document.getElementById('f_time').value = ev.time || '';
+                document.getElementById('f_venue').value = ev.venue || '';
+                document.getElementById('f_image_url').value = ev.image_url || '';
+                document.getElementById('f_description').value = ev.description || '';
+                document.getElementById('f_is_featured').value = ev.is_featured ? 'true' : 'false';
+                document.getElementById('f_general_available').value = ev.general_available || '';
+                document.getElementById('f_tier1_quantity').value = ev.tier1_quantity || '';
+                document.getElementById('f_tier1_adult_price').value = ev.tier1_adult_price || '';
+                document.getElementById('f_tier1_family_price').value = ev.tier1_family_price || '';
+                document.getElementById('f_tier2_quantity').value = ev.tier2_quantity || '';
+                document.getElementById('f_tier2_adult_price').value = ev.tier2_adult_price || '';
+                document.getElementById('f_tier2_family_price').value = ev.tier2_family_price || '';
+                document.getElementById('f_tier3_quantity').value = ev.tier3_quantity || '';
+                document.getElementById('f_tier3_adult_price').value = ev.tier3_adult_price || '';
+                document.getElementById('f_tier3_family_price').value = ev.tier3_family_price || '';
+            }
+        }
+
+        document.getElementById('modalOverlay').classList.add('active');
+    }
+
+    function closeModal() {
+        document.getElementById('modalOverlay').classList.remove('active');
+        editingId = null;
+    }
+
+    function editEvent(id) {
+        openModal(id);
+    }
+
+    async function saveEvent() {
+        const data = {
+            title: document.getElementById('f_title').value,
+            date: document.getElementById('f_date').value,
+            time: document.getElementById('f_time').value,
+            venue: document.getElementById('f_venue').value,
+            image_url: document.getElementById('f_image_url').value,
+            description: document.getElementById('f_description').value,
+            is_featured: document.getElementById('f_is_featured').value === 'true',
+            general_available: parseInt(document.getElementById('f_general_available').value) || 0,
+            general_price: parseFloat(document.getElementById('f_tier1_adult_price').value) || 0,
+            vip_price: 0,
+            vip_available: 0,
+            tier1_quantity: parseInt(document.getElementById('f_tier1_quantity').value) || 0,
+            tier1_adult_price: parseFloat(document.getElementById('f_tier1_adult_price').value) || 0,
+            tier1_family_price: parseFloat(document.getElementById('f_tier1_family_price').value) || 0,
+            tier2_quantity: parseInt(document.getElementById('f_tier2_quantity').value) || 0,
+            tier2_adult_price: parseFloat(document.getElementById('f_tier2_adult_price').value) || 0,
+            tier2_family_price: parseFloat(document.getElementById('f_tier2_family_price').value) || 0,
+            tier3_quantity: parseInt(document.getElementById('f_tier3_quantity').value) || 0,
+            tier3_adult_price: parseFloat(document.getElementById('f_tier3_adult_price').value) || 0,
+            tier3_family_price: parseFloat(document.getElementById('f_tier3_family_price').value) || 0,
+        };
+
+        if (!data.title) {
+            showToast('Please enter an event title', 'error');
+            return;
+        }
+
+        try {
+            const url = editingId ? `${API}/api/events/${editingId}` : `${API}/api/events`;
+            const method = editingId ? 'PUT' : 'POST';
+
+            const res = await fetch(url, {
+                method,
+                headers: authHeaders(),
+                body: JSON.stringify(data)
+            });
+
+            if (!res.ok) {
+                const err = await res.json();
+                throw new Error(err.error || 'Failed to save');
+            }
+
+            showToast(editingId ? 'Event updated!' : 'Event created!', 'success');
+            closeModal();
+            loadEvents();
+        } catch (err) {
+            console.error('Save error:', err);
+            showToast('Failed to save event: ' + err.message, 'error');
+        }
+    }
+
+    let deleteId = null;
+
+    function confirmDelete(id, title) {
+        deleteId = id;
+        document.getElementById('confirmText').textContent = `Are you sure you want to delete "${title}"? This cannot be undone.`;
+        document.getElementById('confirmOverlay').classList.add('active');
+        document.getElementById('confirmDeleteBtn').onclick = () => deleteEvent();
+    }
+
+    function closeConfirm() {
+        document.getElementById('confirmOverlay').classList.remove('active');
+        deleteId = null;
+    }
+
+    async function deleteEvent() {
+        if (!deleteId) return;
+
+        try {
+            const res = await fetch(`${API}/api/events/${deleteId}`, {
+                method: 'DELETE',
+                headers: authHeaders()
+            });
+
+            if (!res.ok) throw new Error('Failed to delete');
+
+            showToast('Event deleted', 'success');
+            closeConfirm();
+            loadEvents();
+        } catch (err) {
+            console.error('Delete error:', err);
+            showToast('Failed to delete event', 'error');
+            closeConfirm();
+        }
+    }
+
+    function showToast(msg, type) {
+        const toast = document.createElement('div');
+        toast.className = `toast toast-${type}`;
+        toast.textContent = msg;
+        document.body.appendChild(toast);
+        setTimeout(() => toast.remove(), 3000);
+    }
+
+    function escHtml(str) {
+        const div = document.createElement('div');
+        div.textContent = str;
+        return div.innerHTML;
+    }
+</script>
+</body>
+</html>
