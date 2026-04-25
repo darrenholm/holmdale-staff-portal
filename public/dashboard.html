@@ -64,36 +64,62 @@ let allOrders = [], allWristbands = [], kitchenOrders = [], merchSales = [];
 let currentDate = new Date();
 
 const EVENTS = {
-  '696bb85c206f7ac7afa994bc': { name: 'Saturday Rodeo',  date: 'Aug 1, 2026' },
-  '696bb80b79d792d4580e5de7': { name: 'Sunday Rodeo',    date: 'Aug 2, 2026' }
+  '696bb85c206f7ac7afa994bc': { name: 'Saturday Rodeo', date: 'Aug 1, 2026' },
+  '696bb80b79d792d4580e5de7': { name: 'Sunday Rodeo', date: 'Aug 2, 2026' }
 };
 const ADULT_PRICE = 30, CHILD_PRICE = 10, FAMILY_PRICE = 70, DRINK_PRICE = 7;
 
 window.onload = async function() {
   token = localStorage.getItem('auth_token');
-  if (!token) { window.location.href = 'login.html'; return; }
-  await loadData();
-  renderAll();
+  if (!token) { redirectToLogin(); return; }
+  const ok = await loadData();
+  if (ok) renderAll();
 };
+
+function redirectToLogin() {
+  localStorage.removeItem('auth_token');
+  window.location.href = 'index.html?expired=1';
+}
+
+// Fetch helper: handles auth failures and non-array responses safely
+async function fetchJson(url, headers, fallback) {
+  const res = await fetch(url, { headers });
+  if (res.status === 401 || res.status === 403) {
+    redirectToLogin();
+    throw new Error('auth');
+  }
+  if (!res.ok) {
+    console.error('Failed', url, res.status);
+    return fallback;
+  }
+  try {
+    return await res.json();
+  } catch {
+    return fallback;
+  }
+}
 
 async function loadData() {
   try {
     const headers = { 'Authorization': 'Bearer ' + token };
-    const [ordersR, wristbandsR, kitchenR, merchR] = await Promise.all([
-      fetch(API + '/ticket-orders', { headers }),
-      fetch(API + '/wristbands', { headers }),
-      fetch(API + '/kitchen/orders', { headers }),
-      fetch(API + '/merch/sales', { headers })
+    const [orders, wristbands, kitchen, merch] = await Promise.all([
+      fetchJson(API + '/ticket-orders',  headers, []),
+      fetchJson(API + '/wristbands',     headers, []),
+      fetchJson(API + '/kitchen/orders', headers, { orders: [] }),
+      fetchJson(API + '/merch/sales',    headers, { sales: [] })
     ]);
-    if (ordersR.status === 401) { window.location.href = 'login.html'; return; }
-    allOrders     = await ordersR.json();
-    allWristbands = await wristbandsR.json();
-    const kitchen = await kitchenR.json();
-    const merch   = await merchR.json();
+
+    // Defensive: ensure arrays even if API shape changes
+    allOrders     = Array.isArray(orders)     ? orders     : (orders.orders || []);
+    allWristbands = Array.isArray(wristbands) ? wristbands : (wristbands.wristbands || []);
     kitchenOrders = kitchen.orders || [];
-    merchSales    = merch.sales    || [];
-  } catch(err) {
-    document.getElementById('content').innerHTML = '<p style="color:#f56565">❌ Failed to load. Check connection.</p>';
+    merchSales    = merch.sales || [];
+    return true;
+  } catch (err) {
+    if (err.message === 'auth') return false; // already redirecting
+    document.getElementById('content').innerHTML =
+      '<p style="color:#f56565">❌ Failed to load. Check connection.</p>';
+    return false;
   }
 }
 
@@ -108,17 +134,16 @@ function calcRevenue(order) {
 
 function fmt$(n) { return '$' + n.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ','); }
 function fmtDate(d) { return d.toLocaleDateString('en-CA', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }); }
-
 function changeDay(d) { currentDate = new Date(currentDate); currentDate.setDate(currentDate.getDate() + d); renderAll(); }
-function goToday()    { currentDate = new Date(); renderAll(); }
+function goToday() { currentDate = new Date(); renderAll(); }
 
 function summarize(orders) {
   let adults = 0, children = 0, families = 0, people = 0, revenue = 0;
   orders.forEach(o => {
-    adults   += (o.quantity_adult  || 0);
-    children += (o.quantity_child  || 0);
+    adults   += (o.quantity_adult || 0);
+    children += (o.quantity_child || 0);
     families += (o.quantity_family || 0);
-    people   += (o.quantity_adult  || 0) + (o.quantity_child || 0) + (o.quantity_family || 0) * 4;
+    people   += (o.quantity_adult || 0) + (o.quantity_child || 0) + (o.quantity_family || 0) * 4;
     revenue  += calcRevenue(o);
   });
   return { count: orders.length, adults, children, families, people, revenue };
@@ -222,7 +247,7 @@ function renderAll() {
   html += '<table class="breakdown-table"><thead><tr><th>Type</th><th>Unit Price</th><th>Qty</th><th>Est. Revenue (incl. HST)</th></tr></thead><tbody>';
   const rows = [
     { type: 'Adult General', price: ADULT_PRICE, qty: allTime.adults },
-    { type: 'Child (5-12)',   price: CHILD_PRICE,  qty: allTime.children },
+    { type: 'Child (5-12)',  price: CHILD_PRICE, qty: allTime.children },
     { type: 'Family Pack',   price: FAMILY_PRICE, qty: allTime.families }
   ];
   rows.forEach(r => {
