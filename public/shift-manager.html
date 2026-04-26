@@ -261,13 +261,18 @@
         let allShifts = [];
         let editingShiftId = null;
 
+        function redirectToLogin() {
+            localStorage.removeItem('auth_token');
+            window.location.href = 'login.html?expired=1';
+        }
+
         window.onload = async function() {
             console.log('Shift manager starting...');
-            
+
             try {
                 token = localStorage.getItem('auth_token');
     if (!token) {
-        window.location.href = 'login.html';
+        redirectToLogin();
         return;
     }
                 console.log('Logged in');
@@ -285,14 +290,17 @@
                 const r = await fetch(API + '/shifts-manage', {
                     headers: {'Authorization': 'Bearer ' + token}
                 });
-                allShifts = await r.json();
+                if (r.status === 401 || r.status === 403) { redirectToLogin(); return; }
+                const raw = await r.json();
+                allShifts = Array.isArray(raw) ? raw : [];
                 console.log('Loaded', allShifts.length, 'shifts');
-                
+
                 // Load details for each shift
                 for (let shift of allShifts) {
                     const detailsR = await fetch(API + '/shifts-manage/' + shift.id, {
                         headers: {'Authorization': 'Bearer ' + token}
                     });
+                    if (detailsR.status === 401 || detailsR.status === 403) { redirectToLogin(); return; }
                     const details = await detailsR.json();
                     shift.assigned_staff = details.assigned_staff || [];
                 }
@@ -489,7 +497,8 @@
                         body: JSON.stringify(createData)
                     });
                 }
-                
+
+                if (r.status === 401 || r.status === 403) { redirectToLogin(); return; }
                 const d = await r.json();
                 
                 console.log('Save response:', r.status, d);
@@ -525,7 +534,9 @@
                     method: 'DELETE',
                     headers: {'Authorization': 'Bearer ' + token}
                 });
-                
+
+                if (r.status === 401 || r.status === 403) { redirectToLogin(); return; }
+
                 if (r.ok) {
                     showMessage('✅ Shift deleted', 'success');
                     await loadShifts();

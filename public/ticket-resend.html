@@ -184,10 +184,15 @@
         const API = 'https://rodeo-fresh-production-7348.up.railway.app/api';
         let token = '';
 
+        function redirectToLogin() {
+            localStorage.removeItem('auth_token');
+            window.location.href = 'login.html?expired=1';
+        }
+
         window.onload = function() {
             token = localStorage.getItem('auth_token');
             if (!token) {
-                window.location.href = 'login.html';
+                redirectToLogin();
                 return;
             }
 
@@ -216,12 +221,15 @@
                     body: JSON.stringify({ searchValue: searchValue, searchType: 'name' })
                 });
 
+                if (r.status === 401 || r.status === 403) { redirectToLogin(); return; }
+
                 if (!r.ok) {
                     throw new Error('Search failed: ' + r.status);
                 }
 
                 const data = await r.json();
-                const tickets = data.results || data || [];
+                const raw = data.results || data;
+                const tickets = Array.isArray(raw) ? raw : [];
                 renderResults(tickets, searchValue);
             } catch (err) {
                 console.error('Search error:', err);
@@ -286,6 +294,8 @@
                     },
                     body: JSON.stringify({ confirmation_code: confirmationCode })
                 });
+
+                if (r.status === 401 || r.status === 403) { redirectToLogin(); return; }
 
                 if (!r.ok) {
                     var errData = await r.json().catch(function() { return {}; });

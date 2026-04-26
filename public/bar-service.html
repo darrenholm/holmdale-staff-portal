@@ -207,9 +207,14 @@
             return bytes ? bytes.sort().join('') : cleaned;
         }
 
+        function redirectToLogin() {
+            localStorage.removeItem('auth_token');
+            window.location.href = 'login.html?expired=1';
+        }
+
         window.onload = async function() {
             token = localStorage.getItem('auth_token');
-            if (!token) { window.location.href = 'login.html'; return; }
+            if (!token) { redirectToLogin(); return; }
             await loadDrinks();
             await loadAllWristbands();
             loadServedCount();
@@ -229,7 +234,11 @@
         async function loadAllWristbands() {
             try {
                 const r = await fetch(API + '/wristbands', { headers: {'Authorization': 'Bearer ' + token} });
-                if (r.ok) allWristbands = await r.json();
+                if (r.status === 401 || r.status === 403) { redirectToLogin(); return; }
+                if (r.ok) {
+                    const raw = await r.json();
+                    allWristbands = Array.isArray(raw) ? raw : [];
+                }
             } catch(e) {}
         }
 
@@ -299,15 +308,21 @@
         async function loadDrinks() {
             try {
                 const r = await fetch(API + '/drinks', { headers: {'Authorization': 'Bearer ' + token} });
-                if (r.ok) drinks = await r.json();
+                if (r.status === 401 || r.status === 403) { redirectToLogin(); return; }
+                if (r.ok) {
+                    const raw = await r.json();
+                    drinks = Array.isArray(raw) ? raw : [];
+                }
             } catch(e) {}
         }
 
         async function loadServedCount() {
             try {
                 const r = await fetch(API + '/wristbands', { headers: {'Authorization': 'Bearer ' + token} });
+                if (r.status === 401 || r.status === 403) { redirectToLogin(); return; }
                 if (r.ok) {
-                    const bands = await r.json();
+                    const raw = await r.json();
+                    const bands = Array.isArray(raw) ? raw : [];
                     servedCount = Math.floor(bands.reduce((s,b) => s + (parseFloat(b.credits_spent)||0), 0) / 7);
                     updateCount();
                 }
@@ -334,6 +349,7 @@
                 const r = await fetch(API + '/wristbands/rfid/' + encodeURIComponent(uid), {
                     headers: {'Authorization': 'Bearer ' + token}
                 });
+                if (r.status === 401 || r.status === 403) { redirectToLogin(); return; }
                 if (!r.ok) { showMessage('❌ Wristband not found', 'error'); return; }
                 currentBand = await r.json();
                 currentStaff = null;
@@ -429,6 +445,7 @@
                     headers: {'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json'},
                     body: JSON.stringify({ rfid_uid: currentStaff.rfid_uid, drink_id: drink.id })
                 });
+                if (r.status === 401 || r.status === 403) { redirectToLogin(); return; }
                 const d = await r.json();
                 if (r.ok) {
                     currentStaff.drinks_remaining = d.drinks_remaining;
@@ -460,6 +477,7 @@
                     headers: {'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json'},
                     body: JSON.stringify({ rfid_uid: normalizeUid(currentBand.rfid_uid), drink_id: drink.id })
                 });
+                if (r.status === 401 || r.status === 403) { redirectToLogin(); return; }
                 const d = await r.json();
                 if (r.ok) {
                     currentBand.credits = d.new_balance;
@@ -482,9 +500,11 @@
                     method:'POST', headers:{'Authorization':'Bearer '+token,'Content-Type':'application/json'},
                     body:JSON.stringify({rfid_uid:normalizeUid(currentBand.rfid_uid)})
                 });
+                if (r.status === 401 || r.status === 403) { redirectToLogin(); return; }
                 const d = await r.json();
                 if (r.ok) {
                     const rr = await fetch(API+'/wristbands/rfid/'+normalizeUid(currentBand.rfid_uid),{headers:{'Authorization':'Bearer '+token}});
+                    if (rr.status === 401 || rr.status === 403) { redirectToLogin(); return; }
                     if (rr.ok) currentBand = await rr.json();
                     recentTransactions = recentTransactions.filter(t=>t.id!==transId);
                     servedCount=Math.max(0,servedCount-1); updateCount();

@@ -140,6 +140,11 @@
     window.location.href = 'index.html';
   }
 
+  // Session-expired notice when redirected here from a protected page
+  if (new URLSearchParams(location.search).has('expired')) {
+    showError('Your session expired. Please log in again.');
+  }
+
   document.addEventListener('keydown', function(e) {
     if (e.key === 'Enter') {
       if (document.getElementById('changePasswordForm').style.display !== 'none') {
