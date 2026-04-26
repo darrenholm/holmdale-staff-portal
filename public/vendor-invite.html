@@ -193,10 +193,15 @@
         var token = '';
         var sentEmails = [];
 
+        function redirectToLogin() {
+            localStorage.removeItem('auth_token');
+            window.location.href = 'login.html?expired=1';
+        }
+
         window.onload = function() {
             token = localStorage.getItem('auth_token');
             if (!token) {
-                window.location.href = 'login.html';
+                redirectToLogin();
                 return;
             }
             document.getElementById('vendorEmail').focus();
@@ -232,6 +237,8 @@
                         personal_message: message
                     })
                 });
+
+                if (r.status === 401 || r.status === 403) { redirectToLogin(); return; }
 
                 if (!r.ok) {
                     var errData = await r.json().catch(function() { return {}; });
