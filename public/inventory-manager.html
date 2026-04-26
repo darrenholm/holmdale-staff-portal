@@ -322,16 +322,18 @@
         let drinks = [];
         let currentDrink = null;
 
+        function redirectToLogin() {
+            localStorage.removeItem('auth_token');
+            window.location.href = 'login.html?expired=1';
+        }
+
         window.onload = async function() {
             console.log('Inventory Manager starting...');
             try {
                 token = localStorage.getItem('auth_token');
-    if (!token) {
-        window.location.href = 'login.html';
-        return;
-    }
+                if (!token) { redirectToLogin(); return; }
                 console.log('Logged in');
-                
+
                 await loadInventory();
             } catch(err) {
                 console.error('Login failed:', err);
@@ -345,15 +347,19 @@
                 const r = await fetch(API + '/drinks/admin/inventory', {
                     headers: {'Authorization': 'Bearer ' + token}
                 });
-                drinks = await r.json();
+                if (r.status === 401 || r.status === 403) { redirectToLogin(); return; }
+                const drinksRaw = await r.json();
+                drinks = Array.isArray(drinksRaw) ? drinksRaw : [];
                 console.log('Loaded', drinks.length, 'drinks');
-                
+
                 // Load wristbands to calculate tickets sold
                 const wristbandsRes = await fetch(API + '/wristbands', {
                     headers: {'Authorization': 'Bearer ' + token}
                 });
-                const wristbands = await wristbandsRes.json();
-                
+                if (wristbandsRes.status === 401 || wristbandsRes.status === 403) { redirectToLogin(); return; }
+                const wristbandsRaw = await wristbandsRes.json();
+                const wristbands = Array.isArray(wristbandsRaw) ? wristbandsRaw : [];
+
                 displayInventory();
                 updateStats(wristbands);
             } catch(err) {
@@ -467,6 +473,7 @@
                     body: JSON.stringify({ quantity: amount })
                 });
 
+                if (r.status === 401 || r.status === 403) { redirectToLogin(); return; }
                 const d = await r.json();
 
                 if (r.ok) {
@@ -512,6 +519,7 @@
                     body: JSON.stringify({ stock_quantity: amount })
                 });
 
+                if (r.status === 401 || r.status === 403) { redirectToLogin(); return; }
                 const d = await r.json();
 
                 if (r.ok) {
@@ -574,6 +582,7 @@
                     })
                 });
 
+                if (r.status === 401 || r.status === 403) { redirectToLogin(); return; }
                 const d = await r.json();
 
                 if (r.ok) {
@@ -602,6 +611,7 @@
                     }
                 });
 
+                if (r.status === 401 || r.status === 403) { redirectToLogin(); return; }
                 const d = await r.json();
 
                 if (r.ok) {

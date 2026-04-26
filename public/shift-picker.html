@@ -250,13 +250,18 @@
         let allShifts = [];
         let myAssignments = [];
 
+        function redirectToLogin() {
+            localStorage.removeItem('auth_token');
+            window.location.href = 'login.html?expired=1';
+        }
+
         window.onload = async function() {
             console.log('Shift picker starting...');
-            
+
             try {
                 token = localStorage.getItem('auth_token');
     if (!token) {
-        window.location.href = 'login.html';
+        redirectToLogin();
         return;
     }
                 console.log('Logged in');
@@ -276,10 +281,14 @@
                 const r = await fetch(API + '/staff', {
                     headers: {'Authorization': 'Bearer ' + token}
                 });
-                const staff = await r.json();
-                
+                if (r.status === 401 || r.status === 403) { redirectToLogin(); return; }
+                const raw = await r.json();
+                const staff = Array.isArray(raw) ? raw : [];
+
                 currentStaff = staff.find(s => s.email === 'darren@holmgraphics.ca') || staff[0];
-                document.getElementById('staffName').textContent = currentStaff.fullname;
+                if (currentStaff) {
+                    document.getElementById('staffName').textContent = currentStaff.fullname;
+                }
                 
             } catch(err) {
                 console.error('Error loading staff info:', err);
@@ -291,14 +300,17 @@
                 const r = await fetch(API + '/shifts-manage', {
                     headers: {'Authorization': 'Bearer ' + token}
                 });
-                allShifts = await r.json();
+                if (r.status === 401 || r.status === 403) { redirectToLogin(); return; }
+                const raw = await r.json();
+                allShifts = Array.isArray(raw) ? raw : [];
                 console.log('Loaded', allShifts.length, 'shifts');
-                
+
                 // Load details for each shift
                 for (let shift of allShifts) {
                     const detailsR = await fetch(API + '/shifts-manage/' + shift.id, {
                         headers: {'Authorization': 'Bearer ' + token}
                     });
+                    if (detailsR.status === 401 || detailsR.status === 403) { redirectToLogin(); return; }
                     const details = await detailsR.json();
                     shift.assigned_staff = details.assigned_staff || [];
                 }
@@ -313,14 +325,17 @@
 
         async function loadMyShifts() {
             try {
+                if (!currentStaff) return;
                 const r = await fetch(API + `/shifts-manage/staff/${currentStaff.id}`, {
                     headers: {'Authorization': 'Bearer ' + token}
                 });
-                myAssignments = await r.json();
-                
+                if (r.status === 401 || r.status === 403) { redirectToLogin(); return; }
+                const raw = await r.json();
+                myAssignments = Array.isArray(raw) ? raw : [];
+
                 document.getElementById('myShiftCount').textContent = myAssignments.length;
                 displayMyShifts();
-                
+
             } catch(err) {
                 console.error('Error loading my shifts:', err);
             }
@@ -546,7 +561,8 @@
                         staff_name: currentStaff.fullname
                     })
                 });
-                
+
+                if (r.status === 401 || r.status === 403) { redirectToLogin(); return; }
                 const d = await r.json();
                 
                 if (r.ok) {
@@ -571,7 +587,8 @@
                     method: 'DELETE',
                     headers: {'Authorization': 'Bearer ' + token}
                 });
-                
+
+                if (r.status === 401 || r.status === 403) { redirectToLogin(); return; }
                 const d = await r.json();
                 
                 if (r.ok) {

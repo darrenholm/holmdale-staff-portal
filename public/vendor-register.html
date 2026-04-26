@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Vendor Registration - Holmdale Pro Rodeo</title>
+    <script src="https://gateway.moneris.com/chkt/js/chkt_v1.00.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
@@ -70,10 +71,7 @@
             gap: 10px;
             margin-bottom: 15px;
         }
-        .radio-option {
-            position: relative;
-            cursor: pointer;
-        }
+        .radio-option { position: relative; cursor: pointer; }
         .radio-option input { position: absolute; opacity: 0; }
         .radio-option .radio-label {
             display: block;
@@ -104,10 +102,7 @@
             gap: 10px;
             margin-bottom: 15px;
         }
-        .booth-option {
-            position: relative;
-            cursor: pointer;
-        }
+        .booth-option { position: relative; cursor: pointer; }
         .booth-option input { position: absolute; opacity: 0; }
         .booth-option .booth-label {
             display: block;
@@ -136,10 +131,7 @@
             gap: 10px;
             margin-bottom: 10px;
         }
-        .payment-toggle label {
-            position: relative;
-            cursor: pointer;
-        }
+        .payment-toggle label { position: relative; cursor: pointer; }
         .payment-toggle input { position: absolute; opacity: 0; }
         .payment-toggle .pay-label {
             display: block;
@@ -157,12 +149,18 @@
             background: #f0fdf4;
             color: #166534;
         }
-        .payment-note {
-            font-size: 13px;
-            color: #78716c;
-            text-align: center;
-            margin-top: 8px;
+        .payment-note { font-size: 13px; color: #78716c; text-align: center; margin-top: 8px; }
+        .order-summary {
+            background: #f0fdf4;
+            border: 2px solid #00B74A;
+            border-radius: 12px;
+            padding: 16px 20px;
+            margin: 16px 0;
+            display: none;
         }
+        .order-summary h4 { color: #166534; font-size: 15px; margin-bottom: 8px; }
+        .order-row { display: flex; justify-content: space-between; font-size: 14px; color: #44403c; padding: 3px 0; }
+        .order-row.total { font-weight: bold; font-size: 16px; color: #166534; border-top: 1px solid #bbf7d0; padding-top: 8px; margin-top: 4px; }
         .submit-btn {
             width: 100%;
             padding: 16px;
@@ -180,27 +178,17 @@
         .submit-btn:disabled { background: #a0aec0; cursor: not-allowed; }
         .spinner {
             display: inline-block;
-            width: 20px;
-            height: 20px;
+            width: 20px; height: 20px;
             border: 3px solid rgba(255,255,255,0.3);
             border-radius: 50%;
             border-top-color: white;
             animation: spin 0.8s linear infinite;
         }
         @keyframes spin { to { transform: rotate(360deg); } }
-        .alert {
-            padding: 15px;
-            border-radius: 10px;
-            margin-bottom: 20px;
-            font-weight: 500;
-            font-size: 14px;
-        }
+        .alert { padding: 15px; border-radius: 10px; margin-bottom: 20px; font-weight: 500; font-size: 14px; }
         .alert-error { background: #fed7d7; color: #742a2a; border-left: 4px solid #f56565; }
         .alert-success { background: #c6f6d5; color: #22543d; border-left: 4px solid #48bb78; }
-        .success-screen {
-            text-align: center;
-            padding: 40px 20px;
-        }
+        .success-screen { text-align: center; padding: 40px 20px; }
         .success-screen .icon { font-size: 64px; margin-bottom: 20px; }
         .success-screen h2 { color: #1c1917; font-size: 24px; margin-bottom: 10px; }
         .success-screen p { color: #44403c; font-size: 16px; line-height: 1.6; }
@@ -213,12 +201,17 @@
             text-align: center;
         }
         .event-info strong { color: #166534; }
-        .footer {
-            text-align: center;
-            padding: 20px;
-            color: #78716c;
-            font-size: 13px;
+        .footer { text-align: center; padding: 20px; color: #78716c; font-size: 13px; }
+        #monerisCheckoutContainer { display: none; }
+        #monerisCheckoutContainer .checkout-header {
+            background: #1c1917;
+            color: #facc15;
+            padding: 16px 20px;
+            border-radius: 12px 12px 0 0;
+            font-size: 18px;
+            font-weight: bold;
         }
+        #monerisCheckout { min-height: 400px; }
         @media (max-width: 600px) {
             .form-row { grid-template-columns: 1fr; }
             .radio-group { grid-template-columns: 1fr; }
@@ -311,7 +304,7 @@
                 <div class="section-title">Booth Selection</div>
                 <div class="booth-options">
                     <label class="booth-option">
-                        <input type="radio" name="boothSize" value="10x10">
+                        <input type="radio" name="boothSize" value="10x10" data-price="300" data-label="10 x 10 Booth">
                         <span class="booth-label">
                             <div class="booth-icon">🏕️</div>
                             <div class="booth-name">10 x 10</div>
@@ -319,7 +312,7 @@
                         </span>
                     </label>
                     <label class="booth-option">
-                        <input type="radio" name="boothSize" value="10x20">
+                        <input type="radio" name="boothSize" value="10x20" data-price="500" data-label="10 x 20 Booth">
                         <span class="booth-label">
                             <div class="booth-icon">🎪</div>
                             <div class="booth-name">10 x 20</div>
@@ -327,7 +320,7 @@
                         </span>
                     </label>
                     <label class="booth-option">
-                        <input type="radio" name="boothSize" value="food_vendor">
+                        <input type="radio" name="boothSize" value="food_vendor" data-price="700" data-label="Food Vendor Spot">
                         <span class="booth-label">
                             <div class="booth-icon">🍔</div>
                             <div class="booth-name">Food Vendor Spot</div>
@@ -335,7 +328,7 @@
                         </span>
                     </label>
                     <label class="booth-option">
-                        <input type="radio" name="boothSize" value="custom">
+                        <input type="radio" name="boothSize" value="custom" data-price="0" data-label="Custom / Contact Us">
                         <span class="booth-label">
                             <div class="booth-icon">📐</div>
                             <div class="booth-name">Custom / Contact Us</div>
@@ -373,16 +366,30 @@
                     <div class="payment-note" id="paymentNote">You'll receive an invoice by email after registration.</div>
                 </div>
 
+                <!-- Order Summary (shown when Pay Now selected and booth chosen) -->
+                <div class="order-summary" id="orderSummary">
+                    <h4>💳 Order Summary</h4>
+                    <div class="order-row"><span id="summaryBoothLabel">Booth</span><span id="summaryBoothPrice">$0.00</span></div>
+                    <div class="order-row"><span>HST (13%)</span><span id="summaryHST">$0.00</span></div>
+                    <div class="order-row total"><span>Total</span><span id="summaryTotal">$0.00</span></div>
+                </div>
+
                 <button class="submit-btn" id="submitBtn" onclick="handleSubmit()">Submit Registration</button>
+            </div>
+
+            <!-- Moneris Checkout Container -->
+            <div id="monerisCheckoutContainer">
+                <div class="checkout-header">💳 Secure Payment — Holmdale Pro Rodeo</div>
+                <div id="monerisCheckout"></div>
             </div>
 
             <div id="successScreen" style="display:none;">
                 <div class="success-screen">
                     <div class="icon">✅</div>
-                    <h2>Registration Complete!</h2>
+                    <h2 id="successTitle">Registration Complete!</h2>
                     <p>Thank you for registering as a vendor for the Holmdale Pro Rodeo.</p>
                     <p>A confirmation email has been sent to <strong id="confirmEmail"></strong>.</p>
-                    <p style="margin-top:20px;color:#78716c;">Our team will be in touch shortly with booth assignment details and next steps.</p>
+                    <p style="margin-top:20px;color:#78716c;" id="successNote">Our team will be in touch shortly with booth assignment details and next steps.</p>
                 </div>
             </div>
         </div>
@@ -395,18 +402,62 @@
 
     <script>
         const API = 'https://rodeo-fresh-production-7348.up.railway.app/api';
+        let monerisCheckoutRef = null;
+        let currentVendorId = null;
+        let currentConfirmationCode = null;
 
-        // Update payment note when toggling
+        const BOOTH_PRICES = {
+            '10x10': 300,
+            '10x20': 500,
+            'food_vendor': 700,
+            'custom': 0
+        };
+
+        const BOOTH_LABELS = {
+            '10x10': '10 x 10 Booth',
+            '10x20': '10 x 20 Booth',
+            'food_vendor': 'Food Vendor Spot',
+            'custom': 'Custom / Contact Us'
+        };
+
+        // Update payment note and order summary
         document.querySelectorAll('input[name="paymentMethod"]').forEach(function(radio) {
             radio.addEventListener('change', function() {
                 var note = document.getElementById('paymentNote');
                 if (this.value === 'pay_now') {
-                    note.textContent = 'You\'ll be redirected to our secure payment page after submitting.';
+                    note.textContent = "You'll be charged the booth fee by credit card after submitting.";
+                    updateOrderSummary();
                 } else {
-                    note.textContent = 'You\'ll receive an invoice by email after registration.';
+                    note.textContent = "You'll receive an invoice by email after registration.";
+                    document.getElementById('orderSummary').style.display = 'none';
                 }
             });
         });
+
+        document.querySelectorAll('input[name="boothSize"]').forEach(function(radio) {
+            radio.addEventListener('change', function() {
+                var payMethod = document.querySelector('input[name="paymentMethod"]:checked');
+                if (payMethod && payMethod.value === 'pay_now') {
+                    updateOrderSummary();
+                }
+            });
+        });
+
+        function updateOrderSummary() {
+            var boothRadio = document.querySelector('input[name="boothSize"]:checked');
+            if (!boothRadio || boothRadio.value === 'custom') {
+                document.getElementById('orderSummary').style.display = 'none';
+                return;
+            }
+            var price = BOOTH_PRICES[boothRadio.value] || 0;
+            var hst = price * 0.13;
+            var total = price + hst;
+            document.getElementById('summaryBoothLabel').textContent = BOOTH_LABELS[boothRadio.value];
+            document.getElementById('summaryBoothPrice').textContent = '$' + price.toFixed(2);
+            document.getElementById('summaryHST').textContent = '$' + hst.toFixed(2);
+            document.getElementById('summaryTotal').textContent = '$' + total.toFixed(2);
+            document.getElementById('orderSummary').style.display = 'block';
+        }
 
         async function handleSubmit() {
             var btn = document.getElementById('submitBtn');
@@ -441,15 +492,21 @@
                 btn.textContent = 'Submit Registration';
                 return;
             }
-
             if (!email.includes('@')) {
                 showMessage('Please enter a valid email address.', 'error');
                 btn.disabled = false;
                 btn.textContent = 'Submit Registration';
                 return;
             }
+            if (paymentMethod === 'pay_now' && (!boothSize || boothSize === 'custom')) {
+                showMessage('Please select a booth size with a set price to pay now (Custom booths require an invoice).', 'error');
+                btn.disabled = false;
+                btn.textContent = 'Submit Registration';
+                return;
+            }
 
             try {
+                // Register the vendor first
                 var r = await fetch(API + '/vendors/register', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -469,17 +526,84 @@
                 });
 
                 var data = await r.json();
+                if (!r.ok) throw new Error(data.error || 'Registration failed');
 
-                if (!r.ok) {
-                    throw new Error(data.error || 'Registration failed');
-                }
+                currentVendorId = data.vendor?.id || data.id;
+                currentConfirmationCode = data.confirmation_code;
 
-                // If pay now, redirect to Moneris (future feature)
                 if (paymentMethod === 'pay_now') {
-                    // For now, just show success — Moneris integration can be added when pricing is set
-                    showSuccess(email);
+                    // Get booth price and create Moneris checkout
+                    var price = BOOTH_PRICES[boothSize];
+                    var hst = price * 0.13;
+                    var total = (price + hst).toFixed(2);
+
+                    var checkoutResp = await fetch(API + '/moneris/vendor-checkout', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            vendor_id: currentVendorId,
+                            confirmation_code: currentConfirmationCode,
+                            amount: total,
+                            booth_size: boothSize,
+                            business_name: businessName,
+                            email: email,
+                            contact_name: contactName
+                        })
+                    });
+
+                    var checkoutData = await checkoutResp.json();
+                    if (!checkoutResp.ok) throw new Error(checkoutData.error || 'Failed to create payment session');
+
+                    // Show Moneris checkout
+                    document.getElementById('registrationForm').style.display = 'none';
+                    document.getElementById('monerisCheckoutContainer').style.display = 'block';
+
+                    monerisCheckoutRef = new window.monerisCheckout();
+                    monerisCheckoutRef.setMode('prod');
+                    monerisCheckoutRef.setCheckoutDiv('monerisCheckout');
+
+                    monerisCheckoutRef.setCallback('cancel_transaction', function() {
+                        monerisCheckoutRef = null;
+                        document.getElementById('monerisCheckoutContainer').style.display = 'none';
+                        document.getElementById('registrationForm').style.display = 'block';
+                        btn.disabled = false;
+                        btn.textContent = 'Submit Registration';
+                        showMessage('Payment cancelled. Your registration was saved — you can pay later via invoice.', 'error');
+                    });
+
+                    monerisCheckoutRef.setCallback('error_event', function(err) {
+                        console.error('Moneris error:', err);
+                        monerisCheckoutRef = null;
+                        document.getElementById('monerisCheckoutContainer').style.display = 'none';
+                        document.getElementById('registrationForm').style.display = 'block';
+                        btn.disabled = false;
+                        btn.textContent = 'Submit Registration';
+                        showMessage('Payment error. Your registration was saved — please contact us to arrange payment.', 'error');
+                    });
+
+                    monerisCheckoutRef.setCallback('payment_complete', async function(result) {
+                        console.log('Payment complete:', result);
+                        try {
+                            await fetch(API + '/moneris/vendor-confirm', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({
+                                    confirmation_code: currentConfirmationCode,
+                                    vendor_id: currentVendorId
+                                })
+                            });
+                        } catch(e) {
+                            console.error('Confirm error:', e);
+                        }
+                        monerisCheckoutRef = null;
+                        document.getElementById('monerisCheckoutContainer').style.display = 'none';
+                        showSuccess(email, true);
+                    });
+
+                    monerisCheckoutRef.startCheckout(checkoutData.ticket);
+
                 } else {
-                    showSuccess(email);
+                    showSuccess(email, false);
                 }
 
             } catch (err) {
@@ -490,17 +614,25 @@
             }
         }
 
-        function showSuccess(email) {
+        function showSuccess(email, paid) {
             document.getElementById('registrationForm').style.display = 'none';
+            document.getElementById('monerisCheckoutContainer').style.display = 'none';
             document.getElementById('successScreen').style.display = 'block';
             document.getElementById('confirmEmail').textContent = email;
+            if (paid) {
+                document.getElementById('successTitle').textContent = 'Registration & Payment Complete!';
+                document.getElementById('successNote').textContent = 'Your booth fee has been paid. Our team will be in touch with booth assignment details.';
+            } else {
+                document.getElementById('successTitle').textContent = 'Registration Complete!';
+                document.getElementById('successNote').textContent = 'Our team will be in touch shortly with booth assignment details and invoice.';
+            }
         }
 
         function showMessage(msg, type) {
             var container = document.getElementById('alertContainer');
             container.innerHTML = '<div class="alert alert-' + type + '">' + msg + '</div>';
             container.scrollIntoView({ behavior: 'smooth' });
-            setTimeout(function() { container.innerHTML = ''; }, 5000);
+            setTimeout(function() { container.innerHTML = ''; }, 6000);
         }
     </script>
 </body>

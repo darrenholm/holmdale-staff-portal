@@ -235,10 +235,15 @@
     </div>
 
     <script>
+        function redirectToLogin() {
+            localStorage.removeItem('auth_token');
+            window.location.href = 'login.html?expired=1';
+        }
+
         (function() {
          var token = localStorage.getItem('auth_token');
     if (!token) {
-        window.location.href = 'login.html';
+        redirectToLogin();
         return;
     }
 

@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=480, initial-scale=1.0, user-scalable=no, maximum-scale=1.0, minimum-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0, minimum-scale=1.0">
 <meta name="mobile-web-app-capable" content="yes">
 <title>Balance Checker</title>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Barlow+Condensed:wght@400;700;900&display=swap" rel="stylesheet">
@@ -24,7 +24,8 @@
   * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
 
   html, body {
-    width: 480px; height: 480px;
+    width: 100vw;
+    height: 100vh;
     overflow: hidden;
     background: var(--bg);
     color: var(--text);
@@ -44,114 +45,99 @@
   /* HEADER */
   .hdr {
     position: relative; z-index: 10;
-    width: 100%; height: 44px;
+    width: 100%; height: 60px;
     background: linear-gradient(90deg, #111008, #1a1408);
     border-bottom: 2px solid var(--gold);
     display: flex; align-items: center;
-    padding: 0 14px; gap: 10px;
+    padding: 0 20px; gap: 12px;
   }
   .hdr-title {
     font-family: 'Bebas Neue', sans-serif;
-    font-size: 20px; letter-spacing: 2px;
+    font-size: 28px; letter-spacing: 2px;
     color: var(--gold2); flex: 1;
   }
-  .hdr-badge { font-size: 10px; font-weight: 700; letter-spacing: 1.5px; color: var(--dim); }
+  .hdr-badge { font-size: 13px; font-weight: 700; letter-spacing: 1.5px; color: var(--dim); }
   .nfc-dot {
-    width: 8px; height: 8px; border-radius: 50%;
+    width: 12px; height: 12px; border-radius: 50%;
     background: var(--border); flex-shrink: 0;
     transition: background 0.3s, box-shadow 0.3s;
   }
-  .nfc-dot.on { background: var(--green); box-shadow: 0 0 6px var(--green); }
+  .nfc-dot.on { background: var(--green); box-shadow: 0 0 8px var(--green); }
 
   /* SCREENS */
-  .screen { display: none; position: relative; z-index: 5; width: 100%; height: 436px; }
+  .screen { display: none; position: relative; z-index: 5; width: 100%; height: calc(100vh - 60px); }
   .screen.active { display: flex; }
 
   /* TAP SCREEN */
   #sTap { flex-direction: column; align-items: center; justify-content: center; gap: 0; }
   .tap-ring {
-    width: 110px; height: 110px; border-radius: 50%;
-    border: 2px solid var(--gold);
+    width: 180px; height: 180px; border-radius: 50%;
+    border: 3px solid var(--gold);
     background: radial-gradient(circle at 40% 35%, rgba(212,160,23,0.22) 0%, rgba(212,160,23,0.04) 65%, transparent 100%);
     display: flex; align-items: center; justify-content: center;
-    font-size: 52px; margin-bottom: 18px;
+    font-size: 80px; margin-bottom: 28px;
     animation: pulse 2.8s ease-in-out infinite;
   }
   @keyframes pulse {
     0%,100% { transform: scale(1);    box-shadow: 0 0 0 0 rgba(212,160,23,0.25); }
-    50%      { transform: scale(1.06); box-shadow: 0 0 28px 8px rgba(212,160,23,0.12); }
+    50%      { transform: scale(1.06); box-shadow: 0 0 40px 12px rgba(212,160,23,0.12); }
   }
   .tap-title {
     font-family: 'Bebas Neue', sans-serif;
-    font-size: 38px; letter-spacing: 3px; color: var(--gold2);
-    text-align: center; line-height: 1; margin-bottom: 8px;
+    font-size: 56px; letter-spacing: 4px; color: var(--gold2);
+    text-align: center; line-height: 1; margin-bottom: 12px;
   }
-  .tap-sub { font-size: 14px; color: var(--dim); text-align: center; line-height: 1.4; max-width: 280px; margin-bottom: 16px; }
-  .divider { width: 60px; height: 1px; background: var(--border); margin-bottom: 14px; }
-  .manual-row { display: flex; gap: 8px; width: 320px; }
-  .manual-input {
-    flex: 1; padding: 10px 14px; border-radius: 8px;
-    border: 1.5px solid var(--border); background: var(--surface);
-    color: var(--text); font-size: 15px;
-    font-family: 'Barlow Condensed', sans-serif; letter-spacing: 1px;
-  }
-  .manual-input:focus { outline: none; border-color: var(--gold); }
-  .manual-btn {
-    padding: 10px 20px; border-radius: 8px; border: none;
-    background: var(--gold); color: #100d06;
-    font-family: 'Bebas Neue', sans-serif; font-size: 18px; letter-spacing: 1px;
-    cursor: pointer; flex-shrink: 0;
-  }
-  .manual-btn:active { opacity: 0.75; }
+  .tap-sub { font-size: 20px; color: var(--dim); text-align: center; line-height: 1.4; max-width: 420px; margin-bottom: 24px; }
+
 
   /* LOADING */
-  #sLoading { flex-direction: column; align-items: center; justify-content: center; gap: 16px; }
+  #sLoading { flex-direction: column; align-items: center; justify-content: center; gap: 24px; }
   .spinner {
-    width: 44px; height: 44px; border: 3px solid var(--border);
-    border-top: 3px solid var(--gold); border-radius: 50%;
+    width: 64px; height: 64px; border: 4px solid var(--border);
+    border-top: 4px solid var(--gold); border-radius: 50%;
     animation: spin 0.75s linear infinite;
   }
   @keyframes spin { to { transform: rotate(360deg); } }
-  .load-text { font-size: 16px; color: var(--dim); letter-spacing: 1px; }
+  .load-text { font-size: 22px; color: var(--dim); letter-spacing: 2px; }
 
   /* BALANCE */
-  #sBalance { flex-direction: column; padding: 18px 28px 14px; }
-  .bal-top { display: flex; align-items: flex-end; margin-bottom: 4px; }
+  #sBalance { flex-direction: column; padding: 32px 48px 24px; justify-content: center; }
+  .bal-top { display: flex; align-items: flex-end; margin-bottom: 8px; }
   .bal-big {
     font-family: 'Bebas Neue', sans-serif;
-    font-size: 120px; line-height: 1; transition: color 0.3s;
+    font-size: 200px; line-height: 1; transition: color 0.3s;
   }
   .bal-unit {
-    font-family: 'Bebas Neue', sans-serif; font-size: 22px; letter-spacing: 1.5px;
-    color: var(--gold); padding-bottom: 18px; padding-left: 8px;
+    font-family: 'Bebas Neue', sans-serif; font-size: 32px; letter-spacing: 1.5px;
+    color: var(--gold); padding-bottom: 28px; padding-left: 12px;
   }
   .bal-name {
-    font-size: 22px; font-weight: 700; letter-spacing: 0.5px; color: var(--text);
-    margin-bottom: 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    font-size: 32px; font-weight: 700; letter-spacing: 0.5px; color: var(--text);
+    margin-bottom: 16px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   }
-  .bal-stats { display: flex; gap: 24px; margin-bottom: 10px; }
-  .stat-val { font-family: 'Bebas Neue', sans-serif; font-size: 30px; line-height: 1; }
-  .stat-label { font-size: 11px; color: var(--dim); text-transform: uppercase; letter-spacing: 1.5px; }
-  .progress-wrap { width: 100%; height: 5px; background: var(--border); border-radius: 3px; overflow: hidden; margin-bottom: 12px; }
-  .progress-bar { height: 100%; border-radius: 3px; background: linear-gradient(90deg, var(--gold), var(--gold2)); transition: width 0.5s ease; }
+  .bal-stats { display: flex; gap: 40px; margin-bottom: 16px; }
+  .stat-val { font-family: 'Bebas Neue', sans-serif; font-size: 48px; line-height: 1; }
+  .stat-label { font-size: 14px; color: var(--dim); text-transform: uppercase; letter-spacing: 2px; }
+  .progress-wrap { width: 100%; height: 8px; background: var(--border); border-radius: 4px; overflow: hidden; margin-bottom: 18px; }
+  .progress-bar { height: 100%; border-radius: 4px; background: linear-gradient(90deg, var(--gold), var(--gold2)); transition: width 0.5s ease; }
   .age-badge {
-    display: inline-flex; align-items: center; gap: 6px;
-    padding: 5px 14px; border-radius: 20px;
-    font-size: 13px; font-weight: 700; letter-spacing: 1.5px; margin-bottom: 10px;
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 8px 20px; border-radius: 24px;
+    font-size: 18px; font-weight: 700; letter-spacing: 2px; margin-bottom: 16px;
   }
   .over19 { background: rgba(43,181,99,0.12); color: var(--green2); border: 1px solid rgba(43,181,99,0.4); }
   .under19 { background: rgba(224,48,48,0.10); color: var(--red); border: 1px solid rgba(224,48,48,0.35); }
-  .countdown { font-size: 13px; color: var(--dim); letter-spacing: 0.5px; }
+  .countdown { font-size: 18px; color: var(--dim); letter-spacing: 1px; }
 
   /* NOT FOUND / ERROR */
   #sNotFound, #sError {
     flex-direction: column; align-items: center; justify-content: center;
-    gap: 10px; padding: 30px; text-align: center;
+    gap: 16px; padding: 48px; text-align: center;
   }
-  .state-icon { font-size: 56px; }
-  .state-title { font-family: 'Bebas Neue', sans-serif; font-size: 38px; letter-spacing: 2px; line-height: 1; }
-  .state-sub { font-size: 15px; color: var(--dim); line-height: 1.5; max-width: 300px; }
-  .state-cd { font-size: 13px; color: var(--border); margin-top: 6px; }
+  .state-icon { font-size: 90px; }
+  .state-title { font-family: 'Bebas Neue', sans-serif; font-size: 56px; letter-spacing: 3px; line-height: 1; }
+  .state-sub { font-size: 22px; color: var(--dim); line-height: 1.5; max-width: 480px; }
+  .state-cd { font-size: 18px; color: var(--border); margin-top: 10px; }
 </style>
 </head>
 <body>
@@ -167,13 +153,7 @@
   <div class="tap-ring">🍺</div>
   <div class="tap-title">TAP WRISTBAND</div>
   <div class="tap-sub">Hold your wristband to the reader to check your drink ticket balance</div>
-  <div class="divider"></div>
-  <div class="manual-row">
-    <input type="text" class="manual-input" id="manualId"
-      placeholder="Enter wristband ID"
-      autocomplete="off" autocorrect="off" autocapitalize="characters">
-    <button class="manual-btn" onclick="manualLookup()">GO</button>
-  </div>
+
 </div>
 
 <!-- LOADING -->
@@ -224,7 +204,6 @@
 const API = 'https://rodeo-fresh-production-7348.up.railway.app/api';
 let timer = null;
 
-// Kiosk lock
 history.pushState(null,'',location.href);
 window.addEventListener('popstate',()=>history.pushState(null,'',location.href));
 document.addEventListener('contextmenu',e=>e.preventDefault());
@@ -236,8 +215,14 @@ function show(id) {
 }
 function nfcOn() { document.getElementById('nfcDot').classList.add('on'); }
 
+function normalizeUid(uid) {
+  const cleaned = (uid||'').replace(/[^a-fA-F0-9]/g,'').toUpperCase();
+  const bytes = cleaned.match(/.{2}/g);
+  return bytes ? bytes.sort().join('') : cleaned;
+}
+
 async function lookup(uid) {
-  uid = (uid||'').replace(/[^a-fA-F0-9]/g,'').toUpperCase();
+  uid = normalizeUid(uid);
   if (!uid || uid.length < 4) return;
   if (timer) clearTimeout(timer);
   nfcOn();
@@ -254,13 +239,6 @@ async function lookup(uid) {
         showBal(d.find(w=>(w.rfid_uid||'').toUpperCase()===uid) || d[0]); return;
       }
     }
-
-    r = await fetch(API + '/bar-credits?rfid_tag_id=' + encodeURIComponent(uid));
-    if (r.ok) {
-      const d = await r.json();
-      if (Array.isArray(d) && d.length > 0) { showBal(d[0]); return; }
-    }
-
     showNotFound();
   } catch(e) {
     document.getElementById('errMsg').textContent = e.message || 'Could not reach the server.';
@@ -269,9 +247,9 @@ async function lookup(uid) {
 }
 
 function showBal(w) {
- const total = Math.max(0, Math.floor(parseFloat(w.credits || w.ticket_quantity || 0) / 7));
-const used = Math.max(0, Math.floor(parseFloat(w.credits_spent || w.drinks_redeemed || 0) / 7));
-const rem = Math.max(0, total - used);
+  const total = Math.max(0, Math.floor(parseFloat(w.credits || w.ticket_quantity || 0) / 7));
+  const used = Math.max(0, Math.floor(parseFloat(w.credits_spent || w.drinks_redeemed || 0) / 7));
+  const rem = Math.max(0, total - used);
   const big = document.getElementById('balNum');
   big.textContent = rem;
   big.style.color = rem === 0 ? 'var(--red)' : rem <= 2 ? 'var(--orange)' : 'var(--gold2)';
@@ -306,26 +284,16 @@ function autoReset(cdId, secs) {
   timer = setTimeout(tick, 1000);
 }
 
-// Manual entry
-function manualLookup() {
-  const v = document.getElementById('manualId').value.trim();
-  if (v) { lookup(v); document.getElementById('manualId').value=''; document.getElementById('manualId').blur(); }
-}
-document.getElementById('manualId').addEventListener('keypress', e=>{ if(e.key==='Enter') manualLookup(); });
 
-// NFC: postMessage from RodeoNFC Android app
+
 window.addEventListener('message', e=>{ if(e.data?.type==='NFC_TAG') lookup(e.data.uid); });
-
-// NFC: Fully Kiosk
 window.fullyNfcTagDiscovered = tagId => lookup((tagId||'').replace(/:/g,''));
 if (window.fully) { try { window.fully.startNfcReader(); nfcOn(); } catch(e){} }
 
-// NFC: Web NFC API
 if ('NDEFReader' in window) {
   (async()=>{ try { const r=new NDEFReader(); await r.scan(); nfcOn(); r.addEventListener('reading',e=>lookup(e.serialNumber.replace(/:/g,''))); } catch(e){} })();
 }
 
-// NFC: Keyboard wedge
 let buf='', kwt=null;
 document.addEventListener('keydown', e=>{
   if (document.activeElement===document.getElementById('manualId')) return;
@@ -335,7 +303,6 @@ document.addEventListener('keydown', e=>{
   kwt = setTimeout(()=>{ buf=''; }, 120);
 });
 
-// NFC: URL param — primary method used by RodeoNFC Android app
 const uid = new URLSearchParams(location.search).get('uid');
 if (uid) { nfcOn(); lookup(uid); }
 </script>

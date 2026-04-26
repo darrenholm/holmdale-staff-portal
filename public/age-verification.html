@@ -98,9 +98,14 @@
             return bytes ? bytes.sort().join('') : cleaned;
         }
 
+        function redirectToLogin() {
+            localStorage.removeItem('auth_token');
+            window.location.href = 'login.html?expired=1';
+        }
+
         window.onload = async function() {
             token = localStorage.getItem('auth_token');
-            if (!token) { window.location.href = 'login.html'; return; }
+            if (!token) { redirectToLogin(); return; }
             console.log('Logged in');
             loadApprovedCount();
             setupNFC();
@@ -111,7 +116,9 @@
                 const r = await fetch(API + '/wristbands', {
                     headers: {'Authorization': 'Bearer ' + token}
                 });
-                const bands = await r.json();
+                if (r.status === 401 || r.status === 403) { redirectToLogin(); return; }
+                const raw = await r.json();
+                const bands = Array.isArray(raw) ? raw : [];
                 const today = new Date().toISOString().split('T')[0];
                 approvedCount = bands.filter(b => {
                     if (!b.approved_date) return false;
@@ -173,6 +180,7 @@
                     headers: {'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json'},
                     body: JSON.stringify({ rfid_uid: uid })
                 });
+                if (r.status === 401 || r.status === 403) { redirectToLogin(); return; }
                 const d = await r.json();
                 if (r.ok) {
                     showApproved(d.wristband);

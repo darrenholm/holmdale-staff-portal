@@ -1,0 +1,594 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Kitchen Display — Staff</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0c0a09;
+    --surface: #1c1917;
+    --surface2: #292524;
+    --border: #44403c;
+    --text: #e7e5e4;
+    --text-dim: #a8a29e;
+    --new: #eab308;
+    --new-bg: rgba(234,179,8,0.12);
+    --progress: #3b82f6;
+    --progress-bg: rgba(59,130,246,0.12);
+    --ready: #22c55e;
+    --ready-bg: rgba(34,197,94,0.12);
+    --danger: #ef4444;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Inter', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ===== TOP BAR ===== */
+  .topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 24px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+
+  .topbar-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 28px;
+    letter-spacing: 2px;
+    color: var(--text);
+  }
+
+  .topbar-stats {
+    display: flex;
+    gap: 24px;
+    align-items: center;
+  }
+
+  .stat-badge {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 700;
+    font-size: 15px;
+  }
+
+  .stat-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    display: inline-block;
+  }
+
+  .clock {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 24px;
+    color: var(--text-dim);
+  }
+
+  /* ===== ORDER COLUMNS ===== */
+  .columns {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 0;
+    height: calc(100vh - 64px);
+  }
+
+  .column {
+    display: flex;
+    flex-direction: column;
+    border-right: 1px solid var(--border);
+    overflow: hidden;
+  }
+
+  .column:last-child { border-right: none; }
+
+  .column-header {
+    padding: 14px 20px;
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 22px;
+    letter-spacing: 2px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-shrink: 0;
+  }
+
+  .column-header .count {
+    font-family: 'Inter', sans-serif;
+    font-size: 14px;
+    font-weight: 700;
+    background: rgba(255,255,255,0.1);
+    padding: 2px 10px;
+    border-radius: 20px;
+  }
+
+  .col-new .column-header { background: var(--new-bg); color: var(--new); border-bottom: 3px solid var(--new); }
+  .col-progress .column-header { background: var(--progress-bg); color: var(--progress); border-bottom: 3px solid var(--progress); }
+  .col-ready .column-header { background: var(--ready-bg); color: var(--ready); border-bottom: 3px solid var(--ready); }
+
+  .column-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  /* ===== ORDER CARDS ===== */
+  .order-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 16px;
+    transition: all 0.3s ease;
+    animation: slideIn 0.3s ease;
+  }
+
+  @keyframes slideIn {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .order-card.urgent {
+    border-color: var(--danger);
+    box-shadow: 0 0 12px rgba(239,68,68,0.3);
+    animation: urgentPulse 2s ease infinite;
+  }
+
+  @keyframes urgentPulse {
+    0%, 100% { box-shadow: 0 0 12px rgba(239,68,68,0.3); }
+    50% { box-shadow: 0 0 24px rgba(239,68,68,0.5); }
+  }
+
+  .order-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+  }
+
+  .order-number {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 42px;
+    line-height: 1;
+    color: var(--text);
+  }
+
+  .order-meta {
+    text-align: right;
+  }
+
+  .order-name {
+    font-weight: 700;
+    font-size: 14px;
+    color: var(--text);
+  }
+
+  .order-time {
+    font-size: 13px;
+    color: var(--text-dim);
+    font-weight: 600;
+  }
+
+  .order-time.late {
+    color: var(--danger);
+    font-weight: 800;
+  }
+
+  .order-source {
+    font-size: 11px;
+    color: var(--text-dim);
+    margin-top: 2px;
+  }
+
+  .order-items {
+    list-style: none;
+    margin-bottom: 14px;
+  }
+
+  .order-items li {
+    padding: 6px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 15px;
+  }
+
+  .order-items li:last-child { border-bottom: none; }
+
+  .item-qty {
+    font-weight: 800;
+    color: var(--new);
+    margin-right: 8px;
+    min-width: 24px;
+  }
+
+  .item-name {
+    flex: 1;
+  }
+
+  .item-notes {
+    font-size: 12px;
+    color: var(--danger);
+    font-style: italic;
+  }
+
+  /* ===== ACTION BUTTONS ===== */
+  .order-actions {
+    display: flex;
+    gap: 8px;
+  }
+
+  .order-actions button {
+    flex: 1;
+    padding: 12px;
+    border: none;
+    border-radius: 10px;
+    font-family: 'Inter', sans-serif;
+    font-weight: 700;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+
+  .order-actions button:active {
+    transform: scale(0.96);
+  }
+
+  .btn-start {
+    background: var(--progress);
+    color: white;
+  }
+
+  .btn-done {
+    background: var(--ready);
+    color: white;
+  }
+
+  .btn-bump {
+    background: var(--ready);
+    color: white;
+    font-size: 16px;
+    padding: 16px;
+  }
+
+  .btn-cancel {
+    background: var(--surface2);
+    color: var(--text-dim);
+    flex: 0.3 !important;
+  }
+
+  /* ===== EMPTY STATE ===== */
+  .empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    flex: 1;
+    color: var(--text-dim);
+    font-size: 16px;
+    gap: 8px;
+    opacity: 0.5;
+  }
+
+  .empty-state .emoji {
+    font-size: 48px;
+  }
+
+  /* ===== SOUND INDICATOR ===== */
+  .sound-toggle {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+    padding: 6px 14px;
+    border-radius: 8px;
+    font-size: 14px;
+    cursor: pointer;
+  }
+
+  .sound-toggle.active {
+    color: var(--ready);
+    border-color: var(--ready);
+  }
+
+  /* ===== SCROLLBAR ===== */
+  .column-body::-webkit-scrollbar { width: 6px; }
+  .column-body::-webkit-scrollbar-track { background: transparent; }
+  .column-body::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+  /* ===== RESPONSIVE FOR SMALLER SCREENS ===== */
+  @media (max-width: 900px) {
+    .columns { grid-template-columns: 1fr; height: auto; }
+    .column { border-right: none; border-bottom: 1px solid var(--border); min-height: 300px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- TOP BAR -->
+<div class="topbar">
+  <div class="topbar-title">🔥 KITCHEN DISPLAY</div>
+  <div class="topbar-stats">
+    <div class="stat-badge"><span class="stat-dot" style="background:var(--new)"></span> <span id="statNew">0</span> New</div>
+    <div class="stat-badge"><span class="stat-dot" style="background:var(--progress)"></span> <span id="statProgress">0</span> Working</div>
+    <div class="stat-badge"><span class="stat-dot" style="background:var(--ready)"></span> <span id="statReady">0</span> Ready</div>
+    <button class="sound-toggle" id="soundBtn" onclick="toggleSound()">🔔 Sound</button>
+    <div class="clock" id="clock">00:00</div>
+  </div>
+</div>
+
+<!-- ORDER COLUMNS -->
+<div class="columns">
+  <!-- NEW ORDERS -->
+  <div class="column col-new">
+    <div class="column-header">
+      🆕 New Orders
+      <span class="count" id="countNew">0</span>
+    </div>
+    <div class="column-body" id="colNew"></div>
+  </div>
+
+  <!-- IN PROGRESS -->
+  <div class="column col-progress">
+    <div class="column-header">
+      🍳 In Progress
+      <span class="count" id="countProgress">0</span>
+    </div>
+    <div class="column-body" id="colProgress"></div>
+  </div>
+
+  <!-- READY FOR PICKUP -->
+  <div class="column col-ready">
+    <div class="column-header">
+      ✅ Ready
+      <span class="count" id="countReady">0</span>
+    </div>
+    <div class="column-body" id="colReady"></div>
+  </div>
+</div>
+
+<script>
+// ===== CONFIG =====
+const API_URL = 'https://rodeo-fresh-production-7348.up.railway.app/api';
+const POLL_INTERVAL = 5000; // 5 seconds
+const URGENT_MINUTES = 10; // Mark as urgent after 10 min
+
+let orders = [];
+let soundEnabled = false;
+let lastOrderCount = 0;
+
+// ===== AUDIO =====
+const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+function playNewOrderSound() {
+  if (!soundEnabled) return;
+  try {
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    osc.frequency.value = 880;
+    osc.type = 'sine';
+    gain.gain.value = 0.3;
+    osc.start();
+    gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.5);
+    osc.stop(audioCtx.currentTime + 0.5);
+    // Second beep
+    setTimeout(() => {
+      const osc2 = audioCtx.createOscillator();
+      const gain2 = audioCtx.createGain();
+      osc2.connect(gain2);
+      gain2.connect(audioCtx.destination);
+      osc2.frequency.value = 1100;
+      osc2.type = 'sine';
+      gain2.gain.value = 0.3;
+      osc2.start();
+      gain2.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.4);
+      osc2.stop(audioCtx.currentTime + 0.4);
+    }, 200);
+  } catch(e) {}
+}
+
+function toggleSound() {
+  soundEnabled = !soundEnabled;
+  const btn = document.getElementById('soundBtn');
+  btn.textContent = soundEnabled ? '🔔 Sound ON' : '🔇 Sound OFF';
+  btn.classList.toggle('active', soundEnabled);
+  if (soundEnabled) audioCtx.resume();
+}
+
+// ===== CLOCK =====
+function updateClock() {
+  const now = new Date();
+  document.getElementById('clock').textContent =
+    now.toLocaleTimeString('en-US', { hour:'2-digit', minute:'2-digit' });
+}
+setInterval(updateClock, 10000);
+updateClock();
+
+// ===== TIME HELPERS =====
+function timeAgo(dateStr) {
+  const mins = Math.floor((Date.now() - new Date(dateStr).getTime()) / 60000);
+  if (mins < 1) return 'Just now';
+  if (mins < 60) return `${mins}m ago`;
+  return `${Math.floor(mins/60)}h ${mins%60}m ago`;
+}
+
+function minutesSince(dateStr) {
+  return Math.floor((Date.now() - new Date(dateStr).getTime()) / 60000);
+}
+
+// ===== RENDER =====
+function renderOrders() {
+  const newOrders = orders.filter(o => o.status === 'new');
+  const progressOrders = orders.filter(o => o.status === 'in_progress');
+  const readyOrders = orders.filter(o => o.status === 'ready');
+
+  // Stats
+  document.getElementById('statNew').textContent = newOrders.length;
+  document.getElementById('statProgress').textContent = progressOrders.length;
+  document.getElementById('statReady').textContent = readyOrders.length;
+  document.getElementById('countNew').textContent = newOrders.length;
+  document.getElementById('countProgress').textContent = progressOrders.length;
+  document.getElementById('countReady').textContent = readyOrders.length;
+
+  // Columns
+  document.getElementById('colNew').innerHTML = newOrders.length
+    ? newOrders.map(o => renderCard(o, 'new')).join('')
+    : '<div class="empty-state"><div class="emoji">✨</div>No new orders</div>';
+
+  document.getElementById('colProgress').innerHTML = progressOrders.length
+    ? progressOrders.map(o => renderCard(o, 'in_progress')).join('')
+    : '<div class="empty-state"><div class="emoji">⏳</div>Nothing cooking</div>';
+
+  document.getElementById('colReady').innerHTML = readyOrders.length
+    ? readyOrders.map(o => renderCard(o, 'ready')).join('')
+    : '<div class="empty-state"><div class="emoji">👍</div>All picked up</div>';
+}
+
+function renderCard(order, status) {
+  const mins = minutesSince(order.created_at);
+  const isUrgent = status === 'new' && mins >= URGENT_MINUTES;
+  const items = (typeof order.items === 'string' ? JSON.parse(order.items) : order.items) || [];
+  const sourceLabel = order.source === 'phone' ? '📱 Phone' : order.source === 'web' ? '🌐 Web' : '📟 Kiosk';
+
+  let actions = '';
+  if (status === 'new') {
+    actions = `
+      <div class="order-actions">
+        <button class="btn-cancel" onclick="cancelOrder(${order.id})">✕</button>
+        <button class="btn-start" onclick="updateStatus(${order.id}, 'in_progress')">▶ Start</button>
+      </div>`;
+  } else if (status === 'in_progress') {
+    actions = `
+      <div class="order-actions">
+        <button class="btn-done" onclick="updateStatus(${order.id}, 'ready')">✅ Ready</button>
+      </div>`;
+  } else if (status === 'ready') {
+    actions = `
+      <div class="order-actions">
+        <button class="btn-bump" onclick="updateStatus(${order.id}, 'picked_up')">👋 Picked Up</button>
+      </div>`;
+  }
+
+  return `
+    <div class="order-card ${isUrgent ? 'urgent' : ''}">
+      <div class="order-top">
+        <div class="order-number">#${(order.customer_name || '').replace(/[^0-9]/g, '') || order.order_number}</div>
+        <div class="order-meta">
+          <div class="order-time ${mins >= URGENT_MINUTES ? 'late' : ''}">${timeAgo(order.created_at)}</div>
+          <div class="order-source">${sourceLabel}</div>
+        </div>
+      </div>
+      <ul class="order-items">
+        ${items.map(item => `
+          <li>
+            <span class="item-qty">${item.qty || 1}×</span>
+            <span class="item-name">${item.emoji || ''} ${item.name}</span>
+          </li>
+          ${item.notes ? `<li style="padding:0 0 4px 32px;"><span class="item-notes">⚠ ${item.notes}</span></li>` : ''}
+        `).join('')}
+      </ul>
+      ${actions}
+    </div>
+  `;
+}
+
+// ===== API CALLS =====
+async function fetchOrders() {
+  try {
+    const resp = await fetch(API_URL + '/kitchen/orders');
+    const data = await resp.json();
+    if (data.orders) {
+      const newCount = data.orders.filter(o => o.status === 'new').length;
+      if (newCount > lastOrderCount) {
+        playNewOrderSound();
+      }
+      lastOrderCount = newCount;
+      orders = data.orders;
+      renderOrders();
+    }
+  } catch (err) {
+    console.error('[KDS] Fetch error:', err.message);
+  }
+}
+
+async function updateStatus(id, status) {
+  try {
+    const resp = await fetch(API_URL + `/kitchen/orders/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status })
+    });
+    if (resp.ok) {
+      // Immediate UI update
+      const order = orders.find(o => o.id === id);
+      if (order) order.status = status;
+      renderOrders();
+      // Then refresh from server
+      setTimeout(fetchOrders, 500);
+    }
+  } catch (err) {
+    console.error('[KDS] Update error:', err.message);
+  }
+}
+
+async function cancelOrder(id) {
+  if (!confirm('Cancel this order?')) return;
+  try {
+    await fetch(API_URL + `/kitchen/orders/${id}`, { method: 'DELETE' });
+    orders = orders.filter(o => o.id !== id);
+    renderOrders();
+  } catch (err) {
+    console.error('[KDS] Cancel error:', err.message);
+  }
+}
+
+// ===== POLL =====
+fetchOrders();
+setInterval(fetchOrders, POLL_INTERVAL);
+
+// Update time displays every 30s
+setInterval(renderOrders, 30000);
+
+// ===== FULLSCREEN on tap (for TV) =====
+document.addEventListener('click', () => {
+  if (!document.fullscreenElement) {
+    document.documentElement.requestFullscreen?.().catch(() => {});
+  }
+}, { once: true });
+
+// ===== PREVENT SLEEP =====
+async function preventSleep() {
+  try {
+    if ('wakeLock' in navigator) {
+      await navigator.wakeLock.request('screen');
+    }
+  } catch(e) {}
+}
+preventSleep();
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden) preventSleep();
+});
+</script>
+</body>
+</html>

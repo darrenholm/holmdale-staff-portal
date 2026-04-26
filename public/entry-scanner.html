@@ -558,9 +558,14 @@ let totalNeeded = 0;
 let wristbandInputActive = false;
 let nextType = null; // 'adult' | 'child' — declared before each NFC scan
 
+function redirectToLogin() {
+  localStorage.removeItem('auth_token');
+  window.location.href = 'login.html?expired=1';
+}
+
 window.onload = async () => {
   token = localStorage.getItem('auth_token');
-  if (!token) { window.location.href = 'login.html'; return; }
+  if (!token) { redirectToLogin(); return; }
   if (DEV_MODE) document.getElementById('devBanner').style.display = 'flex';
   startQRScanner();
 };
@@ -586,7 +591,9 @@ async function lookupTicket(code) {
     const r = await fetch(API + '/ticket-orders', {
       headers: { 'Authorization': 'Bearer ' + token }
     });
-    const tickets = await r.json();
+    if (r.status === 401 || r.status === 403) { redirectToLogin(); return; }
+    const raw = await r.json();
+    const tickets = Array.isArray(raw) ? raw : [];
     ticket = tickets.find(t => t.confirmation_code === code);
 
     if (!ticket) {
@@ -720,6 +727,7 @@ async function assignBand(uid) {
       headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
       body: JSON.stringify({ rfid_uid: sendUid, ticket_order_id: ticket.id, ticket_type: type })
     });
+    if (r.status === 401 || r.status === 403) { redirectToLogin(); return; }
     const d = await r.json();
     if (r.ok || (DEV_MODE && d.error === 'This wristband is already registered')) {
       bands.push({ uid, sendUid, type });
@@ -791,6 +799,7 @@ async function toggle19Plus(index) {
       headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
       body: JSON.stringify({ rfid_uid: b.sendUid || b.uid })
     });
+    if (r.status === 401 || r.status === 403) { redirectToLogin(); return; }
     if (r.ok) {
       b.of_age = newVal;
       btn.classList.toggle('on', newVal);
