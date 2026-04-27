@@ -343,6 +343,7 @@
                     currentBand = null;
                     recentStaffTransactions = [];
                     displayStaff(currentStaff);
+                    showMessage(`👋 Welcome ${currentStaff.name}! ${formatDollars(staffRemainingCents(currentStaff))} in credits remaining.`, 'staff');
                     return;
                 }
             } catch(e) {}
@@ -417,7 +418,6 @@
             document.getElementById('customerCard').classList.add('hidden');
             document.getElementById('staffCard').classList.remove('hidden');
             stopNFC();
-            showMessage(`👋 Welcome ${staff.name}! ${formatDollars(remCents)} in credits remaining.`, 'staff');
         }
 
         function renderStaffDrinks(staff) {
