@@ -21,7 +21,7 @@
         .header-left p { color: #888; font-size: 12px; margin-top: 2px; }
         .stat-box { background: #00B74A; color: white; padding: 6px 12px; border-radius: 20px; font-size: 13px; font-weight: 700; }
         .content { padding: 12px 16px; }
-        .alert { padding: 14px 16px; border-radius: 10px; margin-bottom: 12px; font-weight: 600; font-size: 15px; text-align: center; }
+        .alert { padding: 16px 18px; border-radius: 10px; margin-bottom: 12px; font-weight: 600; font-size: 17px; text-align: center; }
         .alert-success { background: #065f46; color: #6ee7b7; border: 2px solid #00B74A; }
         .alert-error { background: #7f1d1d; color: #fca5a5; border: 2px solid #ef4444; }
         .alert-warning { background: #78350f; color: #fcd34d; border: 2px solid #f59e0b; }
@@ -572,7 +572,7 @@
 
         function showMessage(msg,type) {
             document.getElementById('alertContainer').innerHTML=`<div class="alert alert-${type}">${msg}</div>`;
-            if (type==='success'||type==='staff') setTimeout(clearMessage,3000);
+            if (type==='success'||type==='staff') setTimeout(clearMessage,6000);
         }
         function clearMessage() { document.getElementById('alertContainer').innerHTML=''; }
     </script>
