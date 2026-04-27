@@ -113,7 +113,6 @@
             <h1>🍺 BAR SERVICE</h1>
             <p>Holmdale Pro Rodeo</p>
         </div>
-        <div class="stat-box" id="servedCount">0 Served</div>
     </div>
 
     <div class="content">
@@ -187,6 +186,10 @@
                     </div>
                 </div>
             </div>
+            <div id="staffTransactionsContainer" class="transactions hidden">
+                <h4>Recent — tap to cancel:</h4>
+                <div id="staffTransactionsList"></div>
+            </div>
             <div class="card staff-card">
                 <div class="drink-section-title" style="color:#60a5fa;">Select Drink — Staff (Free)</div>
                 <div class="drink-grid" id="staffDrinkGrid"></div>
@@ -197,7 +200,7 @@
     <script>
         const API = 'https://rodeo-fresh-production-7348.up.railway.app/api';
         let token = '', currentBand = null, currentStaff = null;
-        let drinks = [], servedCount = 0, recentTransactions = [];
+        let drinks = [], recentTransactions = [], recentStaffTransactions = [];
         let nfcReader = null, isProcessing = false, currentMode = 'nfc';
         let allWristbands = [];
 
@@ -232,7 +235,6 @@
             if (!token) { redirectToLogin(); return; }
             await loadDrinks();
             await loadAllWristbands();
-            loadServedCount();
 
             document.getElementById('customerName').addEventListener('input', function() {
                 const query = this.value.trim().toLowerCase();
@@ -331,21 +333,6 @@
             } catch(e) {}
         }
 
-        async function loadServedCount() {
-            try {
-                const r = await fetch(API + '/wristbands', { headers: {'Authorization': 'Bearer ' + token} });
-                if (r.status === 401 || r.status === 403) { redirectToLogin(); return; }
-                if (r.ok) {
-                    const raw = await r.json();
-                    const bands = Array.isArray(raw) ? raw : [];
-                    servedCount = bands.reduce((s,b) => s + creditsToCents(b.credits_spent || 0), 0);
-                    updateCount();
-                }
-            } catch(e) { updateCount(); }
-        }
-
-        function updateCount() { document.getElementById('servedCount').textContent = formatDollars(servedCount) + ' in Sales'; }
-
         async function lookupWristband(uid) {
             // Check staff wristband first
             try {
@@ -354,6 +341,7 @@
                     const staff = await staffR.json();
                     currentStaff = { ...staff, rfid_uid: uid };
                     currentBand = null;
+                    recentStaffTransactions = [];
                     displayStaff(currentStaff);
                     return;
                 }
@@ -423,6 +411,7 @@
             const el = document.getElementById('staffDrinksAmount');
             el.textContent = formatDollars(remCents);
             el.style.color = remCents===0?'#ef4444':remCents<=1500?'#f59e0b':'#60a5fa';
+            displayStaffTransactions();
             renderStaffDrinks(staff);
             document.getElementById('scanCard').classList.add('hidden');
             document.getElementById('customerCard').classList.add('hidden');
@@ -472,6 +461,8 @@
                     if (d.drinks_remaining != null) currentStaff.drinks_remaining = d.drinks_remaining;
                     const remCents = staffRemainingCents(currentStaff);
                     showMessage(`✅ ${drink.name} served to ${currentStaff.name}! ${formatDollars(remCents)} credits left`, 'staff');
+                    recentStaffTransactions.unshift({ id:'stafftrans_'+Date.now(), drink:drink.name, drink_id:drink.id, price:parseFloat(drink.price)||0, time:new Date().toLocaleTimeString('en-CA',{hour:'2-digit',minute:'2-digit'}) });
+                    if (recentStaffTransactions.length>5) recentStaffTransactions=recentStaffTransactions.slice(0,5);
                     await loadDrinks(); displayStaff(currentStaff);
                 } else { showMessage('❌ ' + (d.error||'Failed to serve drink'), 'error'); }
             } catch(e) { showMessage('❌ Error serving staff drink', 'error'); }
@@ -486,6 +477,17 @@
                 <div class="transaction-item">
                     <div class="transaction-info"><strong>${t.drink}</strong><div class="transaction-time">${t.time}</div></div>
                     <button class="btn-cancel" onclick="cancelDrink('${t.id}')">Cancel</button>
+                </div>`).join('');
+        }
+
+        function displayStaffTransactions() {
+            const container = document.getElementById('staffTransactionsContainer');
+            if (recentStaffTransactions.length === 0) { container.classList.add('hidden'); return; }
+            container.classList.remove('hidden');
+            document.getElementById('staffTransactionsList').innerHTML = recentStaffTransactions.map(t => `
+                <div class="transaction-item">
+                    <div class="transaction-info"><strong>${t.drink}</strong><div class="transaction-time">${t.time}</div></div>
+                    <button class="btn-cancel" onclick="cancelStaffDrink('${t.id}')">Cancel</button>
                 </div>`).join('');
         }
 
@@ -506,7 +508,6 @@
                     showMessage(`✅ ${drink.name} served! ${formatDollars(remCents)} credits left`, 'success');
                     recentTransactions.unshift({ id:'trans_'+Date.now(), drink:drink.name, drink_id:drink.id, price:parseFloat(drink.price)||0, time:new Date().toLocaleTimeString('en-CA',{hour:'2-digit',minute:'2-digit'}) });
                     if (recentTransactions.length>5) recentTransactions=recentTransactions.slice(0,5);
-                    servedCount += creditsToCents(drink.price); updateCount();
                     await loadDrinks(); displayCustomer(currentBand);
                 } else { showMessage('❌ '+d.error,'error'); }
             } catch(e) { showMessage('❌ Error serving drink','error'); }
@@ -529,15 +530,36 @@
                     if (rr.ok) currentBand = await rr.json();
                     recentTransactions = recentTransactions.filter(t=>t.id!==transId);
                     const refundCents = creditsToCents(trans.price || 0);
-                    servedCount = Math.max(0, servedCount - refundCents); updateCount();
                     showMessage(`✅ ${trans.drink} cancelled — ${formatDollars(refundCents)} credit returned`,'success');
                     await loadDrinks(); displayCustomer(currentBand);
                 } else { showMessage('❌ Cancel failed: '+d.error,'error'); }
             } catch(e) { showMessage('❌ Error cancelling drink','error'); }
         }
 
+        async function cancelStaffDrink(transId) {
+            const trans = recentStaffTransactions.find(t=>t.id===transId);
+            if (!trans || !currentStaff) return;
+            try {
+                const r = await fetch(API+'/staff-wristband/cancel-drink', {
+                    method:'POST', headers:{'Authorization':'Bearer '+token,'Content-Type':'application/json'},
+                    body:JSON.stringify({ rfid_uid: currentStaff.rfid_uid, drink_id: trans.drink_id })
+                });
+                if (r.status === 401 || r.status === 403) { redirectToLogin(); return; }
+                const d = await r.json();
+                if (r.ok) {
+                    if (d.drink_allowance != null) currentStaff.drink_allowance = d.drink_allowance;
+                    if (d.drinks_used != null) currentStaff.drinks_used = d.drinks_used;
+                    if (d.drinks_remaining != null) currentStaff.drinks_remaining = d.drinks_remaining;
+                    recentStaffTransactions = recentStaffTransactions.filter(t=>t.id!==transId);
+                    const refundCents = creditsToCents(trans.price || 0);
+                    showMessage(`✅ ${trans.drink} cancelled — ${formatDollars(refundCents)} credit returned`,'staff');
+                    await loadDrinks(); displayStaff(currentStaff);
+                } else { showMessage('❌ Cancel failed: '+(d.error||'Unknown error'),'error'); }
+            } catch(e) { showMessage('❌ Error cancelling staff drink','error'); }
+        }
+
         function reset() {
-            currentBand=null; currentStaff=null; recentTransactions=[]; isProcessing=false;
+            currentBand=null; currentStaff=null; recentTransactions=[]; recentStaffTransactions=[]; isProcessing=false;
             document.getElementById('scanCard').classList.remove('hidden');
             document.getElementById('customerCard').classList.add('hidden');
             document.getElementById('staffCard').classList.add('hidden');
