@@ -570,11 +570,16 @@
             else document.getElementById('customerName').focus();
         }
 
+        let messageTimer = null;
         function showMessage(msg,type) {
+            if (messageTimer) { clearTimeout(messageTimer); messageTimer = null; }
             document.getElementById('alertContainer').innerHTML=`<div class="alert alert-${type}">${msg}</div>`;
-            if (type==='success'||type==='staff') setTimeout(clearMessage,6000);
+            if (type==='success'||type==='staff') messageTimer = setTimeout(clearMessage,6000);
         }
-        function clearMessage() { document.getElementById('alertContainer').innerHTML=''; }
+        function clearMessage() {
+            if (messageTimer) { clearTimeout(messageTimer); messageTimer = null; }
+            document.getElementById('alertContainer').innerHTML='';
+        }
     </script>
 </body>
 </html>
