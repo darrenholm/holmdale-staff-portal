@@ -549,7 +549,6 @@
   }
 
   .processing-cancel {
-    margin-top: 16px;
     padding: 12px 32px;
     border-radius: 10px;
     border: 1px solid var(--border);
@@ -558,6 +557,33 @@
     font-weight: 700;
     font-size: 14px;
     cursor: pointer;
+  }
+
+  .processing-actions {
+    margin-top: 16px;
+    display: flex;
+    gap: 12px;
+    align-items: center;
+  }
+
+  .processing-capture {
+    padding: 12px 32px;
+    border-radius: 10px;
+    border: none;
+    background: linear-gradient(135deg, var(--green), #15803d);
+    color: white;
+    font-weight: 800;
+    font-size: 14px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    cursor: pointer;
+    box-shadow: 0 4px 16px rgba(34,197,94,0.3);
+  }
+
+  .processing-capture:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+    box-shadow: none;
   }
 
   /* ===== SUCCESS OVERLAY ===== */
@@ -664,8 +690,8 @@
     </div>
 
     <div class="payment-btns" id="paymentBtns" style="display:none;">
-      <button class="pay-btn moneris" id="btnMoneris" onclick="payMoneris()">
-        💳 Tap / Card — Moneris
+      <button class="pay-btn moneris" id="btnCard" onclick="payCard()">
+        💳 Tap / Card — Stripe
       </button>
       <button class="pay-btn cash" id="btnCash" onclick="payCash()">
         💵 Cash Payment
@@ -698,8 +724,11 @@
 <div class="processing-overlay" id="processingOverlay">
   <div class="processing-icon">💳</div>
   <div class="processing-text" id="processingText">WAITING FOR PAYMENT</div>
-  <div class="processing-sub" id="processingSub">Customer should tap or insert card</div>
-  <button class="processing-cancel" onclick="cancelPayment()">Cancel</button>
+  <div class="processing-sub" id="processingSub">Tap card on Stripe terminal — or use Simulate Capture below</div>
+  <div class="processing-actions">
+    <button class="processing-cancel" onclick="cancelPayment()">Cancel</button>
+    <button class="processing-capture" id="btnSimulateCapture" disabled onclick="capturePayment()">Simulate Capture</button>
+  </div>
 </div>
 
 <!-- SUCCESS OVERLAY -->
@@ -713,8 +742,6 @@
 // ===== CONFIG =====
 const API_URL = 'https://rodeo-fresh-production-7348.up.railway.app/api';
 const TAX_RATE = 0.13;
-const MONERIS_CLOUD_URL = 'https://gatewayt.moneris.com/chkt/request/request.php'; // test
-// const MONERIS_CLOUD_URL = 'https://gateway.moneris.com/chkt/request/request.php'; // prod
 
 let products = [];
 let cart = []; // { id, productId, name, size, color, price, qty }
@@ -724,6 +751,8 @@ let selectedSize = null;
 let selectedColor = null;
 let todaySalesTotal = 0;
 let todaySalesCount = 0;
+let pendingPaymentIntentId = null;
+let pendingOrderId = null;
 
 // ===== CLOCK =====
 function updateClock() {
@@ -993,40 +1022,44 @@ function getTotal() {
   return { subtotal, tax, total: subtotal + tax };
 }
 
-async function payMoneris() {
+async function payCard() {
   const { total } = getTotal();
   const amountCents = Math.round(total * 100);
   if (amountCents <= 0) return;
 
-  document.getElementById('processingText').textContent = 'WAITING FOR PAYMENT';
-  document.getElementById('processingSub').textContent = 'Customer should tap or insert card on the terminal';
+  const orderId = 'MERCH_' + Date.now();
+
+  document.getElementById('processingText').textContent = 'CREATING PAYMENT';
+  document.getElementById('processingSub').textContent = 'Starting Stripe payment...';
+  document.getElementById('btnSimulateCapture').disabled = true;
   document.getElementById('processingOverlay').classList.add('open');
 
   try {
-    const orderId = 'MERCH_' + Date.now();
-    const ecrNo = '66';
-
-    // Call Moneris Cloud API via Go terminal
-    const resp = await fetch(API_URL + '/moneris/terminal-purchase', {
+    const resp = await fetch(API_URL + '/stripe/create-payment-intent', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        totalAmount: amountCents.toString(),
-        ecr_no: ecrNo,
-        order_id: orderId,
+        amount: amountCents,
+        metadata: { source: 'merch_pos' },
       })
     });
 
-    const result = await resp.json();
-
-    if (result.receipt && (result.receipt.ResponseCode < 50 || result.receipt.response_code === '000')) {
-      await recordSale('card', orderId);
-      showSuccess(total, 'Card');
-    } else {
-      throw new Error(result.receipt?.Message || result.error || 'Payment declined');
+    if (!resp.ok) {
+      const errText = await resp.text().catch(() => '');
+      throw new Error('Could not start payment (HTTP ' + resp.status + '). ' + errText);
     }
+
+    const data = await resp.json();
+    pendingPaymentIntentId = data.payment_intent_id;
+    pendingOrderId = orderId;
+
+    document.getElementById('processingText').textContent = 'WAITING FOR PAYMENT';
+    document.getElementById('processingSub').textContent = 'Tap card on Stripe terminal — or use Simulate Capture below';
+    document.getElementById('btnSimulateCapture').disabled = false;
   } catch (err) {
     document.getElementById('processingOverlay').classList.remove('open');
+    pendingPaymentIntentId = null;
+    pendingOrderId = null;
     alert('Payment failed: ' + err.message);
   }
 }
@@ -1040,6 +1073,41 @@ async function payCash() {
   const orderId = 'CASH_' + Date.now();
   await recordSale('cash', orderId);
   showSuccess(total, 'Cash');
+}
+
+async function capturePayment() {
+  if (!pendingPaymentIntentId || !pendingOrderId) {
+    alert('No active payment to capture.');
+    return;
+  }
+
+  const { total } = getTotal();
+  const orderId = pendingOrderId;
+
+  document.getElementById('btnSimulateCapture').disabled = true;
+  document.getElementById('processingText').textContent = 'CAPTURING PAYMENT';
+  document.getElementById('processingSub').textContent = 'Finalizing transaction...';
+
+  try {
+    const resp = await fetch(API_URL + '/stripe/capture-payment', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ payment_intent_id: pendingPaymentIntentId })
+    });
+
+    if (!resp.ok) {
+      const errText = await resp.text().catch(() => '');
+      throw new Error('Capture failed (HTTP ' + resp.status + '). ' + errText);
+    }
+
+    await recordSale('card', orderId);
+    showSuccess(total, 'Card');
+  } catch (err) {
+    document.getElementById('processingOverlay').classList.remove('open');
+    pendingPaymentIntentId = null;
+    pendingOrderId = null;
+    alert('Payment failed: ' + err.message);
+  }
 }
 
 async function recordSale(method, orderId) {
@@ -1090,6 +1158,10 @@ function showSuccess(total, method) {
   document.getElementById('successDetail').textContent = `$${total.toFixed(2)} — ${method}`;
   document.getElementById('successOverlay').classList.add('open');
 
+  pendingPaymentIntentId = null;
+  pendingOrderId = null;
+  document.getElementById('btnSimulateCapture').disabled = true;
+
   // Clear cart
   cart = [];
   renderCart();
@@ -1103,6 +1175,9 @@ function showSuccess(total, method) {
 
 function cancelPayment() {
   document.getElementById('processingOverlay').classList.remove('open');
+  document.getElementById('btnSimulateCapture').disabled = true;
+  pendingPaymentIntentId = null;
+  pendingOrderId = null;
 }
 
 // ===== INIT =====
