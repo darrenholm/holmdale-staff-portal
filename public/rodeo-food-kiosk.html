@@ -538,31 +538,6 @@
     color: var(--cream-dim);
   }
 
-  /* ===== DEMO BAR ===== */
-  .demo-bar {
-    position: fixed; bottom: 0; left: 0; right: 0;
-    background: rgba(0,0,0,0.9);
-    padding: 10px 20px;
-    display: flex; align-items: center; justify-content: center; gap: 10px;
-    z-index: 300; border-top: 1px solid rgba(255,255,255,0.1);
-  }
-
-  .demo-bar button {
-    padding: 7px 16px;
-    border: 1px solid rgba(255,255,255,0.2);
-    border-radius: 8px;
-    background: rgba(255,255,255,0.08);
-    color: #ccc; font-family: 'Barlow', sans-serif;
-    font-size: 12px; font-weight: 600;
-    cursor: pointer;
-  }
-
-  .demo-label {
-    font-size: 10px; color: rgba(255,255,255,0.3);
-    letter-spacing: 2px; text-transform: uppercase;
-    margin-right: 4px;
-  }
-
   /* ===== CUSTOMIZE SCREEN ===== */
   .customize-body {
     padding: 14px;
@@ -651,6 +626,211 @@
     border-top: 1px solid var(--border);
   }
   .order-item-notes { font-size: 12px; color: var(--accent); margin-top: 2px; }
+
+  /* ===== PAYMENT METHOD CHOICE SCREEN ===== */
+  .pay-choice-screen {
+    align-items: center; justify-content: flex-start;
+    padding: 60px 50px 40px;
+    text-align: center;
+  }
+
+  .pay-choice-amount {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 96px; color: var(--cream);
+    line-height: 1; margin-bottom: 6px;
+  }
+
+  .pay-choice-items {
+    font-size: 18px; font-weight: 600;
+    color: var(--cream-dim); margin-bottom: 12px;
+  }
+
+  .pay-choice-name {
+    font-size: 16px; font-weight: 600;
+    color: var(--gold-light); margin-bottom: 50px;
+    letter-spacing: 1px;
+  }
+
+  .pay-choice-prompt {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 36px; color: var(--cream);
+    letter-spacing: 2px; margin-bottom: 28px;
+  }
+
+  .pay-choice-btn {
+    width: 100%; max-width: 560px;
+    padding: 28px;
+    border: none; border-radius: 18px;
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 36px; letter-spacing: 2px;
+    color: white; cursor: pointer;
+    margin-bottom: 18px;
+    display: flex; align-items: center; justify-content: center; gap: 14px;
+    transition: transform 0.15s;
+  }
+
+  .pay-choice-btn:active { transform: scale(0.98); }
+
+  .pay-choice-btn.card {
+    background: linear-gradient(135deg, var(--flame), var(--flame-dark));
+    box-shadow: 0 8px 24px rgba(217,79,30,0.35);
+  }
+
+  .pay-choice-btn.wristband {
+    background: linear-gradient(135deg, #1976d2, #0d47a1);
+    box-shadow: 0 8px 24px rgba(25,118,210,0.35);
+  }
+
+  /* ===== STRIPE CAPTURE BUTTON (on payment screen) ===== */
+  .capture-btn {
+    margin-top: 28px;
+    padding: 16px 36px;
+    border: none; border-radius: 12px;
+    background: linear-gradient(135deg, var(--success), #2D6B28);
+    color: white;
+    font-family: 'Barlow', sans-serif;
+    font-size: 16px; font-weight: 800;
+    letter-spacing: 1.5px; text-transform: uppercase;
+    cursor: pointer;
+    box-shadow: 0 4px 16px rgba(61,139,55,0.3);
+  }
+
+  .capture-btn:disabled { opacity: 0.4; cursor: not-allowed; box-shadow: none; }
+  .capture-btn:active:not(:disabled) { transform: scale(0.97); }
+
+  /* ===== WRISTBAND TAP SCREEN ===== */
+  .wb-screen {
+    align-items: center; justify-content: flex-start;
+    padding: 50px 40px 30px;
+    text-align: center;
+  }
+
+  .wb-amount {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 84px; color: var(--cream);
+    line-height: 1; margin-bottom: 6px;
+  }
+
+  .wb-items {
+    font-size: 16px; font-weight: 600;
+    color: var(--cream-dim); margin-bottom: 30px;
+  }
+
+  .wb-nfc-box {
+    width: 100%; max-width: 560px;
+    background: rgba(25,118,210,0.08);
+    border: 2px solid #1976d2;
+    border-radius: 18px;
+    padding: 32px 24px;
+    margin-bottom: 22px;
+  }
+
+  .wb-nfc-icon {
+    font-size: 64px;
+    margin-bottom: 12px;
+    animation: pulse 2s infinite;
+  }
+
+  .wb-nfc-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 30px; color: var(--cream);
+    letter-spacing: 2px; margin-bottom: 6px;
+  }
+
+  .wb-nfc-sub {
+    font-size: 16px; font-weight: 500;
+    color: var(--cream-dim);
+  }
+
+  .wb-uid-section {
+    width: 100%; max-width: 560px;
+    margin-bottom: 18px;
+  }
+
+  .wb-uid-label {
+    font-size: 12px; font-weight: 700;
+    color: rgba(245,235,216,0.4);
+    letter-spacing: 2px; text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+
+  .wb-uid-input {
+    width: 100%;
+    padding: 16px 20px;
+    font-family: 'Barlow', sans-serif;
+    font-size: 22px; font-weight: 700;
+    text-align: center; letter-spacing: 4px;
+    background: rgba(255,255,255,0.06);
+    border: 2px solid rgba(245,235,216,0.15);
+    border-radius: 12px;
+    color: var(--cream);
+    outline: none;
+    text-transform: uppercase;
+    -webkit-user-select: text; user-select: text;
+  }
+
+  .wb-uid-input:focus { border-color: #1976d2; }
+
+  .wb-uid-btn {
+    width: 100%;
+    margin-top: 10px;
+    padding: 14px;
+    border: none; border-radius: 12px;
+    background: rgba(255,255,255,0.08);
+    color: var(--cream);
+    font-family: 'Barlow', sans-serif;
+    font-size: 14px; font-weight: 700;
+    letter-spacing: 1.5px; text-transform: uppercase;
+    cursor: pointer;
+  }
+
+  .wb-uid-btn:active { transform: scale(0.98); }
+
+  .wb-error-banner {
+    width: 100%; max-width: 560px;
+    background: rgba(198,40,40,0.12);
+    border: 1.5px solid rgba(198,40,40,0.4);
+    border-radius: 14px;
+    padding: 18px 20px;
+    margin-bottom: 14px;
+    display: none;
+  }
+
+  .wb-error-banner.show { display: block; }
+
+  .wb-error-title {
+    font-size: 16px; font-weight: 800;
+    color: var(--ketchup);
+    margin-bottom: 4px;
+  }
+
+  .wb-error-msg {
+    font-size: 14px; font-weight: 600;
+    color: var(--cream-dim);
+    margin-bottom: 12px;
+  }
+
+  .wb-error-actions {
+    display: flex; gap: 10px;
+  }
+
+  .wb-error-btn {
+    flex: 1;
+    padding: 12px;
+    border: none; border-radius: 10px;
+    background: rgba(255,255,255,0.1);
+    color: var(--cream);
+    font-family: 'Barlow', sans-serif;
+    font-size: 13px; font-weight: 700;
+    letter-spacing: 1px; text-transform: uppercase;
+    cursor: pointer;
+  }
+
+  .wb-error-btn:active { transform: scale(0.97); }
+
+  .wb-error-btn.primary {
+    background: var(--flame);
+  }
 
   /* ===== TOAST NOTIFICATION ===== */
   .toast {
@@ -761,17 +941,70 @@
   </button>
 </div>
 
+<!-- ===== SCREEN: PAYMENT METHOD CHOICE ===== -->
+<div class="screen pay-choice-screen" id="screen-pay-choice">
+  <div class="pay-choice-amount" id="payChoiceAmount">$0.00</div>
+  <div class="pay-choice-items" id="payChoiceItems">0 items</div>
+  <div class="pay-choice-name" id="payChoiceName"></div>
+
+  <div class="pay-choice-prompt">CHOOSE PAYMENT</div>
+
+  <button class="pay-choice-btn card" onclick="chooseCard()">
+    💳 TAP / CARD
+  </button>
+  <button class="pay-choice-btn wristband" onclick="chooseWristband()">
+    🎟️ TAP WRISTBAND
+  </button>
+
+  <div class="cancel-link" onclick="goToScreen('name')">← Back</div>
+</div>
+
+<!-- ===== SCREEN: CARD PAYMENT (Stripe Terminal) ===== -->
 <div class="screen payment-screen" id="screen-payment">
   <div class="payment-amount" id="payAmount">$0.00</div>
   <div class="payment-items" id="payItems">0 items</div>
 
-  <p class="payment-prompt">Tap or Insert Your<br>Payment Card</p>
-  <p class="payment-sub">on the Moneris terminal</p>
+  <p class="payment-prompt" id="payPrompt">Tap card on<br>Stripe terminal</p>
+  <p class="payment-sub" id="paySub">or use Simulate Capture below</p>
 
   <div class="spinner"></div>
-  <p class="payment-status">Waiting for payment...</p>
+  <p class="payment-status" id="payStatus">Creating payment...</p>
 
-  <div class="cancel-link" onclick="goToScreen('order')">Cancel</div>
+  <button class="capture-btn" id="btnSimulateCapture" disabled onclick="capturePayment()">
+    Simulate Capture
+  </button>
+
+  <div class="cancel-link" onclick="cancelCardPayment()">Cancel</div>
+</div>
+
+<!-- ===== SCREEN: WRISTBAND TAP ===== -->
+<div class="screen wb-screen" id="screen-wristband-tap">
+  <div class="wb-amount" id="wbAmount">$0.00</div>
+  <div class="wb-items" id="wbItems">0 items</div>
+
+  <div class="wb-error-banner" id="wbErrorBanner">
+    <div class="wb-error-title" id="wbErrorTitle">Wristband not found</div>
+    <div class="wb-error-msg" id="wbErrorMsg">Try again or switch to card.</div>
+    <div class="wb-error-actions">
+      <button class="wb-error-btn" onclick="wbTryAnother()">Try Another</button>
+      <button class="wb-error-btn primary" onclick="wbSwitchToCard()">Switch to Card</button>
+    </div>
+  </div>
+
+  <div class="wb-nfc-box">
+    <div class="wb-nfc-icon">📳</div>
+    <div class="wb-nfc-title">TAP WRISTBAND</div>
+    <div class="wb-nfc-sub" id="wbNfcSub">Hold wristband to the back of the device</div>
+  </div>
+
+  <div class="wb-uid-section">
+    <div class="wb-uid-label">Or enter UID manually</div>
+    <input id="wbUidInput" class="wb-uid-input" type="text" autocomplete="off" autocorrect="off"
+      autocapitalize="characters" spellcheck="false" placeholder="••••••••">
+    <button class="wb-uid-btn" onclick="submitManualUid()">Use This UID</button>
+  </div>
+
+  <div class="cancel-link" onclick="cancelWristbandPayment()">Cancel</div>
 </div>
 
 <!-- ===== SCREEN 4: SUCCESS ===== -->
@@ -816,14 +1049,6 @@
 <!-- Toast -->
 <div class="toast" id="toast">Item added!</div>
 
-<!-- Demo Bar -->
-<div class="demo-bar" id="demoBar">
-  <span class="demo-label">Demo:</span>
-  <button onclick="simulatePaySuccess()">Payment ✓</button>
-  <button onclick="simulatePayFail()">Payment ✗</button>
-  <button onclick="resetKiosk()">Reset</button>
-</div>
-
 <script>
 // ╔══════════════════════════════════════════════════════════════════════════════════════════════════╗
 // ║  MENU LOADED FROM DATABASE                                                                     ║
@@ -834,6 +1059,25 @@
 // ╚══════════════════════════════════════════════════════════════════════════════════════════════════╝
 
 const API_URL = 'https://rodeo-fresh-production-7348.up.railway.app/api';
+
+// ===== AUTH HELPERS =====
+function authHeaders(extra) {
+  const h = Object.assign({ 'Accept': 'application/json' }, extra || {});
+  const t = localStorage.getItem('auth_token');
+  if (t) h['Authorization'] = 'Bearer ' + t;
+  return h;
+}
+
+function redirectToLogin() {
+  localStorage.removeItem('auth_token');
+  window.location.href = 'login.html?expired=1';
+}
+
+function normalizeUid(uid) {
+  const cleaned = (uid || '').replace(/[^a-fA-F0-9]/g, '').toUpperCase();
+  const bytes = cleaned.match(/.{2}/g);
+  return bytes ? bytes.sort().join('') : cleaned;
+}
 
 // Fallback menu in case API is unreachable
 const FALLBACK_MENU_TABLE = `
@@ -864,7 +1108,8 @@ let menuLoaded = false;
 // Load menu from API
 async function loadMenuFromAPI() {
   try {
-    const response = await fetch(API_URL + '/booth/menu');
+    const response = await fetch(API_URL + '/booth/menu', { headers: authHeaders() });
+    if (response.status === 401 || response.status === 403) { redirectToLogin(); return false; }
     const data = await response.json();
 
     if (data && data.menu && data.menu.length > 0) {
@@ -1228,71 +1473,298 @@ function proceedToPayment() {
   }, 450);
 }
 
+// ===== PAYMENT STATE =====
+let pendingTotalCents = 0;
+let pendingPaymentIntentId = null;
+let nfcReader = null;
+let wristbandProcessing = false;
+
 function confirmName() {
   customerFirstName = (document.getElementById('nameInput').value || '').trim();
   document.getElementById('nameInput').value = '';
 
   const subtotal = getSubtotal();
   const tax = Math.round(subtotal * TAX_RATE);
-  const total = subtotal + tax;
+  pendingTotalCents = subtotal + tax;
 
-  document.getElementById('payAmount').textContent = '$' + (total / 100).toFixed(2);
-  document.getElementById('payItems').textContent = getCartCount() + ' item' + (getCartCount() > 1 ? 's' : '');
+  const totalStr = '$' + (pendingTotalCents / 100).toFixed(2);
+  const itemsStr = getCartCount() + ' item' + (getCartCount() > 1 ? 's' : '');
+
+  document.getElementById('payChoiceAmount').textContent = totalStr;
+  document.getElementById('payChoiceItems').textContent = itemsStr;
+  document.getElementById('payChoiceName').textContent =
+    customerFirstName ? '👋 ' + customerFirstName : '';
+
+  goToScreen('pay-choice');
+}
+
+// ===== PAYMENT CHOICE → CARD SUBFLOW =====
+async function chooseCard() {
+  const totalStr = '$' + (pendingTotalCents / 100).toFixed(2);
+  const itemsStr = getCartCount() + ' item' + (getCartCount() > 1 ? 's' : '');
+
+  document.getElementById('payAmount').textContent = totalStr;
+  document.getElementById('payItems').textContent = itemsStr;
+  document.getElementById('payStatus').textContent = 'Creating payment...';
+  document.getElementById('btnSimulateCapture').disabled = true;
 
   goToScreen('payment');
-  sendToMoneris(total);
+  await payCard();
 }
 
-async function sendToMoneris(amountInCents) {
-  const orderId = `FOOD-${Date.now()}-${Math.random().toString(36).substr(2,6)}`;
-  console.log(`[Moneris] Purchase: $${(amountInCents/100).toFixed(2)} | Order: ${orderId}`);
-
-  /*
-  // ===== PRODUCTION: Moneris Go Cloud API =====
-  const MONERIS_CLOUD_URL = 'https://gatewayt.moneris.com/gocloud/api';
-
-  const subtotal = getSubtotal();
-  const tax = Math.round(subtotal * TAX_RATE);
-
-  const requestBody = {
-    "request": {
-      "command": "purchase",
-      "totalAmount": amountInCents.toString(),
-      "subtotalAmount": subtotal.toString(),
-      "orderId": orderId,
-      "ecrNo": "2",  // Different ECR number from bar kiosk
-      "storeId": "YOUR_STORE_ID",
-      "apiToken": "YOUR_API_TOKEN",
-      "terminalId": "YOUR_TERMINAL_ID",
-      "taxes": [{
-        "taxName": "HST",
-        "taxAmount": tax.toString(),
-        "taxRate": "13.00"
-      }]
-    }
-  };
+async function payCard() {
+  if (pendingTotalCents <= 0) { onPaymentFailed('Cart is empty.'); return; }
 
   try {
-    const response = await fetch(MONERIS_CLOUD_URL, {
+    const r = await fetch(API_URL + '/stripe/create-payment-intent', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(requestBody)
+      headers: authHeaders({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify({
+        amount: pendingTotalCents,
+        metadata: { source: 'food_kiosk' },
+      }),
     });
-    const data = await response.json();
 
-    if (data.response && data.response.responseCode === '000') {
-      onPaymentSuccess(data.response);
-    } else {
-      onPaymentFailed(data.response?.message || 'Transaction declined');
+    if (r.status === 401 || r.status === 403) { redirectToLogin(); return; }
+
+    if (!r.ok) {
+      const errText = await r.text().catch(() => '');
+      onPaymentFailed('Could not start payment (HTTP ' + r.status + '). ' + errText);
+      return;
     }
-  } catch (error) {
-    console.error('[Moneris] Error:', error);
+
+    const data = await r.json();
+    pendingPaymentIntentId = data.payment_intent_id;
+
+    document.getElementById('payStatus').textContent = 'Waiting for payment...';
+    document.getElementById('btnSimulateCapture').disabled = false;
+  } catch (e) {
+    console.error('[Stripe] create-payment-intent error:', e);
     onPaymentFailed('Connection error. Please try again.');
   }
-  */
 }
 
-function onPaymentSuccess() {
+async function capturePayment() {
+  if (!pendingPaymentIntentId) { onPaymentFailed('No active payment to capture.'); return; }
+
+  document.getElementById('btnSimulateCapture').disabled = true;
+  document.getElementById('payStatus').textContent = 'Capturing payment...';
+
+  try {
+    const r = await fetch(API_URL + '/stripe/capture-payment', {
+      method: 'POST',
+      headers: authHeaders({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify({ payment_intent_id: pendingPaymentIntentId }),
+    });
+
+    if (r.status === 401 || r.status === 403) { redirectToLogin(); return; }
+
+    if (!r.ok) {
+      const errText = await r.text().catch(() => '');
+      onPaymentFailed('Capture failed (HTTP ' + r.status + '). ' + errText);
+      return;
+    }
+
+    const ref = pendingPaymentIntentId;
+    pendingPaymentIntentId = null;
+    onPaymentSuccess({ paymentMethod: 'card', paymentRef: ref });
+  } catch (e) {
+    console.error('[Stripe] capture-payment error:', e);
+    onPaymentFailed('Connection error during capture. Please try again.');
+  }
+}
+
+function cancelCardPayment() {
+  // Any pending PaymentIntent is left for the backend to expire.
+  pendingPaymentIntentId = null;
+  document.getElementById('btnSimulateCapture').disabled = true;
+  goToScreen('pay-choice');
+}
+
+// ===== PAYMENT CHOICE → WRISTBAND SUBFLOW =====
+function chooseWristband() {
+  const totalStr = '$' + (pendingTotalCents / 100).toFixed(2);
+  const itemsStr = getCartCount() + ' item' + (getCartCount() > 1 ? 's' : '');
+  document.getElementById('wbAmount').textContent = totalStr;
+  document.getElementById('wbItems').textContent = itemsStr;
+  hideWbError();
+  document.getElementById('wbUidInput').value = '';
+  goToScreen('wristband-tap');
+}
+
+function enterWristbandTap() {
+  wristbandProcessing = false;
+
+  // 1) Android NFC bridge — native code sets window.onNfcRead and calls it on tap
+  window.onNfcRead = (uid) => handleWristbandRead(uid);
+
+  // 2) Web NFC fallback (Chrome on Android)
+  if ('NDEFReader' in window) {
+    try {
+      nfcReader = new NDEFReader();
+      nfcReader.onreading = (event) => handleWristbandRead(event.serialNumber);
+      nfcReader.scan().catch((e) => console.warn('[NFC] scan failed:', e));
+    } catch (e) {
+      console.warn('[NFC] NDEFReader unavailable:', e);
+    }
+  } else {
+    document.getElementById('wbNfcSub').textContent =
+      'Tap not available on this device — enter UID below';
+  }
+}
+
+function exitWristbandTap() {
+  window.onNfcRead = null;
+  if (nfcReader) {
+    try { nfcReader.onreading = null; } catch (e) {}
+    nfcReader = null;
+  }
+  wristbandProcessing = false;
+}
+
+function submitManualUid() {
+  const raw = (document.getElementById('wbUidInput').value || '').trim();
+  if (!raw) return;
+  handleWristbandRead(raw);
+}
+
+async function handleWristbandRead(rawUid) {
+  if (wristbandProcessing) return;
+  wristbandProcessing = true;
+  hideWbError();
+
+  const uid = normalizeUid(rawUid);
+  if (!uid) { showWbError('Invalid wristband', 'Could not read the UID. Try again.'); wristbandProcessing = false; return; }
+
+  document.getElementById('wbNfcSub').textContent = 'Looking up wristband...';
+
+  try {
+    const r = await fetch(API_URL + '/wristbands/rfid/' + encodeURIComponent(uid), {
+      headers: authHeaders(),
+    });
+
+    if (r.status === 401 || r.status === 403) { redirectToLogin(); return; }
+
+    if (r.status === 404) {
+      showWbError('Wristband not found', 'No wristband registered with UID ' + uid + '.');
+      resetWbPrompt();
+      wristbandProcessing = false;
+      return;
+    }
+
+    if (!r.ok) {
+      showWbError('Lookup error', 'Could not look up wristband (HTTP ' + r.status + ').');
+      resetWbPrompt();
+      wristbandProcessing = false;
+      return;
+    }
+
+    const band = await r.json();
+    const availableCents = creditsToCents(band.credits);
+
+    if (availableCents < pendingTotalCents) {
+      showWbError(
+        'Insufficient credits',
+        '$' + (pendingTotalCents / 100).toFixed(2) + ' needed, $' + (availableCents / 100).toFixed(2) + ' available.'
+      );
+      resetWbPrompt();
+      wristbandProcessing = false;
+      return;
+    }
+
+    await redeemForFood(uid);
+  } catch (e) {
+    console.error('[Wristband] Lookup error:', e);
+    showWbError('Connection error', 'Could not reach the server. Try again.');
+    resetWbPrompt();
+    wristbandProcessing = false;
+  }
+}
+
+function creditsToCents(credits) {
+  return Math.round((Number(credits) || 0) * 100);
+}
+
+async function redeemForFood(uid) {
+  const description = cart
+    .map((e) => `${e.qty}× ${MENU.find((i) => i.id === e.id)?.name || 'item'}`)
+    .join(', ')
+    .slice(0, 200);
+
+  document.getElementById('wbNfcSub').textContent = 'Redeeming credits...';
+
+  try {
+    const r = await fetch(API_URL + '/wristbands/redeem', {
+      method: 'POST',
+      headers: authHeaders({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify({
+        rfid_uid: uid,
+        amount: pendingTotalCents / 100,
+        category: 'food',
+        description,
+      }),
+    });
+
+    if (r.status === 401 || r.status === 403) { redirectToLogin(); return; }
+
+    if (!r.ok) {
+      const errText = await r.text().catch(() => '');
+      showWbError('Redeem failed', 'HTTP ' + r.status + '. ' + errText);
+      resetWbPrompt();
+      wristbandProcessing = false;
+      return;
+    }
+
+    const data = await r.json();
+    const newBalance = (data.wristband && data.wristband.credits != null)
+      ? data.wristband.credits
+      : data.new_balance;
+
+    onPaymentSuccess({
+      paymentMethod: 'wristband',
+      paymentRef: `WB-${Date.now()}-${uid.slice(0, 6)}`,
+      newWristbandCredits: newBalance,
+    });
+  } catch (e) {
+    console.error('[Wristband] Redeem error:', e);
+    showWbError('Connection error', 'Could not reach the server. Try again.');
+    resetWbPrompt();
+    wristbandProcessing = false;
+  }
+}
+
+function resetWbPrompt() {
+  document.getElementById('wbNfcSub').textContent = 'Hold wristband to the back of the device';
+}
+
+function showWbError(title, msg) {
+  document.getElementById('wbErrorTitle').textContent = title;
+  document.getElementById('wbErrorMsg').textContent = msg;
+  document.getElementById('wbErrorBanner').classList.add('show');
+}
+
+function hideWbError() {
+  document.getElementById('wbErrorBanner').classList.remove('show');
+}
+
+function wbTryAnother() {
+  hideWbError();
+  document.getElementById('wbUidInput').value = '';
+  resetWbPrompt();
+  wristbandProcessing = false;
+}
+
+function wbSwitchToCard() {
+  hideWbError();
+  goToScreen('pay-choice');
+}
+
+function cancelWristbandPayment() {
+  goToScreen('pay-choice');
+}
+
+// ===== SUCCESS / KITCHEN =====
+function onPaymentSuccess({ paymentMethod, paymentRef, newWristbandCredits } = {}) {
   orderCounter++;
   const orderNum = String(orderCounter).padStart(2, '0');
 
@@ -1303,12 +1775,16 @@ function onPaymentSuccess() {
     const item = MENU.find(i => i.id === entry.id);
     return `${entry.qty}× ${item.name}`;
   });
-  document.getElementById('orderSummaryText').textContent = lines.join(' · ');
+  let summary = lines.join(' · ');
+  if (paymentMethod === 'wristband' && newWristbandCredits != null) {
+    summary += '\nBalance remaining: $' + Number(newWristbandCredits).toFixed(2);
+  }
+  document.getElementById('orderSummaryText').textContent = summary;
 
   goToScreen('success');
 
   // Send order to kitchen display system
-  sendOrderToKitchen(orderNum);
+  sendOrderToKitchen(orderNum, paymentMethod, paymentRef);
 
   // Reset countdown animation
   const fill = document.getElementById('cdFill');
@@ -1321,7 +1797,7 @@ function onPaymentSuccess() {
   }, 8000);
 }
 
-async function sendOrderToKitchen(orderNum) {
+async function sendOrderToKitchen(orderNum, paymentMethod, paymentRef) {
   const items = cart.map(entry => {
     const item = MENU.find(i => i.id === entry.id);
     const modNames = Object.keys(entry.mods).filter(k => entry.mods[k]).map(k => {
@@ -1345,7 +1821,7 @@ async function sendOrderToKitchen(orderNum) {
   try {
     await fetch(API_URL + '/kitchen/orders', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: authHeaders({ 'Content-Type': 'application/json' }),
       body: JSON.stringify({
         customerName: (customerFirstName || 'Guest') + ' #' + orderNum,
         items,
@@ -1353,7 +1829,8 @@ async function sendOrderToKitchen(orderNum) {
         tax: tax.toFixed(2),
         total: total.toFixed(2),
         source: 'kiosk',
-        paymentRef: 'FOOD-' + Date.now()
+        paymentMethod: paymentMethod || 'card',
+        paymentRef: paymentRef || ('FOOD-' + Date.now())
       })
     });
     console.log('[Kitchen] Order #' + orderNum + ' sent to kitchen display');
@@ -1363,11 +1840,16 @@ async function sendOrderToKitchen(orderNum) {
 }
 
 function onPaymentFailed(msg) {
-  alert('Payment failed: ' + msg);
-  goToScreen('order');
+  // Card-path failure — bounce back to pay-choice with a toast.
+  pendingPaymentIntentId = null;
+  document.getElementById('btnSimulateCapture').disabled = true;
+  goToScreen('pay-choice');
+  showToast('Payment failed: ' + msg);
 }
 
 // ===== NAVIGATION =====
+let currentScreenId = 'menu';
+
 function goToScreen(id) {
   if (id === 'menu' || id === 'order') customerFirstName = '';
   if (successTimeout) {
@@ -1375,16 +1857,32 @@ function goToScreen(id) {
     successTimeout = null;
   }
 
+  // Exit hooks for the screen we're leaving
+  if (currentScreenId === 'wristband-tap' && id !== 'wristband-tap') {
+    exitWristbandTap();
+  }
+
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   setTimeout(() => {
-    document.getElementById('screen-' + id).classList.add('active');
+    const target = document.getElementById('screen-' + id);
+    if (target) target.classList.add('active');
   }, 50);
 
+  // Entry hooks for the screen we're entering
   if (id === 'order') renderOrderScreen();
+  if (id === 'wristband-tap') enterWristbandTap();
+
+  currentScreenId = id;
 }
 
 function resetKiosk() {
   cart = [];
+  pendingTotalCents = 0;
+  pendingPaymentIntentId = null;
+  hideWbError();
+  const uidInput = document.getElementById('wbUidInput');
+  if (uidInput) uidInput.value = '';
+  document.getElementById('btnSimulateCapture').disabled = true;
   updateCartUI();
   renderMenu();
   goToScreen('menu');
@@ -1398,219 +1896,11 @@ function showToast(msg) {
   setTimeout(() => t.classList.remove('show'), 1500);
 }
 
-// ===== DEMO =====
-function simulatePaySuccess() {
-  if (document.getElementById('screen-payment').classList.contains('active')) {
-    onPaymentSuccess();
-  }
-}
-
-function simulatePayFail() {
-  if (document.getElementById('screen-payment').classList.contains('active')) {
-    onPaymentFailed('Card declined — insufficient funds');
-  }
-}
-
 // ===== INIT =====
 (async function init() {
-  // Show loading state
-  const grid = document.getElementById('menuGrid');
-  if (grid) grid.innerHTML = '<div style="text-align:center;padding:60px;color:var(--cream-dim);font-size:18px;">Loading menu...</div>';
+  // Auth gate — kiosk runs under a logged-in staff session
+  if (!localStorage.getItem('auth_token')) { redirectToLogin(); return; }
 
-  // Load menu from API
-  await loadMenuFromAPI();
-
-  // Build category tabs
-  const tabsEl = document.getElementById('catTabs');
-  tabsEl.innerHTML = CATEGORIES.map((c, i) =>
-    `<div class="cat-tab ${i === 0 ? 'active' : ''}" data-cat="${c.key}" onclick="filterCategory('${c.key}', this)">${c.label}</div>`
-  ).join('');
-
-  // Set tax label from config
-  document.getElementById('taxLabel').textContent = TAX_LABEL;
-  document.getElementById('taxPct').textContent = Math.round(TAX_RATE * 100) + '%';
-
-  renderMenu();
-})();
-</script>
-</body>
-</html>
- + (total / 100).toFixed(2);
-  document.getElementById('payItems').textContent = getCartCount() + ' item' + (getCartCount() > 1 ? 's' : '');
-
-  goToScreen('payment');
-  sendToMoneris(total);
-}
-
-async function sendToMoneris(amountInCents) {
-  const orderId = `FOOD-${Date.now()}-${Math.random().toString(36).substr(2,6)}`;
-  console.log(`[Moneris] Purchase: $${(amountInCents/100).toFixed(2)} | Order: ${orderId}`);
-
-  /*
-  // ===== PRODUCTION: Moneris Go Cloud API =====
-  const MONERIS_CLOUD_URL = 'https://gatewayt.moneris.com/gocloud/api';
-
-  const subtotal = getSubtotal();
-  const tax = Math.round(subtotal * TAX_RATE);
-
-  const requestBody = {
-    "request": {
-      "command": "purchase",
-      "totalAmount": amountInCents.toString(),
-      "subtotalAmount": subtotal.toString(),
-      "orderId": orderId,
-      "ecrNo": "2",  // Different ECR number from bar kiosk
-      "storeId": "YOUR_STORE_ID",
-      "apiToken": "YOUR_API_TOKEN",
-      "terminalId": "YOUR_TERMINAL_ID",
-      "taxes": [{
-        "taxName": "HST",
-        "taxAmount": tax.toString(),
-        "taxRate": "13.00"
-      }]
-    }
-  };
-
-  try {
-    const response = await fetch(MONERIS_CLOUD_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(requestBody)
-    });
-    const data = await response.json();
-
-    if (data.response && data.response.responseCode === '000') {
-      onPaymentSuccess(data.response);
-    } else {
-      onPaymentFailed(data.response?.message || 'Transaction declined');
-    }
-  } catch (error) {
-    console.error('[Moneris] Error:', error);
-    onPaymentFailed('Connection error. Please try again.');
-  }
-  */
-}
-
-function onPaymentSuccess() {
-  orderCounter++;
-  const orderNum = String(orderCounter).padStart(2, '0');
-
-  document.getElementById('orderNumber').textContent = orderNum;
-
-  // Build summary
-  const lines = cart.map(entry => {
-    const item = MENU.find(i => i.id === entry.id);
-    return `${entry.qty}× ${item.name}`;
-  });
-  document.getElementById('orderSummaryText').textContent = lines.join(' · ');
-
-  goToScreen('success');
-
-  // Send order to kitchen display system
-  sendOrderToKitchen(orderNum);
-
-  // Reset countdown animation
-  const fill = document.getElementById('cdFill');
-  fill.style.animation = 'none';
-  fill.offsetHeight;
-  fill.style.animation = 'cd 8s linear forwards';
-
-  successTimeout = setTimeout(() => {
-    resetKiosk();
-  }, 8000);
-}
-
-async function sendOrderToKitchen(orderNum) {
-  const items = cart.map(entry => {
-    const item = MENU.find(i => i.id === entry.id);
-    const modNames = Object.keys(entry.mods).filter(k => entry.mods[k]).map(k => {
-      const c = CONDIMENTS.find(m => m.key === k);
-      const e = EXTRAS.find(m => m.key === k);
-      return c ? c.name : e ? e.name : k;
-    });
-    return {
-      name: item.name,
-      emoji: item.emoji || '',
-      qty: entry.qty,
-      price: (item.price + entry.modCost) / 100,
-      notes: modNames.length > 0 ? modNames.join(', ') : ''
-    };
-  });
-
-  const subtotal = getSubtotal() / 100;
-  const tax = subtotal * TAX_RATE;
-  const total = subtotal + tax;
-
-  try {
-    await fetch(API_URL + '/kitchen/orders', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        customerName: 'Kiosk #' + orderNum,
-        items,
-        subtotal: subtotal.toFixed(2),
-        tax: tax.toFixed(2),
-        total: total.toFixed(2),
-        source: 'kiosk',
-        paymentRef: 'FOOD-' + Date.now()
-      })
-    });
-    console.log('[Kitchen] Order #' + orderNum + ' sent to kitchen display');
-  } catch (err) {
-    console.warn('[Kitchen] Failed to send order:', err.message);
-  }
-}
-
-function onPaymentFailed(msg) {
-  alert('Payment failed: ' + msg);
-  goToScreen('order');
-}
-
-// ===== NAVIGATION =====
-function goToScreen(id) {
-  if (successTimeout) {
-    clearTimeout(successTimeout);
-    successTimeout = null;
-  }
-
-  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-  setTimeout(() => {
-    document.getElementById('screen-' + id).classList.add('active');
-  }, 50);
-
-  if (id === 'order') renderOrderScreen();
-}
-
-function resetKiosk() {
-  cart = [];
-  updateCartUI();
-  renderMenu();
-  goToScreen('menu');
-}
-
-// ===== TOAST =====
-function showToast(msg) {
-  const t = document.getElementById('toast');
-  t.textContent = msg;
-  t.classList.add('show');
-  setTimeout(() => t.classList.remove('show'), 1500);
-}
-
-// ===== DEMO =====
-function simulatePaySuccess() {
-  if (document.getElementById('screen-payment').classList.contains('active')) {
-    onPaymentSuccess();
-  }
-}
-
-function simulatePayFail() {
-  if (document.getElementById('screen-payment').classList.contains('active')) {
-    onPaymentFailed('Card declined — insufficient funds');
-  }
-}
-
-// ===== INIT =====
-(async function init() {
   // Show loading state
   const grid = document.getElementById('menuGrid');
   if (grid) grid.innerHTML = '<div style="text-align:center;padding:60px;color:var(--cream-dim);font-size:18px;">Loading menu...</div>';
