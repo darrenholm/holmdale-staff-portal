@@ -155,7 +155,7 @@
                 <div class="balance-row regular">
                     <div>
                         <div class="balance-num" id="balanceAmount">0</div>
-                        <div class="balance-label">Tickets Available</div>
+                        <div class="balance-label">Credits Available</div>
                     </div>
                 </div>
             </div>
@@ -183,7 +183,7 @@
                 <div class="balance-row staff-bal">
                     <div>
                         <div class="balance-num" id="staffDrinksAmount" style="color:#60a5fa;">0</div>
-                        <div class="balance-label">Free Drinks Remaining</div>
+                        <div class="balance-label">Credits Remaining</div>
                     </div>
                 </div>
             </div>
@@ -200,6 +200,21 @@
         let drinks = [], servedCount = 0, recentTransactions = [];
         let nfcReader = null, isProcessing = false, currentMode = 'nfc';
         let allWristbands = [];
+
+        function formatDollars(cents) {
+            const n = Number(cents);
+            if (!isFinite(n)) return '$0.00';
+            return '$' + (n / 100).toFixed(2);
+        }
+        function creditsToCents(credits) {
+            return Math.round((Number(credits) || 0) * 100);
+        }
+        function staffRemainingCents(staff) {
+            if (staff && staff.drink_allowance != null && staff.drinks_used != null) {
+                return creditsToCents(parseFloat(staff.drink_allowance) - parseFloat(staff.drinks_used));
+            }
+            return creditsToCents(staff && staff.drinks_remaining);
+        }
 
         function normalizeUid(uid) {
             const cleaned = (uid || '').replace(/[^a-fA-F0-9]/g, '').toUpperCase();
@@ -287,10 +302,10 @@
                 resultsDiv.classList.remove('hidden'); return;
             }
             resultsDiv.innerHTML = '<div class="search-results">' + matches.slice(0, 10).map(b => {
-                const tickets = Math.floor((b.credits || 0) / 7);
+                const balanceLabel = formatDollars(creditsToCents(b.credits));
                 return `<div class="search-result-item" onclick="selectCustomer('${b.rfid_uid}')">
                     <div class="search-result-name">${b.customer_name || 'Unknown'}</div>
-                    <div class="search-result-details">${tickets} ticket${tickets!==1?'s':''} · ${b.alcohol_approved?'✓ 19+':'✗ Not verified'}</div>
+                    <div class="search-result-details">${balanceLabel} credits · ${b.alcohol_approved?'✓ 19+':'✗ Not verified'}</div>
                 </div>`;
             }).join('') + '</div>';
             resultsDiv.classList.remove('hidden');
@@ -323,13 +338,13 @@
                 if (r.ok) {
                     const raw = await r.json();
                     const bands = Array.isArray(raw) ? raw : [];
-                    servedCount = Math.floor(bands.reduce((s,b) => s + (parseFloat(b.credits_spent)||0), 0) / 7);
+                    servedCount = bands.reduce((s,b) => s + creditsToCents(b.credits_spent || 0), 0);
                     updateCount();
                 }
             } catch(e) { updateCount(); }
         }
 
-        function updateCount() { document.getElementById('servedCount').textContent = servedCount + ' Served'; }
+        function updateCount() { document.getElementById('servedCount').textContent = formatDollars(servedCount) + ' in Sales'; }
 
         async function lookupWristband(uid) {
             // Check staff wristband first
@@ -364,10 +379,10 @@
             document.getElementById('ageStatus').innerHTML = band.alcohol_approved
                 ? '<span class="age-badge age-ok">✓ 19+ VERIFIED</span>'
                 : '<span class="age-badge age-no">✗ NOT VERIFIED</span>';
-            const tickets = Math.floor(parseFloat(band.credits||0)/7);
+            const balanceCents = creditsToCents(band.credits);
             const el = document.getElementById('balanceAmount');
-            el.textContent = tickets;
-            el.style.color = tickets===0?'#ef4444':tickets<=2?'#f59e0b':'#00B74A';
+            el.textContent = formatDollars(balanceCents);
+            el.style.color = balanceCents===0?'#ef4444':balanceCents<=1500?'#f59e0b':'#00B74A';
             displayTransactions(); renderDrinks(band);
             document.getElementById('scanCard').classList.add('hidden');
             document.getElementById('customerCard').classList.remove('hidden');
@@ -380,7 +395,7 @@
             grid.innerHTML = '';
             const balance = parseFloat(band.credits||0);
             if (!band.alcohol_approved) { grid.innerHTML = '<div class="no-drinks">⚠️ Age verification required</div>'; return; }
-            if (balance < 7) { grid.innerHTML = '<div class="no-drinks">⚠️ No tickets — customer needs to purchase more</div>'; return; }
+            if (balance <= 0) { grid.innerHTML = '<div class="no-drinks">⚠️ No credits — customer needs to load more</div>'; return; }
             drinks.forEach(drink => {
                 const btn = document.createElement('button');
                 btn.className = 'drink-btn regular-drink';
@@ -404,23 +419,24 @@
             document.getElementById('staffNameDisplay').textContent = staff.name || 'Staff';
             const roles = Array.isArray(staff.roles) ? staff.roles.join(', ') : (staff.roles||'Staff');
             document.getElementById('staffRoleDisplay').textContent = roles.toUpperCase();
-            const drinksLeft = staff.drinks_remaining || 0;
+            const remCents = staffRemainingCents(staff);
             const el = document.getElementById('staffDrinksAmount');
-            el.textContent = drinksLeft;
-            el.style.color = drinksLeft===0?'#ef4444':drinksLeft<=2?'#f59e0b':'#60a5fa';
+            el.textContent = formatDollars(remCents);
+            el.style.color = remCents===0?'#ef4444':remCents<=1500?'#f59e0b':'#60a5fa';
             renderStaffDrinks(staff);
             document.getElementById('scanCard').classList.add('hidden');
             document.getElementById('customerCard').classList.add('hidden');
             document.getElementById('staffCard').classList.remove('hidden');
             stopNFC();
-            showMessage(`👋 Welcome ${staff.name}! ${drinksLeft} free drink${drinksLeft!==1?'s':''} remaining.`, 'staff');
+            showMessage(`👋 Welcome ${staff.name}! ${formatDollars(remCents)} in credits remaining.`, 'staff');
         }
 
         function renderStaffDrinks(staff) {
             const grid = document.getElementById('staffDrinkGrid');
             grid.innerHTML = '';
-            if (staff.drinks_remaining <= 0) {
-                grid.innerHTML = '<div class="no-drinks">🍺 Staff drink allowance exhausted</div>'; return;
+            const remCents = staffRemainingCents(staff);
+            if (remCents <= 0) {
+                grid.innerHTML = '<div class="no-drinks">🍺 Staff credits exhausted</div>'; return;
             }
             drinks.forEach(drink => {
                 const btn = document.createElement('button');
@@ -428,6 +444,9 @@
                 if (drink.stock_remaining < 1) {
                     btn.disabled = true;
                     btn.innerHTML = `<span class="drink-name">${drink.name}</span><span style="font-size:12px;opacity:0.6;">OUT OF STOCK</span>`;
+                } else if (remCents < creditsToCents(drink.price)) {
+                    btn.disabled = true;
+                    btn.innerHTML = `<span class="drink-name">${drink.name}</span>`;
                 } else {
                     btn.innerHTML = `<span class="drink-name">${drink.name}</span><span style="font-size:11px;opacity:0.7;margin-top:4px;">FREE</span>`;
                     btn.onclick = () => serveStaffDrink(drink);
@@ -448,9 +467,11 @@
                 if (r.status === 401 || r.status === 403) { redirectToLogin(); return; }
                 const d = await r.json();
                 if (r.ok) {
-                    currentStaff.drinks_remaining = d.drinks_remaining;
-                    showMessage(`✅ ${drink.name} served to ${currentStaff.name}! ${d.drinks_remaining} free drink${d.drinks_remaining!==1?'s':''} left`, 'staff');
-                    servedCount++; updateCount();
+                    if (d.drink_allowance != null) currentStaff.drink_allowance = d.drink_allowance;
+                    if (d.drinks_used != null) currentStaff.drinks_used = d.drinks_used;
+                    if (d.drinks_remaining != null) currentStaff.drinks_remaining = d.drinks_remaining;
+                    const remCents = staffRemainingCents(currentStaff);
+                    showMessage(`✅ ${drink.name} served to ${currentStaff.name}! ${formatDollars(remCents)} credits left`, 'staff');
                     await loadDrinks(); displayStaff(currentStaff);
                 } else { showMessage('❌ ' + (d.error||'Failed to serve drink'), 'error'); }
             } catch(e) { showMessage('❌ Error serving staff drink', 'error'); }
@@ -481,11 +502,11 @@
                 const d = await r.json();
                 if (r.ok) {
                     currentBand.credits = d.new_balance;
-                    const rem = Math.floor(d.new_balance/7);
-                    showMessage(`✅ ${drink.name} served! ${rem} ticket${rem!==1?'s':''} left`, 'success');
-                    recentTransactions.unshift({ id:'trans_'+Date.now(), drink:drink.name, drink_id:drink.id, time:new Date().toLocaleTimeString('en-CA',{hour:'2-digit',minute:'2-digit'}) });
+                    const remCents = creditsToCents(d.new_balance);
+                    showMessage(`✅ ${drink.name} served! ${formatDollars(remCents)} credits left`, 'success');
+                    recentTransactions.unshift({ id:'trans_'+Date.now(), drink:drink.name, drink_id:drink.id, price:parseFloat(drink.price)||0, time:new Date().toLocaleTimeString('en-CA',{hour:'2-digit',minute:'2-digit'}) });
                     if (recentTransactions.length>5) recentTransactions=recentTransactions.slice(0,5);
-                    servedCount++; updateCount();
+                    servedCount += creditsToCents(drink.price); updateCount();
                     await loadDrinks(); displayCustomer(currentBand);
                 } else { showMessage('❌ '+d.error,'error'); }
             } catch(e) { showMessage('❌ Error serving drink','error'); }
@@ -507,8 +528,9 @@
                     if (rr.status === 401 || rr.status === 403) { redirectToLogin(); return; }
                     if (rr.ok) currentBand = await rr.json();
                     recentTransactions = recentTransactions.filter(t=>t.id!==transId);
-                    servedCount=Math.max(0,servedCount-1); updateCount();
-                    showMessage(`✅ ${trans.drink} cancelled — 1 ticket returned`,'success');
+                    const refundCents = creditsToCents(trans.price || 0);
+                    servedCount = Math.max(0, servedCount - refundCents); updateCount();
+                    showMessage(`✅ ${trans.drink} cancelled — ${formatDollars(refundCents)} credit returned`,'success');
                     await loadDrinks(); displayCustomer(currentBand);
                 } else { showMessage('❌ Cancel failed: '+d.error,'error'); }
             } catch(e) { showMessage('❌ Error cancelling drink','error'); }

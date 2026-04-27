@@ -144,7 +144,7 @@
 
 <div class="hdr">
   <div class="hdr-title">🤠 HOLMDALE RODEO</div>
-  <div class="hdr-badge">DRINK TICKETS</div>
+  <div class="hdr-badge">BAR CREDITS</div>
   <div class="nfc-dot" id="nfcDot"></div>
 </div>
 
@@ -152,7 +152,7 @@
 <div class="screen active" id="sTap">
   <div class="tap-ring">🍺</div>
   <div class="tap-title">TAP WRISTBAND</div>
-  <div class="tap-sub">Hold your wristband to the reader to check your drink ticket balance</div>
+  <div class="tap-sub">Hold your wristband to the reader to check your credit balance</div>
 
 </div>
 
@@ -165,8 +165,8 @@
 <!-- BALANCE -->
 <div class="screen" id="sBalance">
   <div class="bal-top">
-    <div class="bal-big" id="balNum">0</div>
-    <div class="bal-unit">TICKETS<br>LEFT</div>
+    <div class="bal-big" id="balNum">$0.00</div>
+    <div class="bal-unit">CREDITS<br>LEFT</div>
   </div>
   <div class="bal-name" id="balName">—</div>
   <div class="bal-stats">
@@ -203,6 +203,15 @@
 <script>
 const API = 'https://rodeo-fresh-production-7348.up.railway.app/api';
 let timer = null;
+
+function formatDollars(cents) {
+  const n = Number(cents);
+  if (!isFinite(n)) return '$0.00';
+  return '$' + (n / 100).toFixed(2);
+}
+function creditsToCents(credits) {
+  return Math.round((Number(credits) || 0) * 100);
+}
 
 history.pushState(null,'',location.href);
 window.addEventListener('popstate',()=>history.pushState(null,'',location.href));
@@ -247,18 +256,19 @@ async function lookup(uid) {
 }
 
 function showBal(w) {
-  const total = Math.max(0, Math.floor(parseFloat(w.credits || w.ticket_quantity || 0) / 7));
-  const used = Math.max(0, Math.floor(parseFloat(w.credits_spent || w.drinks_redeemed || 0) / 7));
-  const rem = Math.max(0, total - used);
+  const remCents = creditsToCents(w.credits);
+  const usedCents = creditsToCents(w.credits_spent);
+  const totalCents = remCents + usedCents;
+
   const big = document.getElementById('balNum');
-  big.textContent = rem;
-  big.style.color = rem === 0 ? 'var(--red)' : rem <= 2 ? 'var(--orange)' : 'var(--gold2)';
+  big.textContent = formatDollars(remCents);
+  big.style.color = remCents === 0 ? 'var(--red)' : remCents <= 1500 ? 'var(--orange)' : 'var(--gold2)';
 
   document.getElementById('balName').textContent = w.customer_name || 'Guest';
-  document.getElementById('balTotal').textContent = total;
-  document.getElementById('balUsed').textContent = used;
+  document.getElementById('balTotal').textContent = formatDollars(totalCents);
+  document.getElementById('balUsed').textContent = formatDollars(usedCents);
 
-  const pct = total > 0 ? Math.round((rem/total)*100) : 0;
+  const pct = totalCents > 0 ? Math.round((remCents/totalCents)*100) : 0;
   document.getElementById('progressBar').style.width = pct + '%';
 
   document.getElementById('ageBadge').innerHTML = w.alcohol_approved
