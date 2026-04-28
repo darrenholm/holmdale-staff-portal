@@ -743,6 +743,19 @@
 const API_URL = 'https://rodeo-fresh-production-7348.up.railway.app/api';
 const TAX_RATE = 0.13;
 
+// ===== AUTH HELPERS =====
+function authHeaders(extra) {
+  const h = Object.assign({ 'Accept': 'application/json' }, extra || {});
+  const t = localStorage.getItem('auth_token');
+  if (t) h['Authorization'] = 'Bearer ' + t;
+  return h;
+}
+
+function redirectToLogin() {
+  localStorage.removeItem('auth_token');
+  window.location.href = 'login.html?expired=1';
+}
+
 let products = [];
 let cart = []; // { id, productId, name, size, color, price, qty }
 let activeCategory = 'all';
@@ -765,7 +778,8 @@ updateClock();
 // ===== LOAD PRODUCTS =====
 async function loadProducts() {
   try {
-    const resp = await fetch(API_URL + '/products?in_stock=true');
+    const resp = await fetch(API_URL + '/products?in_stock=true', { headers: authHeaders() });
+    if (resp.status === 401 || resp.status === 403) { redirectToLogin(); return; }
     products = await resp.json();
     // Filter out sample products
     products = products.filter(p => !p.is_sample && p.name.trim() !== 'Sample');
@@ -1037,12 +1051,14 @@ async function payCard() {
   try {
     const resp = await fetch(API_URL + '/stripe/create-payment-intent', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: authHeaders({ 'Content-Type': 'application/json' }),
       body: JSON.stringify({
         amount: amountCents,
         metadata: { source: 'merch_pos' },
       })
     });
+
+    if (resp.status === 401 || resp.status === 403) { redirectToLogin(); return; }
 
     if (!resp.ok) {
       const errText = await resp.text().catch(() => '');
@@ -1091,9 +1107,11 @@ async function capturePayment() {
   try {
     const resp = await fetch(API_URL + '/stripe/capture-payment', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: authHeaders({ 'Content-Type': 'application/json' }),
       body: JSON.stringify({ payment_intent_id: pendingPaymentIntentId })
     });
+
+    if (resp.status === 401 || resp.status === 403) { redirectToLogin(); return; }
 
     if (!resp.ok) {
       const errText = await resp.text().catch(() => '');
@@ -1126,7 +1144,7 @@ async function recordSale(method, orderId) {
   try {
     await fetch(API_URL + '/merch/sales', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: authHeaders({ 'Content-Type': 'application/json' }),
       body: JSON.stringify({
         orderId,
         items,
@@ -1181,7 +1199,11 @@ function cancelPayment() {
 }
 
 // ===== INIT =====
-loadProducts();
+if (!localStorage.getItem('auth_token')) {
+  redirectToLogin();
+} else {
+  loadProducts();
+}
 
 // Reload products every 5 min for stock updates
 setInterval(loadProducts, 300000);
