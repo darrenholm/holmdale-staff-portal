@@ -616,6 +616,119 @@
     text-align: center;
   }
 
+  /* ===== RECORD-FAIL OVERLAY ===== */
+  .record-fail-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.85);
+    z-index: 700;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+  }
+
+  .record-fail-overlay.open { display: flex; }
+
+  .record-fail-card {
+    background: var(--surface);
+    border: 2px solid var(--red);
+    border-radius: 16px;
+    padding: 28px;
+    max-width: 520px;
+    width: 100%;
+    max-height: 90vh;
+    overflow-y: auto;
+    box-shadow: 0 8px 40px rgba(239,68,68,0.3);
+  }
+
+  .record-fail-icon {
+    font-size: 56px;
+    text-align: center;
+    margin-bottom: 8px;
+  }
+
+  .record-fail-headline {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 32px;
+    letter-spacing: 2px;
+    color: var(--red);
+    text-align: center;
+    line-height: 1.1;
+    margin-bottom: 10px;
+  }
+
+  .record-fail-sub {
+    font-size: 15px;
+    color: var(--text);
+    text-align: center;
+    margin-bottom: 20px;
+    line-height: 1.4;
+  }
+
+  .record-fail-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 15px;
+  }
+
+  .record-fail-row .rf-label {
+    color: var(--text-dim);
+    font-weight: 600;
+  }
+
+  .record-fail-row .rf-value {
+    color: var(--text);
+    font-weight: 700;
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 18px;
+    letter-spacing: 1px;
+  }
+
+  .record-fail-items {
+    margin-top: 14px;
+    padding: 12px;
+    background: var(--surface2);
+    border-radius: 10px;
+    font-size: 14px;
+    color: var(--text);
+  }
+
+  .record-fail-items .rfi-title {
+    font-weight: 700;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    font-size: 11px;
+    margin-bottom: 8px;
+  }
+
+  .record-fail-items .rfi-row {
+    padding: 4px 0;
+    line-height: 1.4;
+  }
+
+  .record-fail-btn {
+    width: 100%;
+    margin-top: 22px;
+    padding: 16px;
+    border: none;
+    border-radius: 12px;
+    background: linear-gradient(135deg, var(--red), #b91c1c);
+    color: white;
+    font-family: 'Inter', sans-serif;
+    font-weight: 800;
+    font-size: 15px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    cursor: pointer;
+    box-shadow: 0 4px 16px rgba(239,68,68,0.3);
+  }
+
+  .record-fail-btn:active { transform: scale(0.98); }
+
   /* ===== SCROLLBAR ===== */
   ::-webkit-scrollbar { width: 6px; }
   ::-webkit-scrollbar-track { background: transparent; }
@@ -736,6 +849,35 @@
   <div class="success-icon">✅</div>
   <div class="success-text">PAYMENT COMPLETE</div>
   <div class="success-detail" id="successDetail">$0.00 — Card</div>
+</div>
+
+<!-- RECORD-FAIL OVERLAY (shown when sale was paid but DB insert failed) -->
+<div class="record-fail-overlay" id="recordFailOverlay">
+  <div class="record-fail-card">
+    <div class="record-fail-icon">⚠️</div>
+    <div class="record-fail-headline" id="recordFailHeadline">PAYMENT TAKEN — SALE NOT RECORDED</div>
+    <div class="record-fail-sub">Write down the details below and hand to a manager.</div>
+
+    <div class="record-fail-row">
+      <span class="rf-label">Order ID</span>
+      <span class="rf-value" id="recordFailOrderId">—</span>
+    </div>
+    <div class="record-fail-row">
+      <span class="rf-label">Method</span>
+      <span class="rf-value" id="recordFailMethod">—</span>
+    </div>
+    <div class="record-fail-row">
+      <span class="rf-label">Total</span>
+      <span class="rf-value" id="recordFailTotal">$0.00</span>
+    </div>
+
+    <div class="record-fail-items">
+      <div class="rfi-title">Items</div>
+      <div id="recordFailItems"></div>
+    </div>
+
+    <button class="record-fail-btn" onclick="acknowledgeRecordFail()">I've recorded this manually</button>
+  </div>
 </div>
 
 <script>
@@ -1087,8 +1229,9 @@ async function payCash() {
   if (!confirm(`Confirm CASH payment of $${total.toFixed(2)}?`)) return;
 
   const orderId = 'CASH_' + Date.now();
-  await recordSale('cash', orderId);
-  showSuccess(total, 'Cash');
+  if (await recordSale('cash', orderId)) {
+    showSuccess(total, 'Cash');
+  }
 }
 
 async function capturePayment() {
@@ -1118,8 +1261,9 @@ async function capturePayment() {
       throw new Error('Capture failed (HTTP ' + resp.status + '). ' + errText);
     }
 
-    await recordSale('card', orderId);
-    showSuccess(total, 'Card');
+    if (await recordSale('card', orderId)) {
+      showSuccess(total, 'Card');
+    }
   } catch (err) {
     document.getElementById('processingOverlay').classList.remove('open');
     pendingPaymentIntentId = null;
@@ -1140,9 +1284,9 @@ async function recordSale(method, orderId) {
     qty: item.qty,
   }));
 
-  // Record the sale
+  let resp;
   try {
-    await fetch(API_URL + '/merch/sales', {
+    resp = await fetch(API_URL + '/merch/sales', {
       method: 'POST',
       headers: authHeaders({ 'Content-Type': 'application/json' }),
       body: JSON.stringify({
@@ -1155,20 +1299,83 @@ async function recordSale(method, orderId) {
       })
     });
   } catch (err) {
-    console.warn('[POS] Failed to record sale to API:', err.message);
+    // Network-level failure (offline, DNS, CORS, etc.) — payment already taken
+    console.error('[POS]', {
+      event: 'sale_record_failed',
+      status: null,
+      statusText: 'network_error: ' + err.message,
+      orderId,
+      method,
+      total,
+      items,
+      responseBody: null,
+    });
+    showRecordFail({ method, orderId, total, items });
+    return false;
   }
 
-  // Update stock locally
+  if (!resp.ok) {
+    let responseBody = null;
+    try { responseBody = await resp.text(); } catch (_) { /* don't mask original failure */ }
+    console.error('[POS]', {
+      event: 'sale_record_failed',
+      status: resp.status,
+      statusText: resp.statusText,
+      orderId,
+      method,
+      total,
+      items,
+      responseBody,
+    });
+    showRecordFail({ method, orderId, total, items });
+    return false;
+  }
+
+  // Success — update stock and daily stats
   cart.forEach(item => {
     const product = products.find(p => p.id === item.productId);
     if (product) product.stock = Math.max(0, (product.stock || 0) - item.qty);
   });
 
-  // Update daily stats
   todaySalesTotal += total;
   todaySalesCount++;
   document.getElementById('todaySales').textContent = '$' + todaySalesTotal.toFixed(2);
   document.getElementById('todayCount').textContent = todaySalesCount;
+
+  return true;
+}
+
+function showRecordFail({ method, orderId, total, items }) {
+  const headline = method === 'card'
+    ? 'CARD CHARGED — SALE NOT RECORDED'
+    : 'CASH COLLECTED — SALE NOT RECORDED';
+
+  document.getElementById('recordFailHeadline').textContent = headline;
+  document.getElementById('recordFailOrderId').textContent = orderId;
+  document.getElementById('recordFailMethod').textContent = method.toUpperCase();
+  document.getElementById('recordFailTotal').textContent = '$' + Number(total).toFixed(2);
+
+  const itemsHtml = items.map(it => {
+    const variant = [it.size, it.color].filter(Boolean).join(' / ');
+    const variantStr = variant ? ` [${variant}]` : '';
+    return `<div class="rfi-row">${it.qty} × ${it.name}${variantStr} @ $${Number(it.price).toFixed(2)} each</div>`;
+  }).join('');
+  document.getElementById('recordFailItems').innerHTML = itemsHtml || '<div class="rfi-row">(no items)</div>';
+
+  // Hide processing/success overlays in case either is still up
+  document.getElementById('processingOverlay').classList.remove('open');
+  document.getElementById('successOverlay').classList.remove('open');
+  document.getElementById('recordFailOverlay').classList.add('open');
+}
+
+function acknowledgeRecordFail() {
+  document.getElementById('recordFailOverlay').classList.remove('open');
+  pendingPaymentIntentId = null;
+  pendingOrderId = null;
+  document.getElementById('btnSimulateCapture').disabled = true;
+  cart = [];
+  renderCart();
+  renderProducts();
 }
 
 function showSuccess(total, method) {
