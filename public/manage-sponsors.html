@@ -77,6 +77,45 @@ tr:hover td { background:#1f1f1f; }
 .sr input[type=number] { width:80px; }
 .mactions { display:flex; gap:8px; justify-content:flex-end; margin-top:20px; }
 
+/* Logo gallery */
+.logos { margin-top:16px; border-top:1px solid #333; padding-top:16px; }
+.logos h3 { font-size:14px; color:#999; margin-bottom:10px; display:flex; align-items:center; justify-content:space-between; }
+.lhint { font-size:11px; color:#666; font-weight:400; }
+.lgrid { display:grid; grid-template-columns:repeat(auto-fill, minmax(150px, 1fr)); gap:10px; margin-bottom:14px; }
+.lcard { background:#222; border:1px solid #333; border-radius:8px; padding:8px; display:flex; flex-direction:column; gap:6px; position:relative; }
+.lcard.primary { border-color:#facc15; }
+.lthumb { background:#0d0d0d; border-radius:6px; height:96px; display:flex; align-items:center; justify-content:center; overflow:hidden; }
+.lthumb img { max-width:100%; max-height:100%; object-fit:contain; }
+.licon { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px; color:#888; }
+.licon .ext { font-size:18px; font-weight:800; letter-spacing:1px; color:#ccc; }
+.licon .lbl { font-size:9px; text-transform:uppercase; letter-spacing:1px; }
+.lname { font-size:11px; color:#ccc; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.lbadges { display:flex; gap:4px; flex-wrap:wrap; }
+.lbadge { font-size:10px; padding:1px 6px; border-radius:3px; font-weight:600; }
+.fmt-vector { background:#3b82f633; color:#60a5fa; }
+.fmt-bitmap { background:#f59e0b33; color:#fbbf24; }
+.lvar { background:#44403c66; color:#d6d3d1; }
+.lprim { position:absolute; top:6px; right:6px; color:#facc15; font-size:14px; }
+.lbtns { display:flex; gap:4px; margin-top:4px; }
+.lbtns button { flex:1; font-size:11px; padding:4px 6px; border-radius:4px; border:none; cursor:pointer; }
+.lbtns .bp { background:#333; color:#fbbf24; }
+.lbtns .bp:hover:not(:disabled) { background:#444; }
+.lbtns .bp:disabled { opacity:.3; cursor:default; }
+.lbtns .be { background:#333; color:#ccc; }
+.lbtns .be:hover { background:#444; }
+.lbtns .bd { background:#ef444433; color:#ef4444; }
+.lbtns .bd:hover { background:#ef444455; }
+.ledit { display:grid; grid-template-columns:1fr 1fr; gap:6px; margin-top:6px; padding:8px; background:#1a1a1a; border-radius:6px; }
+.ledit.full { grid-column:1/-1; }
+.ledit label { font-size:9px; color:#888; text-transform:uppercase; }
+.ledit select, .ledit textarea, .ledit input { background:#222; border:1px solid #444; border-radius:4px; padding:4px 6px; color:#fff; font-size:12px; width:100%; }
+.ledit textarea { grid-column:1/-1; resize:vertical; min-height:40px; }
+.ledit-actions { grid-column:1/-1; display:flex; gap:6px; justify-content:flex-end; }
+.lupload { background:#1a1a1a; border:1px dashed #444; border-radius:8px; padding:12px; display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+.lupload input[type=file] { color:#ccc; font-size:12px; flex:1; min-width:180px; }
+.lupload select { background:#222; border:1px solid #444; border-radius:6px; padding:6px 8px; color:#fff; font-size:12px; }
+.lupload-empty { text-align:center; padding:20px; color:#555; font-size:13px; background:#161616; border-radius:8px; margin-bottom:14px; }
+
 @media(max-width:768px) {
     .container { padding:12px; }
     input.search { width:100%; }
@@ -121,6 +160,7 @@ tr:hover td { background:#1f1f1f; }
         <h2 id="mtitle">Add</h2>
         <div class="fg" id="mform"></div>
         <div class="sched" id="msched"></div>
+        <div class="logos" id="mlogos"></div>
         <div class="mactions">
             <button class="btn btn-gray" onclick="closeModal()">Cancel</button>
             <button class="btn btn-green" onclick="save()">Save</button>
@@ -136,6 +176,13 @@ let tab = 'sponsors';
 let sponsors = [], vendors = [], signs = [];
 let sSched = [], vSched = [];
 let editId = null;
+let currentLogos = [];   // logos for the record currently open in the modal
+let editingLogoId = null; // id of the logo whose inline edit form is open
+
+const PREVIEW_EXTS = ['svg', 'png', 'jpg', 'jpeg', 'gif', 'webp'];
+const VECTOR_EXTS = ['svg', 'eps', 'ai', 'pdf'];
+const BITMAP_EXTS = ['png', 'jpg', 'jpeg', 'webp', 'gif', 'tif', 'tiff'];
+const VARIANTS = ['full-color', 'black', 'white', 'icon'];
 
 const h = () => ({ 'Authorization':'Bearer '+localStorage.getItem('auth_token'), 'Content-Type':'application/json' });
 
@@ -304,9 +351,12 @@ function closeModal() { document.getElementById('overlay').classList.remove('ope
 
 function openAdd() {
     editId = null;
+    currentLogos = [];
+    editingLogoId = null;
     document.getElementById('mtitle').textContent = tab==='sponsors'?'Add Sponsor':tab==='vendors'?'Add Vendor':'Add Sign Location';
     buildForm({});
     buildSched([]);
+    renderLogos();
     document.getElementById('overlay').classList.add('open');
 }
 
@@ -314,12 +364,16 @@ function openEdit(type, id) {
     // Ensure we're on the right tab
     if (type !== tab) { tab = type; document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('active',t.dataset.tab===tab)); }
     editId = id;
+    currentLogos = [];
+    editingLogoId = null;
     const list = type==='sponsors'?sponsors:type==='vendors'?vendors:signs;
     const item = list.find(x=>x.id===id);
     if (!item) return;
     document.getElementById('mtitle').textContent = 'Edit '+(item.name||item.location||'');
     buildForm(item);
     buildSched(type==='signs'?[]:schedFor(type,id));
+    renderLogos();
+    if (type !== 'signs') loadLogos();
     document.getElementById('overlay').classList.add('open');
 }
 
@@ -377,6 +431,223 @@ function schedRow(year, amount, paid) {
 
 function addRow() {
     document.getElementById('srows').insertAdjacentHTML('beforeend', schedRow(2026, '', false));
+}
+
+// ─── Logos ───
+function logoEndpoint() { return tab==='sponsors' ? 'sponsor-logos' : 'vendor-logos'; }
+function logoParentField() { return tab==='sponsors' ? 'sponsor_id' : 'vendor_id'; }
+
+function extOf(name) {
+    const m = (name||'').toLowerCase().match(/\.([a-z0-9]+)$/);
+    return m ? m[1] : '';
+}
+function suggestFormat(ext) {
+    if (VECTOR_EXTS.includes(ext)) return 'vector';
+    if (BITMAP_EXTS.includes(ext)) return 'bitmap';
+    return '';
+}
+function escapeHtml(s) {
+    return (s==null?'':String(s)).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+async function loadLogos() {
+    if (!editId || tab==='signs') return;
+    try {
+        const url = `${API}/${logoEndpoint()}?${logoParentField()}=${editId}`;
+        const res = await fetch(url, { headers: h() });
+        currentLogos = await res.json();
+        if (!Array.isArray(currentLogos)) currentLogos = [];
+    } catch (err) {
+        console.error('loadLogos error:', err);
+        currentLogos = [];
+    }
+    renderLogos();
+}
+
+function renderLogos() {
+    const el = document.getElementById('mlogos');
+    if (tab==='signs') { el.innerHTML = ''; return; }
+
+    if (!editId) {
+        // Cannot upload until the record is saved (need an id).
+        el.innerHTML = `<h3>🎨 Logos <span class="lhint">Save record first to add logos</span></h3>`;
+        return;
+    }
+
+    const cards = currentLogos.length
+        ? `<div class="lgrid">${currentLogos.map(logoCard).join('')}</div>`
+        : `<div class="lupload-empty">No logos yet — upload one below.</div>`;
+
+    el.innerHTML = `
+        <h3>🎨 Logos <span class="lhint">${currentLogos.length} file${currentLogos.length===1?'':'s'} · 25 MB max</span></h3>
+        ${cards}
+        ${uploadForm()}
+    `;
+}
+
+function logoCard(l) {
+    const ext = (l.extension || extOf(l.filename) || '').toLowerCase();
+    const previewable = PREVIEW_EXTS.includes(ext);
+    const thumb = previewable
+        ? `<div class="lthumb"><img src="${escapeHtml(l.blob_url)}" alt=""></div>`
+        : `<div class="lthumb"><div class="licon"><div class="ext">.${escapeHtml(ext||'?')}</div><div class="lbl">${escapeHtml(l.format||'file')}</div></div></div>`;
+
+    const variantBadge = l.variant ? `<span class="lbadge lvar">${escapeHtml(l.variant)}</span>` : '';
+    const formatBadge = `<span class="lbadge fmt-${escapeHtml(l.format)}">${escapeHtml(l.format||'?')}</span>`;
+    const star = l.is_primary ? `<div class="lprim" title="Primary logo">★</div>` : '';
+
+    const isEditing = editingLogoId === l.id;
+    const editPanel = isEditing ? `
+        <div class="ledit">
+            <div><label>Format</label>
+                <select id="lf_format_${l.id}">
+                    <option value="vector" ${l.format==='vector'?'selected':''}>vector</option>
+                    <option value="bitmap" ${l.format==='bitmap'?'selected':''}>bitmap</option>
+                </select>
+            </div>
+            <div><label>Variant</label>
+                <select id="lf_variant_${l.id}">
+                    <option value="">— none —</option>
+                    ${VARIANTS.map(v => `<option value="${v}" ${l.variant===v?'selected':''}>${v}</option>`).join('')}
+                </select>
+            </div>
+            <textarea id="lf_notes_${l.id}" placeholder="Notes">${escapeHtml(l.notes||'')}</textarea>
+            <div class="ledit-actions">
+                <button class="btn btn-sm btn-gray" onclick="cancelEditLogo()">Cancel</button>
+                <button class="btn btn-sm btn-green" onclick="saveLogoMeta(${l.id})">Save</button>
+            </div>
+        </div>` : '';
+
+    return `
+        <div class="lcard ${l.is_primary?'primary':''}">
+            ${star}
+            ${thumb}
+            <div class="lname" title="${escapeHtml(l.filename)}">${escapeHtml(l.filename)}</div>
+            <div class="lbadges">${formatBadge}${variantBadge}</div>
+            <div class="lbtns">
+                <button class="bp" onclick="setPrimary(${l.id})" ${l.is_primary?'disabled':''} title="Set primary">★</button>
+                <button class="be" onclick="editLogo(${l.id})" title="Edit metadata">✎</button>
+                <button class="bd" onclick="deleteLogo(${l.id})" title="Delete">✕</button>
+            </div>
+            ${editPanel}
+        </div>`;
+}
+
+function uploadForm() {
+    return `
+        <div class="lupload">
+            <input type="file" id="lup_file" onchange="onUploadFileChange()">
+            <select id="lup_format" title="Format (auto-detected from extension)">
+                <option value="">auto</option>
+                <option value="vector">vector</option>
+                <option value="bitmap">bitmap</option>
+            </select>
+            <select id="lup_variant" title="Variant">
+                <option value="">— variant —</option>
+                ${VARIANTS.map(v => `<option value="${v}">${v}</option>`).join('')}
+            </select>
+            <button class="btn btn-sm btn-green" onclick="uploadLogo()">Upload</button>
+        </div>`;
+}
+
+function onUploadFileChange() {
+    const f = document.getElementById('lup_file').files[0];
+    const fmtSel = document.getElementById('lup_format');
+    if (f && !fmtSel.value) {
+        const guess = suggestFormat(extOf(f.name));
+        if (guess) fmtSel.value = guess;  // pre-fill but user can still change
+    }
+}
+
+async function uploadLogo() {
+    const fileEl = document.getElementById('lup_file');
+    const file = fileEl.files[0];
+    if (!file) { toast('Pick a file first'); return; }
+    if (file.size > 25 * 1024 * 1024) { toast('File exceeds 25 MB limit'); return; }
+
+    const format = document.getElementById('lup_format').value || suggestFormat(extOf(file.name));
+    if (!['vector','bitmap'].includes(format)) {
+        toast('Unrecognized file type — pick vector or bitmap');
+        return;
+    }
+    const variant = document.getElementById('lup_variant').value;
+
+    const fd = new FormData();
+    fd.append('file', file);
+    fd.append(logoParentField(), editId);
+    fd.append('format', format);
+    if (variant) fd.append('variant', variant);
+
+    try {
+        const res = await fetch(`${API}/${logoEndpoint()}`, {
+            method: 'POST',
+            headers: { 'Authorization': 'Bearer ' + localStorage.getItem('auth_token') },
+            body: fd
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Upload failed');
+        toast('Logo uploaded');
+        await loadLogos();
+    } catch (err) {
+        console.error('uploadLogo error:', err);
+        alert('Upload failed: ' + err.message);
+    }
+}
+
+function editLogo(id) { editingLogoId = id; renderLogos(); }
+function cancelEditLogo() { editingLogoId = null; renderLogos(); }
+
+async function saveLogoMeta(id) {
+    const body = {
+        format: document.getElementById('lf_format_'+id).value,
+        variant: document.getElementById('lf_variant_'+id).value || null,
+        notes: document.getElementById('lf_notes_'+id).value
+    };
+    try {
+        const res = await fetch(`${API}/${logoEndpoint()}/${id}`, {
+            method: 'PUT', headers: h(), body: JSON.stringify(body)
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Save failed');
+        editingLogoId = null;
+        toast('Saved');
+        await loadLogos();
+    } catch (err) {
+        console.error('saveLogoMeta error:', err);
+        alert('Save failed: ' + err.message);
+    }
+}
+
+async function setPrimary(id) {
+    try {
+        const res = await fetch(`${API}/${logoEndpoint()}/${id}/primary`, {
+            method: 'PUT', headers: h()
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Failed');
+        toast('Set as primary');
+        await loadLogos();
+    } catch (err) {
+        console.error('setPrimary error:', err);
+        alert('Failed: ' + err.message);
+    }
+}
+
+async function deleteLogo(id) {
+    if (!confirm('Delete this logo? This cannot be undone.')) return;
+    try {
+        const res = await fetch(`${API}/${logoEndpoint()}/${id}`, {
+            method: 'DELETE', headers: h()
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Delete failed');
+        if (editingLogoId === id) editingLogoId = null;
+        toast('Deleted');
+        await loadLogos();
+    } catch (err) {
+        console.error('deleteLogo error:', err);
+        alert('Delete failed: ' + err.message);
+    }
 }
 
 // ─── Save ───
