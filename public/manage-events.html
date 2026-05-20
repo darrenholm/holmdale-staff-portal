@@ -438,52 +438,14 @@
                     <input type="number" id="f_general_available" placeholder="1000">
                 </div>
 
-                <div class="section-label">TIER 1 PRICING</div>
-                <div class="tier-row">
-                    <div class="form-group">
-                        <label>Quantity</label>
-                        <input type="number" id="f_tier1_quantity" placeholder="500">
-                    </div>
-                    <div class="form-group">
-                        <label>Adult Price</label>
-                        <input type="number" step="0.01" id="f_tier1_adult_price" placeholder="30.00">
-                    </div>
-                    <div class="form-group">
-                        <label>Family Price</label>
-                        <input type="number" step="0.01" id="f_tier1_family_price" placeholder="70.00">
-                    </div>
+                <div class="section-label">TICKET PRICING</div>
+                <div class="form-group">
+                    <label>Adult Price</label>
+                    <input type="number" step="0.01" id="f_adult_price" placeholder="35.00">
                 </div>
-
-                <div class="section-label">TIER 2 PRICING</div>
-                <div class="tier-row">
-                    <div class="form-group">
-                        <label>Quantity</label>
-                        <input type="number" id="f_tier2_quantity" placeholder="300">
-                    </div>
-                    <div class="form-group">
-                        <label>Adult Price</label>
-                        <input type="number" step="0.01" id="f_tier2_adult_price" placeholder="35.00">
-                    </div>
-                    <div class="form-group">
-                        <label>Family Price</label>
-                        <input type="number" step="0.01" id="f_tier2_family_price" placeholder="80.00">
-                    </div>
-                </div>
-
-                <div class="section-label">TIER 3 PRICING</div>
-                <div class="tier-row">
-                    <div class="form-group">
-                        <label>Quantity</label>
-                        <input type="number" id="f_tier3_quantity" placeholder="200">
-                    </div>
-                    <div class="form-group">
-                        <label>Adult Price</label>
-                        <input type="number" step="0.01" id="f_tier3_adult_price" placeholder="40.00">
-                    </div>
-                    <div class="form-group">
-                        <label>Family Price</label>
-                        <input type="number" step="0.01" id="f_tier3_family_price" placeholder="90.00">
-                    </div>
+                <div class="form-group">
+                    <label>Family Price</label>
+                    <input type="number" step="0.01" id="f_family_price" placeholder="80.00">
                 </div>
             </div>
         </div>
@@ -614,9 +576,7 @@
 
         // Clear form
         const fields = ['title','date','time','venue','image_url','description','is_featured','general_available',
-            'tier1_quantity','tier1_adult_price','tier1_family_price',
-            'tier2_quantity','tier2_adult_price','tier2_family_price',
-            'tier3_quantity','tier3_adult_price','tier3_family_price'];
+            'adult_price','family_price'];
 
         fields.forEach(f => {
             const el = document.getElementById('f_' + f);
@@ -634,15 +594,8 @@
                 document.getElementById('f_description').value = ev.description || '';
                 document.getElementById('f_is_featured').value = ev.is_featured ? 'true' : 'false';
                 document.getElementById('f_general_available').value = ev.general_available || '';
-                document.getElementById('f_tier1_quantity').value = ev.tier1_quantity || '';
-                document.getElementById('f_tier1_adult_price').value = ev.tier1_adult_price || '';
-                document.getElementById('f_tier1_family_price').value = ev.tier1_family_price || '';
-                document.getElementById('f_tier2_quantity').value = ev.tier2_quantity || '';
-                document.getElementById('f_tier2_adult_price').value = ev.tier2_adult_price || '';
-                document.getElementById('f_tier2_family_price').value = ev.tier2_family_price || '';
-                document.getElementById('f_tier3_quantity').value = ev.tier3_quantity || '';
-                document.getElementById('f_tier3_adult_price').value = ev.tier3_adult_price || '';
-                document.getElementById('f_tier3_family_price').value = ev.tier3_family_price || '';
+                document.getElementById('f_adult_price').value = ev.tier1_adult_price || ev.general_price || '';
+                document.getElementById('f_family_price').value = ev.tier1_family_price || '';
             }
         }
 
@@ -659,6 +612,10 @@
     }
 
     async function saveEvent() {
+        const adultPrice = parseFloat(document.getElementById('f_adult_price').value) || 0;
+        const familyPrice = parseFloat(document.getElementById('f_family_price').value) || 0;
+        const generalAvailable = parseInt(document.getElementById('f_general_available').value) || 0;
+
         const data = {
             title: document.getElementById('f_title').value,
             date: document.getElementById('f_date').value,
@@ -667,19 +624,21 @@
             image_url: document.getElementById('f_image_url').value,
             description: document.getElementById('f_description').value,
             is_featured: document.getElementById('f_is_featured').value === 'true',
-            general_available: parseInt(document.getElementById('f_general_available').value) || 0,
-            general_price: parseFloat(document.getElementById('f_tier1_adult_price').value) || 0,
+            general_available: generalAvailable,
+            general_price: adultPrice,
             vip_price: 0,
             vip_available: 0,
-            tier1_quantity: parseInt(document.getElementById('f_tier1_quantity').value) || 0,
-            tier1_adult_price: parseFloat(document.getElementById('f_tier1_adult_price').value) || 0,
-            tier1_family_price: parseFloat(document.getElementById('f_tier1_family_price').value) || 0,
-            tier2_quantity: parseInt(document.getElementById('f_tier2_quantity').value) || 0,
-            tier2_adult_price: parseFloat(document.getElementById('f_tier2_adult_price').value) || 0,
-            tier2_family_price: parseFloat(document.getElementById('f_tier2_family_price').value) || 0,
-            tier3_quantity: parseInt(document.getElementById('f_tier3_quantity').value) || 0,
-            tier3_adult_price: parseFloat(document.getElementById('f_tier3_adult_price').value) || 0,
-            tier3_family_price: parseFloat(document.getElementById('f_tier3_family_price').value) || 0,
+            // Flat pricing — mirror the same adult/family price across all 3 tiers so the
+            // /current-tier endpoint returns the same price regardless of tickets sold.
+            tier1_quantity: generalAvailable,
+            tier1_adult_price: adultPrice,
+            tier1_family_price: familyPrice,
+            tier2_quantity: 0,
+            tier2_adult_price: adultPrice,
+            tier2_family_price: familyPrice,
+            tier3_quantity: 0,
+            tier3_adult_price: adultPrice,
+            tier3_family_price: familyPrice,
         };
 
         if (!data.title) {
