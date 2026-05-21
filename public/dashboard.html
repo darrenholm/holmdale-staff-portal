@@ -123,13 +123,70 @@ async function loadData() {
   }
 }
 
-// Revenue: use total_amount if set, else calculate from quantities × price + 13% HST
+// Revenue: prefer total_price (what was actually charged, post-HST), fall back
+// to a hardcoded-price estimate for legacy rows that didn't store the total.
 function calcRevenue(order) {
-  if (order.total_amount && parseFloat(order.total_amount) > 0) return parseFloat(order.total_amount);
+  const stored = parseFloat(order.total_price ?? order.total_amount ?? 0);
+  if (stored > 0) return stored;
   const sub = (order.quantity_adult || 0) * ADULT_PRICE
             + (order.quantity_child || 0) * CHILD_PRICE
             + (order.quantity_family || 0) * FAMILY_PRICE;
   return sub * 1.13;
+}
+
+// Back-derive per-ticket unit price from each order's actual total_price and
+// bucket by (type, rounded unit price). Lets the breakdown table show
+// "Adult General @ $30  vs  Adult General @ $35" honestly once orders at
+// different prices exist in the DB. Mixed adult+child orders assume child
+// stays at CHILD_PRICE and the adult unit is whatever the remainder works out
+// to. Orders without a stored total_price get attributed to the hardcoded
+// fallback price so they don't disappear from the totals.
+function bucketByUnitPrice(orders) {
+  const buckets = new Map();
+  const addTo = (type, unit, qty, revenue) => {
+    const u = Math.max(0, Math.round(unit));
+    const key = `${type}@${u}`;
+    const b = buckets.get(key) ?? { type, unit: u, qty: 0, revenue: 0 };
+    b.qty += qty;
+    b.revenue += revenue;
+    buckets.set(key, b);
+  };
+
+  orders.forEach(o => {
+    const adults = parseInt(o.quantity_adult) || 0;
+    const children = parseInt(o.quantity_child) || 0;
+    const families = parseInt(o.quantity_family) || 0;
+    const isFamilyType = (o.ticket_type || '').toLowerCase().includes('family');
+    const stored = parseFloat(o.total_price ?? o.total_amount ?? 0);
+    // Pre-HST total — what derived unit prices are quoted against.
+    const totalEx = stored > 0 ? stored / 1.13 : null;
+
+    if (families > 0 || isFamilyType) {
+      const fCount = families > 0 ? families : 1;
+      const unit = totalEx !== null ? totalEx / fCount : FAMILY_PRICE;
+      addTo('Family Pack', unit, fCount, totalEx !== null ? stored : unit * fCount * 1.13);
+    } else if (adults > 0 && children === 0) {
+      const unit = totalEx !== null ? totalEx / adults : ADULT_PRICE;
+      addTo('Adult General', unit, adults, totalEx !== null ? stored : unit * adults * 1.13);
+    } else if (children > 0 && adults === 0) {
+      const unit = totalEx !== null ? totalEx / children : CHILD_PRICE;
+      addTo('Child (5-12)', unit, children, totalEx !== null ? stored : unit * children * 1.13);
+    } else if (adults > 0 && children > 0) {
+      // Mixed order: hold child fixed at CHILD_PRICE, derive adult unit from remainder.
+      const childRev = children * CHILD_PRICE;
+      const adultUnit = totalEx !== null
+        ? Math.max(0, (totalEx - childRev) / adults)
+        : ADULT_PRICE;
+      const adultRev = adultUnit * adults * 1.13;
+      addTo('Adult General', adultUnit, adults, adultRev);
+      addTo('Child (5-12)', CHILD_PRICE, children, childRev * 1.13);
+    }
+  });
+
+  return Array.from(buckets.values()).sort((a, b) => {
+    if (a.type !== b.type) return a.type.localeCompare(b.type);
+    return a.unit - b.unit;
+  });
 }
 
 function fmt$(n) { return '$' + n.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ','); }
@@ -244,15 +301,15 @@ function renderAll() {
 
   // ── TICKET BREAKDOWN ─────────────────────────────────────
   html += '<div class="section-title">🎟️ Ticket Breakdown — All-Time Confirmed</div>';
-  html += '<table class="breakdown-table"><thead><tr><th>Type</th><th>Unit Price</th><th>Qty</th><th>Est. Revenue (incl. HST)</th></tr></thead><tbody>';
-  const rows = [
-    { type: 'Adult General', price: ADULT_PRICE, qty: allTime.adults },
-    { type: 'Child (5-12)',  price: CHILD_PRICE, qty: allTime.children },
-    { type: 'Family Pack',   price: FAMILY_PRICE, qty: allTime.families }
-  ];
-  rows.forEach(r => {
-    html += `<tr><td>${r.type}</td><td>${fmt$(r.price)}</td><td>${r.qty}</td><td class="green">${fmt$(r.qty * r.price * 1.13)}</td></tr>`;
-  });
+  html += '<table class="breakdown-table"><thead><tr><th>Type</th><th>Unit Price</th><th>Qty</th><th>Revenue (incl. HST)</th></tr></thead><tbody>';
+  const rows = bucketByUnitPrice(confirmed);
+  if (rows.length === 0) {
+    html += '<tr><td colspan="4" style="color:#aaa;text-align:center;padding:16px">No confirmed orders yet.</td></tr>';
+  } else {
+    rows.forEach(r => {
+      html += `<tr><td>${r.type}</td><td>${fmt$(r.unit)}</td><td>${r.qty}</td><td class="green">${fmt$(r.revenue)}</td></tr>`;
+    });
+  }
   html += `<tr><td colspan="3" style="color:#aaa;font-weight:600">Total</td><td class="green">${fmt$(allTime.revenue)}</td></tr>`;
   html += '</tbody></table>';
 
