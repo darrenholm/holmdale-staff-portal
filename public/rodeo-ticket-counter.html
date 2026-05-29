@@ -402,7 +402,7 @@
   <div class="left-panel">
     <div class="mode-tabs">
       <button class="mode-tab active" data-mode="gate" onclick="switchMode('gate')">🎟 Gate</button>
-      <button class="mode-tab" data-mode="drinks" onclick="switchMode('drinks')">🍺 Drinks</button>
+      <button class="mode-tab" data-mode="drinks" onclick="switchMode('drinks')">💵 Credits</button>
       <button class="mode-tab" data-mode="food" onclick="switchMode('food')">🍔 Food</button>
       <button class="mode-tab" data-mode="merch" onclick="switchMode('merch')">👕 Merch</button>
     </div>
@@ -490,6 +490,57 @@
     <div class="cash-actions">
       <button class="btn-cancel" onclick="closeCashModal()">Cancel</button>
       <button class="btn-confirm" id="cashConfirmBtn" onclick="confirmCash()" disabled>Confirm</button>
+    </div>
+  </div>
+</div>
+
+<!-- CUSTOM CREDIT AMOUNT MODAL -->
+<div class="cash-modal" id="customCreditModal">
+  <div class="cash-box">
+    <div class="cash-header">
+      <div class="cash-tendered-block" style="width:100%;">
+        <div class="lbl">Custom Credit Amount</div>
+        <div class="cash-tendered-display" id="customCreditDisplay">0.00</div>
+      </div>
+    </div>
+    <div class="cash-keypad">
+      <button onclick="customCreditKey('1')">1</button>
+      <button onclick="customCreditKey('2')">2</button>
+      <button onclick="customCreditKey('3')">3</button>
+      <button onclick="customCreditKey('4')">4</button>
+      <button onclick="customCreditKey('5')">5</button>
+      <button onclick="customCreditKey('6')">6</button>
+      <button onclick="customCreditKey('7')">7</button>
+      <button onclick="customCreditKey('8')">8</button>
+      <button onclick="customCreditKey('9')">9</button>
+      <button onclick="customCreditKey('.')">.</button>
+      <button onclick="customCreditKey('0')">0</button>
+      <button onclick="customCreditBack()">⌫</button>
+    </div>
+    <div class="cash-actions">
+      <button class="btn-cancel" onclick="closeCustomCreditModal()">Cancel</button>
+      <button class="btn-confirm" id="customCreditConfirmBtn" onclick="confirmCustomCredit()" disabled>Add to Cart</button>
+    </div>
+  </div>
+</div>
+
+<!-- WRISTBAND SCAN MODAL (post-payment, for loading credits) -->
+<div class="cash-modal" id="wristbandScanModal" style="z-index:700;">
+  <div class="cash-box">
+    <div class="cash-header">
+      <div class="cash-tendered-block" style="width:100%;">
+        <div class="lbl">Scan Wristband</div>
+        <div class="cash-tendered-display has-value" id="wristbandAmountDisplay">$0.00</div>
+      </div>
+    </div>
+    <div style="text-align:center;color:var(--text-dim);font-size:13px;margin-bottom:12px;">Tap or scan the wristband to load this amount as credits.</div>
+    <input type="text" id="wristbandUidInput" autocomplete="off" inputmode="none"
+           style="width:100%;padding:14px;font-size:18px;font-family:monospace;background:var(--surface2);border:2px solid var(--border);border-radius:10px;color:var(--text);margin-bottom:12px;text-align:center;letter-spacing:2px;"
+           placeholder="Waiting for scan…">
+    <div id="wristbandScanStatus" style="text-align:center;font-size:13px;min-height:18px;margin-bottom:12px;color:var(--text-dim);"></div>
+    <div class="cash-actions">
+      <button class="btn-cancel" onclick="closeWristbandScanModal()">Skip / Cancel</button>
+      <button class="btn-confirm" id="wristbandConfirmBtn" onclick="submitWristbandLoad()" disabled>Load Credits</button>
     </div>
   </div>
 </div>
@@ -604,15 +655,20 @@ function renderItems() {
           <div class="desc">${t.desc}</div>
         </div>`).join('') + `</div>`;
   } else if (mode === 'drinks') {
-    const packages = [1, 2, 3, 5, 10, 20];
-    area.innerHTML = `<div style="text-align:center;margin-bottom:16px;color:var(--text-dim);font-size:14px;">Drink tickets: <strong style="color:var(--gold-light);">$${ticketPrice.toFixed(2)}</strong> each (incl. HST)</div>
+    const amounts = [10, 20, 40, 60, 100, 200];
+    area.innerHTML = `<div style="text-align:center;margin-bottom:16px;color:var(--text-dim);font-size:14px;">Load wristband credits. Tap an amount to add it to the sale.</div>
       <div class="drink-ticket-grid">` +
-      packages.map(qty => `
-        <div class="drink-ticket-card" onclick="addDrinkTickets(${qty})">
-          <div class="qty">${qty}</div>
-          <div class="label">ticket${qty > 1 ? 's' : ''}</div>
-          <div class="price">$${(qty * ticketPrice).toFixed(2)}</div>
-        </div>`).join('') + `</div>`;
+      amounts.map(amt => `
+        <div class="drink-ticket-card" onclick="addCredits(${amt})">
+          <div class="qty">$${amt}</div>
+          <div class="label">credit</div>
+          <div class="price">add to cart</div>
+        </div>`).join('') +
+      `<div class="drink-ticket-card" style="border-color:var(--gold);" onclick="openCustomCreditModal()">
+          <div class="qty" style="font-size:32px;">$ ?</div>
+          <div class="label">custom</div>
+          <div class="price">enter amount</div>
+        </div>` + `</div>`;
   } else if (mode === 'food') {
     if (foodMenu.length === 0) {
       area.innerHTML = `<div style="text-align:center;padding:60px 20px;color:var(--text-dim);"><div style="font-size:48px;margin-bottom:12px;">🍔</div><div style="font-size:16px;font-weight:700;margin-bottom:8px;">No food menu published yet</div><div style="font-size:13px;">Go to <strong>Food Admin</strong> → add items → Save & Publish</div></div>`;
@@ -660,11 +716,52 @@ function addGateTicket(id) {
   renderCart();
 }
 
-function addDrinkTickets(qty) {
-  const key = 'drink_' + qty;
+function addCredits(amount) {
+  const amt = Number(amount);
+  if (!amt || amt <= 0) return;
+  const key = 'credit_' + amt;
   const existing = cart.find(c => c.id === key);
-  if (existing) { existing.qty++; } else { cart.push({ id: key, type: 'drink', name: qty + ' Drink Ticket' + (qty > 1 ? 's' : ''), detail: '$' + ticketPrice.toFixed(2) + ' × ' + qty, unitPrice: qty * ticketPrice, qty: 1, taxable: false }); }
+  if (existing) { existing.qty++; } else {
+    cart.push({ id: key, type: 'credit', name: 'Wristband Credit', detail: '$' + amt.toFixed(2) + ' load', unitPrice: amt, qty: 1, taxable: false });
+  }
   renderCart();
+}
+
+// Custom credit amount keypad
+let customCreditEntry = '';
+function openCustomCreditModal() {
+  customCreditEntry = '';
+  updateCustomCreditDisplay();
+  document.getElementById('customCreditModal').classList.add('open');
+}
+function closeCustomCreditModal() {
+  document.getElementById('customCreditModal').classList.remove('open');
+  customCreditEntry = '';
+}
+function customCreditKey(key) {
+  if (key === '.' && customCreditEntry.includes('.')) return;
+  if (key !== '.' && customCreditEntry.includes('.') && customCreditEntry.split('.')[1].length >= 2) return;
+  if (customCreditEntry === '' && key === '.') customCreditEntry = '0';
+  if (customCreditEntry === '0' && key !== '.') customCreditEntry = key;
+  else customCreditEntry += key;
+  updateCustomCreditDisplay();
+}
+function customCreditBack() {
+  customCreditEntry = customCreditEntry.slice(0, -1);
+  updateCustomCreditDisplay();
+}
+function updateCustomCreditDisplay() {
+  const display = document.getElementById('customCreditDisplay');
+  const val = parseFloat(customCreditEntry) || 0;
+  display.textContent = customCreditEntry ? customCreditEntry : '0.00';
+  display.classList.toggle('has-value', customCreditEntry !== '');
+  document.getElementById('customCreditConfirmBtn').disabled = !(val > 0);
+}
+function confirmCustomCredit() {
+  const amt = parseFloat(customCreditEntry) || 0;
+  if (amt <= 0) return;
+  addCredits(amt);
+  closeCustomCreditModal();
 }
 
 function addFoodItem(id) {
@@ -963,9 +1060,86 @@ async function recordSale(method, orderId, total) {
       }
     } catch (e) { console.warn('[Counter] Ticket order failed:', e.message); }
   }
+  // Wristband credit load — sum credit items and open scan modal
+  const creditItems = cart.filter(c => c.type === 'credit');
+  if (creditItems.length > 0) {
+    const creditTotal = creditItems.reduce((s, i) => s + i.unitPrice * i.qty, 0);
+    openWristbandScanModal(creditTotal);
+  }
   dayTotal += total; dayCount++;
   document.getElementById('todayTotal').textContent = '$' + dayTotal.toFixed(0);
   document.getElementById('todayCount').textContent = dayCount;
+}
+
+// ===== WRISTBAND CREDIT LOAD =====
+let pendingCreditLoad = 0;
+function openWristbandScanModal(amount) {
+  pendingCreditLoad = amount;
+  document.getElementById('wristbandAmountDisplay').textContent = '$' + amount.toFixed(2);
+  const input = document.getElementById('wristbandUidInput');
+  input.value = '';
+  document.getElementById('wristbandConfirmBtn').disabled = true;
+  document.getElementById('wristbandScanStatus').textContent = '';
+  document.getElementById('wristbandScanStatus').style.color = 'var(--text-dim)';
+  document.getElementById('wristbandScanModal').classList.add('open');
+  setTimeout(() => input.focus(), 100);
+}
+function closeWristbandScanModal() {
+  document.getElementById('wristbandScanModal').classList.remove('open');
+  pendingCreditLoad = 0;
+}
+document.addEventListener('DOMContentLoaded', () => {
+  const input = document.getElementById('wristbandUidInput');
+  if (!input) return;
+  input.addEventListener('input', () => {
+    const cleaned = input.value.replace(/[^a-fA-F0-9]/g, '');
+    document.getElementById('wristbandConfirmBtn').disabled = cleaned.length < 6;
+  });
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      submitWristbandLoad();
+    }
+  });
+});
+async function submitWristbandLoad() {
+  const uid = (document.getElementById('wristbandUidInput').value || '').trim();
+  if (!uid || pendingCreditLoad <= 0) return;
+  const status = document.getElementById('wristbandScanStatus');
+  status.style.color = 'var(--text-dim)';
+  status.textContent = 'Loading…';
+  document.getElementById('wristbandConfirmBtn').disabled = true;
+  try {
+    const token = localStorage.getItem('auth_token') || '';
+    if (!token) {
+      status.style.color = '#ef4444';
+      status.textContent = '⚠️ Not logged in. Open this page from the staff portal.';
+      document.getElementById('wristbandConfirmBtn').disabled = false;
+      return;
+    }
+    const r = await fetch(API_URL + '/wristbands/add-credits', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+      body: JSON.stringify({ rfid_uid: uid, amount: pendingCreditLoad })
+    });
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) {
+      status.style.color = '#ef4444';
+      if (r.status === 401) status.textContent = '⚠️ Session expired. Log in again.';
+      else if (r.status === 403) status.textContent = '⚠️ Age not verified — visit Gate 2 first.';
+      else if (r.status === 404) status.textContent = '⚠️ Wristband not registered. Link it at Gate 1.';
+      else status.textContent = '⚠️ ' + (data.error || 'Failed to load credits');
+      document.getElementById('wristbandConfirmBtn').disabled = false;
+      return;
+    }
+    status.style.color = '#22c55e';
+    status.textContent = '✓ Loaded. New balance: $' + (Number(data.new_balance) || 0).toFixed(2);
+    setTimeout(() => closeWristbandScanModal(), 1500);
+  } catch (e) {
+    status.style.color = '#ef4444';
+    status.textContent = '⚠️ Network error: ' + e.message;
+    document.getElementById('wristbandConfirmBtn').disabled = false;
+  }
 }
 
 // Stores last receipt for manual print button

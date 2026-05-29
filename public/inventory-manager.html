@@ -252,6 +252,7 @@
                 <thead>
                     <tr>
                         <th>Drink</th>
+                        <th>Price</th>
                         <th>Stock</th>
                         <th>Sold</th>
                         <th>Remaining</th>
@@ -278,17 +279,25 @@
         </div>
     </div>
 
-    <!-- Edit Stock Modal -->
+    <!-- Edit Drink Modal (name, price, stock) -->
     <div class="modal" id="editModal">
         <div class="modal-content">
-            <h3>Set Stock for <span id="editDrinkName"></span></h3>
+            <h3>Edit Drink</h3>
             <div class="input-group">
-                <label for="editAmount">Total Quantity:</label>
-                <input type="number" id="editAmount" min="0" value="100">
+                <label for="editDrinkNameInput">Drink Name:</label>
+                <input type="text" id="editDrinkNameInput" placeholder="e.g., Corona Extra">
+            </div>
+            <div class="input-group">
+                <label for="editPrice">Price per Drink:</label>
+                <input type="number" id="editPrice" min="0" step="0.01">
+            </div>
+            <div class="input-group">
+                <label for="editAmount">Total Stock Quantity:</label>
+                <input type="number" id="editAmount" min="0">
             </div>
             <div class="modal-buttons">
                 <button class="btn btn-cancel" onclick="closeEditModal()">Cancel</button>
-                <button class="btn btn-edit" onclick="confirmEdit()">Update</button>
+                <button class="btn btn-edit" onclick="confirmEdit()">Save Changes</button>
             </div>
         </div>
     </div>
@@ -389,10 +398,12 @@
                 }
 
                 const row = document.createElement('tr');
+                const price = parseFloat(drink.price || 0);
                 row.innerHTML = `
                     <td>
                         <div class="drink-name">${drink.name}</div>
                     </td>
+                    <td>$${price.toFixed(2)}</td>
                     <td>${total}</td>
                     <td>${sold}</td>
                     <td>
@@ -406,8 +417,8 @@
                             <button class="btn btn-restock" onclick="openRestockModal('${drink.id}', '${drink.name}')">
                                 + Restock
                             </button>
-                            <button class="btn btn-edit" onclick="openEditModal('${drink.id}', '${drink.name}', ${total})">
-                                ⚙️ Set
+                            <button class="btn btn-edit" onclick="openEditModal('${drink.id}')">
+                                ⚙️ Edit
                             </button>
                             <button class="btn btn-remove" onclick="removeDrink('${drink.id}', '${drink.name}')">
                                 🗑️
@@ -422,7 +433,7 @@
         function updateStats(wristbands) {
             const totalStock = drinks.reduce((sum, d) => sum + (d.stock_quantity || 0), 0);
             const totalSold = drinks.reduce((sum, d) => sum + (d.total_sold || 0), 0);
-            const totalRevenue = totalSold * 7; // $7 per drink
+            const totalRevenue = drinks.reduce((sum, d) => sum + ((d.total_sold || 0) * parseFloat(d.price || 0)), 0);
             const lowStock = drinks.filter(d => {
                 const percentage = d.stock_quantity > 0 ? (d.stock_remaining / d.stock_quantity) * 100 : 0;
                 return percentage < 20;
@@ -489,12 +500,14 @@
             }
         }
 
-        function openEditModal(id, name, current) {
+        function openEditModal(id) {
             currentDrink = drinks.find(d => d.id === id);
-            document.getElementById('editDrinkName').textContent = name;
-            document.getElementById('editAmount').value = current;
+            if (!currentDrink) return;
+            document.getElementById('editDrinkNameInput').value = currentDrink.name || '';
+            document.getElementById('editPrice').value = parseFloat(currentDrink.price || 0).toFixed(2);
+            document.getElementById('editAmount').value = currentDrink.stock_quantity || 0;
             document.getElementById('editModal').classList.add('active');
-            document.getElementById('editAmount').focus();
+            document.getElementById('editDrinkNameInput').focus();
         }
 
         function closeEditModal() {
@@ -503,35 +516,67 @@
         }
 
         async function confirmEdit() {
-            const amount = parseInt(document.getElementById('editAmount').value);
-            if (amount === undefined || amount < 0) {
-                alert('Please enter a valid quantity');
+            if (!currentDrink) return;
+            const newName = document.getElementById('editDrinkNameInput').value.trim();
+            const newPrice = parseFloat(document.getElementById('editPrice').value);
+            const newStock = parseInt(document.getElementById('editAmount').value);
+
+            if (!newName) { alert('Drink name cannot be empty'); return; }
+            if (isNaN(newPrice) || newPrice < 0) { alert('Price must be a non-negative number'); return; }
+            if (isNaN(newStock) || newStock < 0) { alert('Stock quantity must be a non-negative number'); return; }
+
+            const nameChanged = newName !== currentDrink.name;
+            const priceChanged = Math.abs(newPrice - parseFloat(currentDrink.price || 0)) > 0.001;
+            const stockChanged = newStock !== (currentDrink.stock_quantity || 0);
+
+            if (!nameChanged && !priceChanged && !stockChanged) {
+                showMessage('No changes to save', 'success');
+                closeEditModal();
                 return;
             }
 
+            const drinkId = currentDrink.id;
+            const drinkLabel = currentDrink.name;
+
             try {
-                const r = await fetch(API + '/drinks/' + currentDrink.id + '/stock', {
-                    method: 'PUT',
-                    headers: {
-                        'Authorization': 'Bearer ' + token,
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({ stock_quantity: amount })
-                });
-
-                if (r.status === 401 || r.status === 403) { redirectToLogin(); return; }
-                const d = await r.json();
-
-                if (r.ok) {
-                    showMessage(`✅ Updated ${currentDrink.name} stock to ${amount}!`, 'success');
-                    closeEditModal();
-                    await loadInventory();
-                } else {
-                    showMessage('❌ ' + d.error, 'error');
+                // 1) Update name and/or price via PUT /drinks/:id
+                if (nameChanged || priceChanged) {
+                    const body = {};
+                    if (nameChanged) body.name = newName;
+                    if (priceChanged) body.price = newPrice;
+                    const r = await fetch(API + '/drinks/' + drinkId, {
+                        method: 'PUT',
+                        headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+                        body: JSON.stringify(body)
+                    });
+                    if (r.status === 401 || r.status === 403) { redirectToLogin(); return; }
+                    if (!r.ok) {
+                        const d = await r.json().catch(() => ({}));
+                        showMessage('❌ ' + (d.error || 'Failed to update drink'), 'error');
+                        return;
+                    }
                 }
+                // 2) Update stock via PUT /drinks/:id/stock
+                if (stockChanged) {
+                    const r = await fetch(API + '/drinks/' + drinkId + '/stock', {
+                        method: 'PUT',
+                        headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ stock_quantity: newStock })
+                    });
+                    if (r.status === 401 || r.status === 403) { redirectToLogin(); return; }
+                    if (!r.ok) {
+                        const d = await r.json().catch(() => ({}));
+                        showMessage('❌ Stock update failed: ' + (d.error || 'unknown'), 'error');
+                        return;
+                    }
+                }
+                showMessage(`✅ Updated ${drinkLabel}`, 'success');
+                closeEditModal();
+                await loadInventory();
+                return;
             } catch(err) {
                 console.error('Edit error:', err);
-                showMessage('❌ Error updating stock', 'error');
+                showMessage('❌ Error updating drink', 'error');
             }
         }
 
