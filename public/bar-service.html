@@ -389,15 +389,16 @@
                 const btn = document.createElement('button');
                 btn.className = 'drink-btn regular-drink';
                 const count = recentTransactions.filter(t=>t.drink===drink.name).length;
+                const priceLabel = `<span class="drink-price" style="font-size:14px;font-weight:700;opacity:0.95;margin-top:4px;">$${parseFloat(drink.price||0).toFixed(2)}</span>`;
                 if (drink.stock_remaining < 1) {
                     btn.disabled = true;
-                    btn.innerHTML = `<span class="drink-name">${drink.name}</span><span style="font-size:12px;opacity:0.6;">OUT OF STOCK</span>`;
+                    btn.innerHTML = `<span class="drink-name">${drink.name}</span>${priceLabel}<span style="font-size:12px;opacity:0.6;margin-top:2px;">OUT OF STOCK</span>`;
                 } else if (balance < parseFloat(drink.price)) {
                     btn.disabled = true;
-                    btn.innerHTML = `<span class="drink-name">${drink.name}</span>`;
+                    btn.innerHTML = `<span class="drink-name">${drink.name}</span>${priceLabel}`;
                 } else {
                     if (count>0) btn.innerHTML += `<div class="drink-counter">${count}</div>`;
-                    btn.innerHTML += `<span class="drink-name">${drink.name}</span>`;
+                    btn.innerHTML += `<span class="drink-name">${drink.name}</span>${priceLabel}`;
                     btn.onclick = () => serveDrink(drink);
                 }
                 grid.appendChild(btn);
