@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sponsor Outreach — Holmdale Rodeo</title>
+<script>
+(function(){
+    const token = localStorage.getItem('auth_token');
+    if (!token) { window.location.href = 'login.html'; return; }
+    try {
+        const p = JSON.parse(atob(token.split('.')[1]));
+        if (p.exp && p.exp < Math.floor(Date.now()/1000)) { window.location.href = 'login.html'; }
+    } catch(e) { window.location.href = 'login.html'; }
+})();
+</script>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif; background:#111; color:#eee; min-height:100vh; }
+.header { background:#1a1a1a; border-bottom:1px solid #333; padding:16px 24px; display:flex; align-items:center; justify-content:space-between; }
+.header h1 { font-size:20px; color:#00B74A; }
+.header a { color:#888; text-decoration:none; font-size:14px; }
+.header a:hover { color:#fff; }
+.container { max-width:1400px; margin:0 auto; padding:20px; }
+.toolbar { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:16px; flex-wrap:wrap; }
+.toolbar-left { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+input.search { background:#222; border:1px solid #444; border-radius:8px; padding:10px 16px; color:#fff; font-size:14px; width:280px; }
+input.search:focus { outline:none; border-color:#00B74A; }
+select.filter { background:#222; border:1px solid #444; border-radius:8px; padding:10px 12px; color:#fff; font-size:14px; }
+.btn { padding:10px 20px; border-radius:8px; border:none; font-size:14px; font-weight:600; cursor:pointer; }
+.btn-green { background:#00B74A; color:#fff; }
+.btn-green:hover { background:#00a040; }
+.btn-green:disabled { background:#333; color:#666; cursor:not-allowed; }
+.btn-gray { background:#333; color:#fff; border:none; cursor:pointer; }
+.btn-gray:hover { background:#444; }
+.btn-sm { padding:6px 12px; font-size:12px; border-radius:6px; }
+.summary { display:flex; gap:16px; margin-bottom:20px; flex-wrap:wrap; }
+.scard { background:#1a1a1a; border:1px solid #333; border-radius:10px; padding:14px 20px; flex:1; min-width:160px; }
+.scard .v { font-size:28px; font-weight:800; color:#00B74A; }
+.scard .l { font-size:11px; color:#888; text-transform:uppercase; letter-spacing:1px; margin-top:2px; }
+.scard.amber .v { color:#f59e0b; }
+.scard.blue .v { color:#3b82f6; }
+.scard.gray .v { color:#888; }
+table { width:100%; border-collapse:collapse; background:#1a1a1a; border:1px solid #333; border-radius:12px; overflow:hidden; }
+th { background:#222; color:#999; font-size:11px; text-transform:uppercase; letter-spacing:1px; padding:12px 12px; text-align:left; white-space:nowrap; }
+td { padding:10px 12px; border-top:1px solid #282828; font-size:13px; vertical-align:middle; }
+tr:hover td { background:#1f1f1f; }
+tr.unchecked td { opacity:0.4; }
+.name { font-weight:700; color:#fff; }
+.amt { font-weight:700; color:#00B74A; }
+.years { color:#888; font-size:12px; }
+.no-email { color:#ef4444; font-style:italic; font-size:12px; }
+input[type=checkbox] { width:18px; height:18px; cursor:pointer; accent-color:#00B74A; }
+.empty { text-align:center; padding:60px; color:#555; font-size:16px; }
+.note { background:#1a1a1a; border:1px solid #333; border-radius:8px; padding:12px 16px; margin-bottom:16px; color:#aaa; font-size:13px; line-height:1.5; }
+.note strong { color:#f59e0b; }
+.toast { position:fixed; bottom:20px; right:20px; background:#00B74A; color:#fff; padding:12px 24px; border-radius:8px; font-weight:600; display:none; z-index:200; }
+.toast.show { display:block; }
+.toast.err { background:#ef4444; }
+</style>
+</head>
+<body>
+
+<div class="header">
+    <h1>📣 Sponsor Outreach</h1>
+    <a href="dashboard.html">← Back to Dashboard</a>
+</div>
+
+<div class="container">
+
+    <div class="note">
+        Past sponsors who have <strong>not committed</strong> for the selected year. Use the checkboxes to pick who should receive the outreach email. In-kind sponsors you plan to talk to directly should be unchecked.
+    </div>
+
+    <div class="summary">
+        <div class="scard"><div class="v" id="statTotal">0</div><div class="l">Uncommitted Past Sponsors</div></div>
+        <div class="scard amber"><div class="v" id="statSelected">0</div><div class="l">Selected for Email</div></div>
+        <div class="scard blue"><div class="v" id="statWithEmail">0</div><div class="l">Have Email Address</div></div>
+        <div class="scard gray"><div class="v" id="statNoEmail">0</div><div class="l">Missing Email</div></div>
+    </div>
+
+    <div class="toolbar">
+        <div class="toolbar-left">
+            <input type="text" class="search" id="searchInput" placeholder="Search name, contact, city...">
+            <select class="filter" id="yearSelect">
+                <option value="2026" selected>Outreach for 2026</option>
+                <option value="2027">Outreach for 2027</option>
+            </select>
+            <button class="btn btn-gray" onclick="selectAll(true)">Select All</button>
+            <button class="btn btn-gray" onclick="selectAll(false)">Deselect All</button>
+        </div>
+        <div>
+            <button class="btn btn-green" id="sendBtn" disabled>📧 Send to <span id="sendCount">0</span> Selected</button>
+        </div>
+    </div>
+
+    <table id="outreachTable">
+        <thead>
+            <tr>
+                <th style="width:40px;"><input type="checkbox" id="masterCheck" onchange="masterToggle(this.checked)"></th>
+                <th>Sponsor</th>
+                <th>Contact</th>
+                <th>City</th>
+                <th>Email</th>
+                <th>Last Year</th>
+                <th>Last Amount</th>
+                <th>All Years</th>
+            </tr>
+        </thead>
+        <tbody id="tbody">
+            <tr><td colspan="8" class="empty">Loading…</td></tr>
+        </tbody>
+    </table>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const API = 'https://rodeo-fresh-production-7348.up.railway.app/api';
+const token = localStorage.getItem('auth_token');
+
+let sponsors = [];
+let schedule = [];
+let selectedIds = new Set();
+let outreachYear = 2026;
+
+function showToast(msg, err) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.className = 'toast show' + (err ? ' err' : '');
+    setTimeout(() => t.classList.remove('show'), 3000);
+}
+
+async function loadData() {
+    try {
+        const [sRes, schedRes] = await Promise.all([
+            fetch(API + '/sponsors-vendors/sponsors', { headers: { 'Authorization': 'Bearer ' + token } }),
+            fetch(API + '/sponsors-vendors/sponsor-schedule', { headers: { 'Authorization': 'Bearer ' + token } })
+        ]);
+        if (sRes.status === 401 || schedRes.status === 401) {
+            window.location.href = 'login.html?expired=1'; return;
+        }
+        sponsors = await sRes.json();
+        schedule = await schedRes.json();
+        render();
+    } catch (err) {
+        console.error('Load error:', err);
+        showToast('Failed to load sponsor data', true);
+    }
+}
+
+function uncommittedSponsors() {
+    // Sponsors who have at least one schedule entry in a prior year, but no entry for the outreach year
+    return sponsors.filter(s => {
+        const entries = schedule.filter(e => e.sponsor_id === s.id);
+        const hasPast = entries.some(e => Number(e.year) < outreachYear && Number(e.amount) > 0);
+        const hasCurrent = entries.some(e => Number(e.year) === outreachYear);
+        return hasPast && !hasCurrent;
+    });
+}
+
+function render() {
+    outreachYear = parseInt(document.getElementById('yearSelect').value, 10);
+    const q = (document.getElementById('searchInput').value || '').toLowerCase().trim();
+
+    const all = uncommittedSponsors();
+    const filtered = all.filter(s =>
+        !q ||
+        (s.name||'').toLowerCase().includes(q) ||
+        (s.contact_name||'').toLowerCase().includes(q) ||
+        (s.city||'').toLowerCase().includes(q) ||
+        (s.email||'').toLowerCase().includes(q)
+    );
+
+    // Default-select on first load: everyone with an email
+    if (selectedIds.size === 0 && all.length > 0) {
+        for (const s of all) if (s.email) selectedIds.add(s.id);
+    }
+
+    // Build a quick lookup of latest schedule entry per sponsor
+    const latestBySponsor = {};
+    const yearsBySponsor = {};
+    for (const e of schedule) {
+        if (Number(e.amount) <= 0) continue;
+        const y = Number(e.year);
+        (yearsBySponsor[e.sponsor_id] ||= new Set()).add(y);
+        const cur = latestBySponsor[e.sponsor_id];
+        if (!cur || y > Number(cur.year)) latestBySponsor[e.sponsor_id] = e;
+    }
+
+    // Sort: with email first, then by last amount desc
+    filtered.sort((a, b) => {
+        const aEmail = !!a.email, bEmail = !!b.email;
+        if (aEmail !== bEmail) return aEmail ? -1 : 1;
+        const aAmt = parseFloat(latestBySponsor[a.id]?.amount || 0);
+        const bAmt = parseFloat(latestBySponsor[b.id]?.amount || 0);
+        return bAmt - aAmt;
+    });
+
+    const tbody = document.getElementById('tbody');
+    if (!filtered.length) {
+        tbody.innerHTML = `<tr><td colspan="8" class="empty">No uncommitted past sponsors found for ${outreachYear}.</td></tr>`;
+    } else {
+        tbody.innerHTML = filtered.map(s => {
+            const last = latestBySponsor[s.id];
+            const yrs = [...(yearsBySponsor[s.id] || [])].sort().join(', ');
+            const checked = selectedIds.has(s.id);
+            const canSelect = !!s.email;
+            return `<tr class="${checked ? '' : 'unchecked'}">
+                <td><input type="checkbox" ${checked ? 'checked' : ''} ${canSelect ? '' : 'disabled'} onchange="toggleOne(${s.id}, this.checked)"></td>
+                <td class="name">${escapeHtml(s.name || '')}</td>
+                <td>${escapeHtml(s.contact_name || '')}</td>
+                <td>${escapeHtml(s.city || '')}</td>
+                <td>${s.email ? `<a href="mailto:${escapeHtml(s.email)}" style="color:#3b82f6;">${escapeHtml(s.email)}</a>` : '<span class="no-email">— no email —</span>'}</td>
+                <td>${last ? last.year : '-'}</td>
+                <td class="amt">${last ? '$' + Number(last.amount).toLocaleString() : '-'}</td>
+                <td class="years">${yrs}</td>
+            </tr>`;
+        }).join('');
+    }
+
+    // Update stats
+    const withEmail = all.filter(s => !!s.email).length;
+    const noEmail = all.length - withEmail;
+    document.getElementById('statTotal').textContent = all.length;
+    document.getElementById('statSelected').textContent = selectedIds.size;
+    document.getElementById('statWithEmail').textContent = withEmail;
+    document.getElementById('statNoEmail').textContent = noEmail;
+    document.getElementById('sendCount').textContent = selectedIds.size;
+    document.getElementById('sendBtn').disabled = selectedIds.size === 0;
+
+    // Master checkbox state
+    const visibleSelectable = filtered.filter(s => !!s.email);
+    const allChecked = visibleSelectable.length > 0 && visibleSelectable.every(s => selectedIds.has(s.id));
+    document.getElementById('masterCheck').checked = allChecked;
+}
+
+function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+function toggleOne(id, checked) {
+    if (checked) selectedIds.add(id); else selectedIds.delete(id);
+    render();
+}
+
+function selectAll(state) {
+    const all = uncommittedSponsors();
+    if (state) {
+        for (const s of all) if (s.email) selectedIds.add(s.id);
+    } else {
+        selectedIds.clear();
+    }
+    render();
+}
+
+function masterToggle(checked) {
+    // Toggle only visible (filtered) rows
+    const q = (document.getElementById('searchInput').value || '').toLowerCase().trim();
+    const visible = uncommittedSponsors().filter(s =>
+        !q ||
+        (s.name||'').toLowerCase().includes(q) ||
+        (s.contact_name||'').toLowerCase().includes(q) ||
+        (s.city||'').toLowerCase().includes(q) ||
+        (s.email||'').toLowerCase().includes(q)
+    );
+    if (checked) {
+        for (const s of visible) if (s.email) selectedIds.add(s.id);
+    } else {
+        for (const s of visible) selectedIds.delete(s.id);
+    }
+    render();
+}
+
+document.getElementById('searchInput').addEventListener('input', render);
+document.getElementById('yearSelect').addEventListener('change', () => {
+    selectedIds.clear();
+    render();
+});
+
+document.getElementById('sendBtn').addEventListener('click', () => {
+    showToast('Sending not wired up yet — letter draft + booklet attachment coming next', false);
+});
+
+loadData();
+</script>
+
+</body>
+</html>
