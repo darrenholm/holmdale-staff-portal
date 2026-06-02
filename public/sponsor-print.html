@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sponsor Outreach Worksheet — Holmdale Rodeo</title>
+<script>
+(function(){
+    const token = localStorage.getItem('auth_token');
+    if (!token) { window.location.href = 'login.html'; return; }
+    try {
+        const p = JSON.parse(atob(token.split('.')[1]));
+        if (p.exp && p.exp < Math.floor(Date.now()/1000)) { window.location.href = 'login.html'; }
+    } catch(e) { window.location.href = 'login.html'; }
+})();
+</script>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif; background:#f5f5f5; color:#111; }
+
+/* Screen-only controls */
+.controls { background:#1a1a1a; color:#eee; padding:14px 24px; display:flex; gap:12px; align-items:center; justify-content:space-between; flex-wrap:wrap; }
+.controls h1 { font-size:18px; color:#00B74A; }
+.controls .right { display:flex; gap:8px; flex-wrap:wrap; }
+.controls a { color:#aaa; text-decoration:none; font-size:13px; padding:8px 14px; border:1px solid #444; border-radius:6px; }
+.controls a:hover { color:#fff; border-color:#666; }
+.controls button { padding:10px 20px; border:none; border-radius:6px; font-size:14px; font-weight:600; cursor:pointer; }
+.controls button.print { background:#00B74A; color:#fff; }
+.controls .legend { font-size:12px; color:#888; }
+.controls select { background:#222; border:1px solid #444; color:#fff; padding:8px 12px; border-radius:6px; font-size:13px; }
+
+.page { max-width:11in; margin:20px auto; background:#fff; padding:0.4in 0.5in; box-shadow:0 4px 20px rgba(0,0,0,0.15); }
+
+.report-head { display:flex; justify-content:space-between; align-items:flex-end; border-bottom:2px solid #000; padding-bottom:8px; margin-bottom:10px; }
+.report-head h1 { font-size:18px; }
+.report-head .subhead { font-size:11px; color:#444; }
+.report-head .date { font-size:11px; color:#444; }
+
+.section-title { font-size:13px; font-weight:700; background:#222; color:#fff; padding:4px 8px; margin-top:14px; margin-bottom:0; }
+
+table { width:100%; border-collapse:collapse; font-size:10px; }
+th { background:#e8e8e8; border:1px solid #999; padding:4px 5px; text-align:left; font-size:9px; text-transform:uppercase; letter-spacing:0.3px; }
+td { border:1px solid #999; padding:5px 5px; vertical-align:top; }
+td.amt { text-align:right; font-variant-numeric:tabular-nums; }
+td.center { text-align:center; }
+td.name { font-weight:700; }
+td.notes { background:#fafafa; }
+td.committed { background:#d4f5dc; color:#0a5d20; font-weight:700; }
+
+.checkbox-cell { width:30px; text-align:center; padding:6px 2px !important; }
+.checkbox { display:inline-block; width:14px; height:14px; border:1.5px solid #333; border-radius:2px; }
+.notes-line { display:inline-block; width:100%; min-height:16px; border-bottom:1px dotted #999; }
+
+tr:nth-child(even) td { background:#fafafa; }
+tr:nth-child(even) td.committed { background:#c5edd0; }
+tr:nth-child(even) td.checkbox-cell { background:#fff; }
+
+.footer-line { margin-top:12px; padding-top:8px; border-top:1px solid #ccc; font-size:10px; color:#666; display:flex; justify-content:space-between; }
+.legend-box { display:flex; gap:14px; font-size:10px; color:#444; margin-top:8px; }
+.legend-box .swatch { display:inline-block; width:10px; height:10px; border:1px solid #999; vertical-align:middle; margin-right:4px; }
+.legend-box .swatch.committed { background:#d4f5dc; }
+
+@media print {
+    @page { size: letter landscape; margin: 0.35in; }
+    body { background:#fff; }
+    .controls { display:none; }
+    .page { max-width:none; margin:0; padding:0; box-shadow:none; }
+    .section-title { -webkit-print-color-adjust:exact; print-color-adjust:exact; background:#222 !important; color:#fff !important; }
+    th { -webkit-print-color-adjust:exact; print-color-adjust:exact; background:#e8e8e8 !important; }
+    td.committed { -webkit-print-color-adjust:exact; print-color-adjust:exact; background:#d4f5dc !important; }
+    tr:nth-child(even) td { -webkit-print-color-adjust:exact; print-color-adjust:exact; background:#fafafa !important; }
+    tr { page-break-inside: avoid; }
+    table { page-break-inside: auto; }
+}
+</style>
+</head>
+<body>
+
+<div class="controls">
+    <h1>📋 Sponsor Outreach Worksheet</h1>
+    <div class="legend">Print this, take it to lunch, check off who to email when you're back.</div>
+    <div class="right">
+        <select id="yearSelect">
+            <option value="2026" selected>Outreach for 2026</option>
+            <option value="2027">Outreach for 2027</option>
+        </select>
+        <select id="sortSelect">
+            <option value="amount" selected>Sort: Last amount (high → low)</option>
+            <option value="name">Sort: Sponsor name (A → Z)</option>
+            <option value="recency">Sort: Most recent year first</option>
+        </select>
+        <a href="sponsor-outreach.html">Online list →</a>
+        <button class="print" onclick="window.print()">🖨️ Print</button>
+    </div>
+</div>
+
+<div class="page" id="page">
+    <div class="report-head">
+        <div>
+            <h1>Sponsor Outreach Worksheet</h1>
+            <div class="subhead">Holmdale Pro Rodeo · <span id="outreachYearLabel">2026</span> sponsorship campaign</div>
+        </div>
+        <div class="date">Printed: <span id="printDate"></span></div>
+    </div>
+
+    <div class="legend-box">
+        <span><span class="swatch committed"></span>= already committed for selected year</span>
+        <span><strong>EMAIL</strong> = send sponsorship email</span>
+        <span><strong>IN-KIND</strong> = talk to in person</span>
+        <span><strong>SKIP</strong> = don't contact this year</span>
+    </div>
+
+    <div id="reportBody">Loading…</div>
+
+    <div class="footer-line">
+        <span>Decisions made by: ____________________________________</span>
+        <span>Date: ______________</span>
+    </div>
+</div>
+
+<script>
+const API = 'https://rodeo-fresh-production-7348.up.railway.app/api';
+const token = localStorage.getItem('auth_token');
+
+let sponsors = [];
+let schedule = [];
+let outreachYear = 2026;
+let sortMode = 'amount';
+
+async function load() {
+    try {
+        const [sRes, schedRes] = await Promise.all([
+            fetch(API + '/sponsors-vendors/sponsors', { headers: { 'Authorization': 'Bearer ' + token } }),
+            fetch(API + '/sponsors-vendors/sponsor-schedule', { headers: { 'Authorization': 'Bearer ' + token } })
+        ]);
+        if (sRes.status === 401 || schedRes.status === 401) { window.location.href = 'login.html?expired=1'; return; }
+        sponsors = await sRes.json();
+        schedule = await schedRes.json();
+        render();
+    } catch (err) {
+        document.getElementById('reportBody').innerHTML = '<p style="color:#c00;padding:20px;">Failed to load. Check connection.</p>';
+        console.error(err);
+    }
+}
+
+function escapeHtml(s) {
+    return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+function render() {
+    outreachYear = parseInt(document.getElementById('yearSelect').value, 10);
+    sortMode = document.getElementById('sortSelect').value;
+    document.getElementById('outreachYearLabel').textContent = outreachYear;
+    document.getElementById('printDate').textContent = new Date().toLocaleDateString('en-CA', { year:'numeric', month:'long', day:'numeric' });
+
+    // Group sponsors with prior history
+    const byId = {};
+    const yearsSet = new Set();
+    for (const e of schedule) {
+        if (Number(e.amount) <= 0) continue;
+        const y = Number(e.year);
+        yearsSet.add(y);
+        (byId[e.sponsor_id] ||= {})[y] = Number(e.amount);
+    }
+
+    // Only keep sponsors that have any historical schedule entry OR an entry for current year
+    const sponsorsWithHistory = sponsors.filter(s => byId[s.id] && Object.keys(byId[s.id]).length > 0);
+
+    // Column years: show last 3 years + outreach year (always rightmost)
+    const allYears = [...yearsSet].sort((a,b) => a - b);
+    const recentYears = allYears.filter(y => y < outreachYear).slice(-3);
+    const columnYears = [...recentYears, outreachYear];
+
+    // Sort
+    const lastAmt = s => {
+        const entries = byId[s.id] || {};
+        const ys = Object.keys(entries).map(Number).filter(y => y < outreachYear).sort((a,b) => b - a);
+        return ys.length ? entries[ys[0]] : 0;
+    };
+    const lastYear = s => {
+        const ys = Object.keys(byId[s.id] || {}).map(Number).sort((a,b) => b - a);
+        return ys.length ? ys[0] : 0;
+    };
+    sponsorsWithHistory.sort((a, b) => {
+        if (sortMode === 'name') return (a.name||'').localeCompare(b.name||'');
+        if (sortMode === 'recency') return lastYear(b) - lastYear(a) || lastAmt(b) - lastAmt(a);
+        return lastAmt(b) - lastAmt(a); // amount default
+    });
+
+    // Build the table
+    const yearCols = columnYears.map(y => `<th class="amt">${y}</th>`).join('');
+
+    const rows = sponsorsWithHistory.map(s => {
+        const entries = byId[s.id] || {};
+        const committedThisYear = entries[outreachYear] > 0;
+        const yearCells = columnYears.map(y => {
+            const amt = entries[y];
+            const isCurrent = y === outreachYear;
+            if (amt > 0) {
+                return `<td class="amt${isCurrent ? ' committed' : ''}">$${amt.toLocaleString()}</td>`;
+            }
+            return `<td class="amt"${isCurrent ? ' style="background:#fff"' : ''}>${isCurrent ? '—' : ''}</td>`;
+        }).join('');
+
+        return `<tr>
+            <td class="name">${escapeHtml(s.name)}</td>
+            <td>${escapeHtml(s.contact_name)}</td>
+            <td>${escapeHtml(s.phone)}</td>
+            <td>${escapeHtml(s.email)}</td>
+            ${yearCells}
+            <td class="checkbox-cell"><span class="checkbox"></span></td>
+            <td class="checkbox-cell"><span class="checkbox"></span></td>
+            <td class="checkbox-cell"><span class="checkbox"></span></td>
+            <td class="notes"><span class="notes-line"></span></td>
+        </tr>`;
+    }).join('');
+
+    const totalCount = sponsorsWithHistory.length;
+    const committedCount = sponsorsWithHistory.filter(s => (byId[s.id] || {})[outreachYear] > 0).length;
+    const uncommittedCount = totalCount - committedCount;
+    const noEmailCount = sponsorsWithHistory.filter(s => !s.email).length;
+
+    document.getElementById('reportBody').innerHTML = `
+        <div style="font-size:11px;color:#444;margin:8px 0 12px;">
+            <strong>${totalCount}</strong> sponsors with history · <strong>${committedCount}</strong> committed for ${outreachYear} · <strong>${uncommittedCount}</strong> uncommitted · <strong>${noEmailCount}</strong> missing email
+        </div>
+        <table>
+            <thead>
+                <tr>
+                    <th style="width:18%;">Sponsor</th>
+                    <th style="width:11%;">Contact</th>
+                    <th style="width:10%;">Phone</th>
+                    <th style="width:17%;">Email</th>
+                    ${yearCols}
+                    <th class="checkbox-cell">Email</th>
+                    <th class="checkbox-cell">In-Kind</th>
+                    <th class="checkbox-cell">Skip</th>
+                    <th style="width:14%;">Notes</th>
+                </tr>
+            </thead>
+            <tbody>${rows}</tbody>
+        </table>
+    `;
+}
+
+document.getElementById('yearSelect').addEventListener('change', render);
+document.getElementById('sortSelect').addEventListener('change', render);
+
+load();
+</script>
+
+</body>
+</html>
