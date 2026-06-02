@@ -130,8 +130,8 @@ let sortMode = 'amount';
 async function load() {
     try {
         const [sRes, schedRes] = await Promise.all([
-            fetch(API + '/sponsors-vendors/sponsors', { headers: { 'Authorization': 'Bearer ' + token } }),
-            fetch(API + '/sponsors-vendors/sponsor-schedule', { headers: { 'Authorization': 'Bearer ' + token } })
+            fetch(API + '/sponsors', { headers: { 'Authorization': 'Bearer ' + token } }),
+            fetch(API + '/sponsor-schedule', { headers: { 'Authorization': 'Bearer ' + token } })
         ]);
         if (sRes.status === 401 || schedRes.status === 401) { window.location.href = 'login.html?expired=1'; return; }
         sponsors = await sRes.json();
