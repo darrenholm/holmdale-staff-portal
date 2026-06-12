@@ -72,6 +72,18 @@ input[type=checkbox] { width:18px; height:18px; cursor:pointer; accent-color:#00
         Past sponsors who have <strong>not committed</strong> for the selected year. Use the checkboxes to pick who should receive the outreach email. In-kind sponsors you plan to talk to directly should be unchecked.
     </div>
 
+    <div class="note" style="display:flex;gap:20px;align-items:center;flex-wrap:wrap;">
+        <div style="display:flex;align-items:center;gap:10px;">
+            <label style="color:#fff;font-weight:600;">📎 Booklet PDF:</label>
+            <input type="file" id="bookletFile" accept="application/pdf" style="color:#aaa;">
+            <span id="bookletStatus" style="color:#888;font-size:12px;"></span>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;">
+            <label style="color:#fff;font-weight:600;">Reply-to:</label>
+            <input type="email" id="replyToInput" value="darren@holmgraphics.ca" style="background:#222;border:1px solid #444;border-radius:6px;padding:6px 10px;color:#fff;font-size:13px;width:240px;">
+        </div>
+    </div>
+
     <div class="summary">
         <div class="scard"><div class="v" id="statTotal">0</div><div class="l">Uncommitted Past Sponsors</div></div>
         <div class="scard amber"><div class="v" id="statSelected">0</div><div class="l">Selected for Email</div></div>
@@ -91,7 +103,20 @@ input[type=checkbox] { width:18px; height:18px; cursor:pointer; accent-color:#00
         </div>
         <div style="display:flex;gap:8px;">
             <a href="sponsor-print.html" class="btn btn-gray" style="text-decoration:none;display:inline-block;">🖨️ Printable Worksheet</a>
-            <button class="btn btn-green" id="sendBtn" disabled>📧 Send to <span id="sendCount">0</span> Selected</button>
+            <button class="btn btn-gray" id="dryRunBtn" disabled onclick="sendOutreach(true)">👁 Preview (dry run)</button>
+            <button class="btn btn-green" id="sendBtn" disabled onclick="sendOutreach(false)">📧 Send to <span id="sendCount">0</span> Selected</button>
+        </div>
+    </div>
+
+    <!-- Results modal -->
+    <div id="resultsOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.8);z-index:100;align-items:center;justify-content:center;">
+        <div style="background:#1a1a1a;border:1px solid #444;border-radius:12px;padding:24px;width:92%;max-width:760px;max-height:90vh;overflow-y:auto;">
+            <h2 id="resultsTitle" style="color:#00B74A;margin-bottom:14px;">Results</h2>
+            <div id="resultsSummary" style="margin-bottom:16px;color:#ccc;"></div>
+            <div id="resultsList" style="font-size:13px;"></div>
+            <div style="margin-top:18px;display:flex;justify-content:flex-end;gap:8px;">
+                <button class="btn btn-gray" onclick="closeResults()">Close</button>
+            </div>
         </div>
     </div>
 
@@ -279,9 +304,145 @@ document.getElementById('yearSelect').addEventListener('change', () => {
     render();
 });
 
-document.getElementById('sendBtn').addEventListener('click', () => {
-    showToast('Sending not wired up yet — letter draft + booklet attachment coming next', false);
+// ─── Booklet file handling ───
+let bookletBase64 = null;
+let bookletFilename = null;
+
+document.getElementById('bookletFile').addEventListener('change', async (e) => {
+    const f = e.target.files[0];
+    const status = document.getElementById('bookletStatus');
+    bookletBase64 = null;
+    bookletFilename = null;
+    if (!f) { status.textContent = ''; updateButtons(); return; }
+    if (f.type !== 'application/pdf' && !f.name.toLowerCase().endsWith('.pdf')) {
+        status.textContent = '❌ Not a PDF';
+        status.style.color = '#ef4444';
+        updateButtons();
+        return;
+    }
+    status.textContent = 'Reading…';
+    status.style.color = '#888';
+    try {
+        bookletBase64 = await fileToBase64(f);
+        bookletFilename = f.name;
+        const sizeKb = Math.round(f.size / 1024);
+        status.textContent = `✓ ${f.name} (${sizeKb} KB)`;
+        status.style.color = '#00B74A';
+    } catch (err) {
+        status.textContent = '❌ Read failed';
+        status.style.color = '#ef4444';
+    }
+    updateButtons();
 });
+
+function fileToBase64(file) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+            // result is "data:application/pdf;base64,XXXXX" — strip prefix
+            const result = reader.result || '';
+            const idx = String(result).indexOf(',');
+            resolve(idx >= 0 ? String(result).slice(idx + 1) : String(result));
+        };
+        reader.onerror = () => reject(reader.error);
+        reader.readAsDataURL(file);
+    });
+}
+
+function updateButtons() {
+    const haveSel = selectedIds.size > 0;
+    const haveBooklet = !!bookletBase64;
+    document.getElementById('dryRunBtn').disabled = !haveSel;
+    document.getElementById('sendBtn').disabled = !haveSel || !haveBooklet;
+    document.getElementById('sendBtn').title = haveBooklet ? '' : 'Pick a booklet PDF first';
+}
+
+// Patch render() to also call updateButtons() — wrap original
+const _origRender = render;
+render = function() { _origRender(); updateButtons(); };
+
+// ─── Send / dry run ───
+async function sendOutreach(dryRun) {
+    if (selectedIds.size === 0) return;
+    if (!dryRun && !bookletBase64) { showToast('Pick a booklet PDF first', true); return; }
+
+    const ids = [...selectedIds];
+    const confirmMsg = dryRun
+        ? `Run a dry-run preview for ${ids.length} sponsor(s)? No emails will be sent.`
+        : `Send ${ids.length} email(s) with the booklet attached? This cannot be undone.`;
+    if (!confirm(confirmMsg)) return;
+
+    const btn = dryRun ? document.getElementById('dryRunBtn') : document.getElementById('sendBtn');
+    const orig = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = dryRun ? 'Running…' : 'Sending…';
+
+    try {
+        const body = {
+            sponsor_ids: ids,
+            outreach_year: outreachYear,
+            reply_to: document.getElementById('replyToInput').value.trim(),
+            dry_run: !!dryRun
+        };
+        if (!dryRun) {
+            body.attachment = { filename: bookletFilename, content_base64: bookletBase64 };
+        }
+        const r = await fetch(API + '/email/sponsor-outreach', {
+            method: 'POST',
+            headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+            body: JSON.stringify(body)
+        });
+        if (r.status === 401) { window.location.href = 'login.html?expired=1'; return; }
+        const data = await r.json();
+        if (!r.ok) {
+            showToast('❌ ' + (data.error || 'Send failed'), true);
+            return;
+        }
+        showResults(data, dryRun);
+    } catch (err) {
+        console.error(err);
+        showToast('❌ ' + err.message, true);
+    } finally {
+        btn.innerHTML = orig;
+        updateButtons();
+    }
+}
+
+function showResults(data, dryRun) {
+    document.getElementById('resultsTitle').textContent = dryRun ? 'Dry Run Preview' : 'Send Results';
+    const s = data.summary || {};
+    document.getElementById('resultsSummary').innerHTML = dryRun
+        ? `Would send to <strong style="color:#00B74A;">${s.dry_run || 0}</strong> sponsor(s) · <strong style="color:#f59e0b;">${s.skipped || 0}</strong> skipped (no email) · <strong style="color:#ef4444;">${s.errors || 0}</strong> error(s)`
+        : `<strong style="color:#00B74A;">${s.sent || 0}</strong> sent · <strong style="color:#f59e0b;">${s.skipped || 0}</strong> skipped · <strong style="color:#ef4444;">${s.errors || 0}</strong> error(s)`;
+    const list = data.results || [];
+    document.getElementById('resultsList').innerHTML = list.map(r => {
+        const color = r.status === 'ok' || r.status === 'dry_run' ? '#00B74A'
+                    : r.status === 'skipped' ? '#f59e0b'
+                    : '#ef4444';
+        const icon = r.status === 'ok' ? '✓'
+                   : r.status === 'dry_run' ? '👁'
+                   : r.status === 'skipped' ? '⊘'
+                   : '✗';
+        const extra = r.preview_prior_years ? ` <span style="color:#888;">(prior: ${r.preview_prior_years})</span>` : '';
+        const msg = r.message ? ` <span style="color:#888;">— ${r.message}</span>` : '';
+        return `<div style="padding:6px 0;border-bottom:1px solid #2a2a2a;">
+            <span style="color:${color};font-weight:700;">${icon}</span>
+            <strong style="color:#fff;">${escapeHtml(r.sponsor_name || 'Sponsor #' + r.sponsor_id)}</strong>
+            ${r.email ? `<span style="color:#888;">&lt;${escapeHtml(r.email)}&gt;</span>` : ''}
+            ${extra}${msg}
+        </div>`;
+    }).join('');
+    if (!dryRun && (s.sent || 0) > 0) {
+        // Successful sends — clear those IDs from selection so they're not re-sent
+        for (const r of list) if (r.status === 'ok') selectedIds.delete(r.sponsor_id);
+        render();
+    }
+    document.getElementById('resultsOverlay').style.display = 'flex';
+}
+
+function closeResults() {
+    document.getElementById('resultsOverlay').style.display = 'none';
+}
 
 loadData();
 </script>
