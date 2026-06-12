@@ -79,8 +79,12 @@ input[type=checkbox] { width:18px; height:18px; cursor:pointer; accent-color:#00
             <span id="bookletStatus" style="color:#888;font-size:12px;"></span>
         </div>
         <div style="display:flex;align-items:center;gap:10px;">
+            <label style="color:#fff;font-weight:600;">From:</label>
+            <input type="text" id="fromInput" value="Holmdale Pro Rodeo &lt;info@holmdalerodeo.ca&gt;" style="background:#222;border:1px solid #444;border-radius:6px;padding:6px 10px;color:#fff;font-size:13px;width:300px;">
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;">
             <label style="color:#fff;font-weight:600;">Reply-to:</label>
-            <input type="email" id="replyToInput" value="darren@holmgraphics.ca" style="background:#222;border:1px solid #444;border-radius:6px;padding:6px 10px;color:#fff;font-size:13px;width:240px;">
+            <input type="email" id="replyToInput" value="info@holmdalerodeo.ca" style="background:#222;border:1px solid #444;border-radius:6px;padding:6px 10px;color:#fff;font-size:13px;width:240px;">
         </div>
     </div>
 
@@ -381,6 +385,7 @@ async function sendOutreach(dryRun) {
         const body = {
             sponsor_ids: ids,
             outreach_year: outreachYear,
+            from: document.getElementById('fromInput').value.trim(),
             reply_to: document.getElementById('replyToInput').value.trim(),
             dry_run: !!dryRun
         };
