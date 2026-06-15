@@ -230,6 +230,12 @@ function toast(msg) {
     t.textContent = msg; t.style.display = 'block';
     setTimeout(() => t.style.display = 'none', 2500);
 }
+function flagBadges(x) {
+    let b = '';
+    if (x.paid) b += ' <span class="badge bg">Paid</span>';
+    if (x.in_kind) b += ' <span class="badge by">In Kind</span>';
+    return b;
+}
 
 // ─── Render ───
 function render() {
@@ -286,7 +292,7 @@ function renderSponsors(q, yr) {
         const a = yr!=='all' ? yearAmt('sponsors',s.id,yr) : 0;
         const yrs = [...new Set(schedFor('sponsors',s.id).map(x=>x.year))].sort().join(', ');
         return `<tr>
-            <td class="name">${s.name||''}</td>
+            <td class="name">${s.name||''}${flagBadges(s)}</td>
             <td>${s.contact_name||''}</td>
             <td>${s.city||''}</td>
             <td>${s.phone||''}</td>
@@ -313,7 +319,7 @@ function renderVendors(q, yr) {
         const entry = yr!=='all' ? schedFor('vendors',v.id).find(s=>s.year==yr) : null;
         const yrs = [...new Set(schedFor('vendors',v.id).map(x=>x.year))].sort().join(', ');
         return `<tr>
-            <td class="name">${v.name||''}</td>
+            <td class="name">${v.name||''}${flagBadges(v)}</td>
             <td>${v.contact_name||''}</td>
             <td>${v.phone||''}</td>
             <td>${v.email ? `<a href="mailto:${v.email}" style="color:#3b82f6;">${v.email}</a>` : ''}</td>
@@ -377,6 +383,15 @@ function openEdit(type, id) {
     document.getElementById('overlay').classList.add('open');
 }
 
+function flagsRow(item) {
+    const ckStyle = 'flex-direction:row; align-items:center; gap:8px; cursor:pointer;';
+    const lblStyle = 'text-transform:none; font-size:14px; color:#eee;';
+    return `<div class="fi full" style="flex-direction:row; gap:28px; align-items:center;">
+        <label class="fi" style="${ckStyle}"><input type="checkbox" id="f_paid" ${item.paid?'checked':''} style="width:auto;"><span style="${lblStyle}">💵 Paid</span></label>
+        <label class="fi" style="${ckStyle}"><input type="checkbox" id="f_inkind" ${item.in_kind?'checked':''} style="width:auto;"><span style="${lblStyle}">🎁 In Kind</span></label>
+    </div>`;
+}
+
 function buildForm(item) {
     const f = document.getElementById('mform');
     if (tab==='sponsors') {
@@ -389,6 +404,7 @@ function buildForm(item) {
             <div class="fi"><label>Province</label><input id="f_province" value="${item.province||''}"></div>
             <div class="fi"><label>Address</label><input id="f_address" value="${item.address||''}"></div>
             <div class="fi"><label>Postal Code</label><input id="f_postal" value="${item.postal_code||''}"></div>
+            ${flagsRow(item)}
             <div class="fi full"><label>Notes</label><textarea id="f_notes">${item.notes||''}</textarea></div>`;
     } else if (tab==='vendors') {
         f.innerHTML = `
@@ -400,7 +416,8 @@ function buildForm(item) {
             <div class="fi"><label>Province</label><input id="f_province" value="${item.province||''}"></div>
             <div class="fi"><label>Product</label><input id="f_product" value="${item.product||''}"></div>
             <div class="fi"><label>Booth Size</label><input id="f_booth" value="${item.booth_size||''}"></div>
-            <div class="fi full"><label>Comment</label><textarea id="f_notes">${item.comment||''}"></textarea></div>`;
+            ${flagsRow(item)}
+            <div class="fi full"><label>Comment</label><textarea id="f_notes">${item.comment||''}</textarea></div>`;
     } else {
         f.innerHTML = `
             <div class="fi"><label>Location</label><input id="f_location" value="${item.location||''}"></div>
@@ -666,6 +683,8 @@ async function save() {
                 address: document.getElementById('f_address').value,
                 postal_code: document.getElementById('f_postal').value,
                 notes: document.getElementById('f_notes').value,
+                paid: document.getElementById('f_paid').checked,
+                in_kind: document.getElementById('f_inkind').checked,
             };
             url = editId ? API+'/sponsors/'+editId : API+'/sponsors';
             method = editId ? 'PUT' : 'POST';
@@ -680,6 +699,8 @@ async function save() {
                 product: document.getElementById('f_product').value,
                 booth_size: document.getElementById('f_booth').value,
                 comment: document.getElementById('f_notes').value,
+                paid: document.getElementById('f_paid').checked,
+                in_kind: document.getElementById('f_inkind').checked,
             };
             url = editId ? API+'/vendors/'+editId : API+'/vendors';
             method = editId ? 'PUT' : 'POST';
