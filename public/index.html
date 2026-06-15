@@ -287,8 +287,12 @@
                 nameEl.textContent = staffName;
             }
 
-            var isAdmin = staffName && ADMIN_NAMES.indexOf(staffName) !== -1;
-            var isManager = staffName && MANAGER_NAMES.indexOf(staffName) !== -1;
+            // Normalize so the match isn't broken by case or stray/double spaces
+            // (e.g. "dawn abel", "Dawn  Abel", "Dawn Abel " all match "Dawn Abel").
+            function norm(n) { return (n || '').trim().toLowerCase().replace(/\s+/g, ' '); }
+            var normName = norm(staffName);
+            var isAdmin = normName && ADMIN_NAMES.some(function(n) { return norm(n) === normName; });
+            var isManager = normName && MANAGER_NAMES.some(function(n) { return norm(n) === normName; });
 
             if (isManager || isAdmin) {
                 document.getElementById('displaysSection').style.display = '';
