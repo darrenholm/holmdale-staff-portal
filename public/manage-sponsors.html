@@ -266,11 +266,13 @@ function renderSummary(yr) {
         const yearItems = list.filter(s=>s.year==yr);
         const total = yearItems.reduce((s,x) => s+(parseFloat(x.amount)||0), 0);
         const count = new Set(yearItems.filter(x=>parseFloat(x.amount)>0).map(x=>x[key])).size;
-        const paid = yearItems.filter(x=>x.paid).length;
+        const paid = items.filter(x=>x.paid).length;
+        const inKind = items.filter(x=>x.in_kind).length;
         el.innerHTML = `<div class="scard"><div class="v">${items.length}</div><div class="l">Total</div></div>
             <div class="scard blue"><div class="v">${count}</div><div class="l">Active ${yr}</div></div>
             <div class="scard amber"><div class="v">$${total.toLocaleString()}</div><div class="l">Amount ${yr}</div></div>
-            ${type==='vendors'?`<div class="scard"><div class="v">${paid}/${yearItems.length}</div><div class="l">Paid ${yr}</div></div>`:''}`;
+            <div class="scard"><div class="v">${paid}/${items.length}</div><div class="l">Paid</div></div>
+            <div class="scard"><div class="v">${inKind}</div><div class="l">In Kind</div></div>`;
     }
 }
 
@@ -314,7 +316,7 @@ function renderVendors(q, yr) {
     if (!items.length) { el.innerHTML = '<div class="empty">No vendors found</div>'; return; }
     el.innerHTML = `<table><thead><tr>
         <th>Name</th><th>Contact</th><th>Phone</th><th>Email</th><th>Product</th><th>Booth</th>
-        ${yr!=='all'?`<th>${yr} Amt</th><th>Paid</th>`:'<th>Years</th>'}<th></th>
+        ${yr!=='all'?`<th>${yr} Amt</th>`:'<th>Years</th>'}<th></th>
     </tr></thead><tbody>${items.map(v => {
         const entry = yr!=='all' ? schedFor('vendors',v.id).find(s=>s.year==yr) : null;
         const yrs = [...new Set(schedFor('vendors',v.id).map(x=>x.year))].sort().join(', ');
@@ -325,8 +327,7 @@ function renderVendors(q, yr) {
             <td>${v.email ? `<a href="mailto:${v.email}" style="color:#3b82f6;">${v.email}</a>` : ''}</td>
             <td>${v.product||''}</td>
             <td>${v.booth_size||''}</td>
-            ${yr!=='all'?`<td class="amt">${entry?'$'+parseFloat(entry.amount).toLocaleString():'-'}</td>
-                <td>${entry?(entry.paid?'<span class="badge bg">Paid</span>':'<span class="badge br">Unpaid</span>'):''}</td>`
+            ${yr!=='all'?`<td class="amt">${entry?'$'+parseFloat(entry.amount).toLocaleString():'-'}</td>`
                 :`<td>${yrs||'-'}</td>`}
             <td><button class="btn btn-sm btn-gray" onclick="openEdit('vendors',${v.id})">Edit</button></td>
         </tr>`;
@@ -431,23 +432,21 @@ function buildForm(item) {
 function buildSched(entries) {
     const el = document.getElementById('msched');
     if (tab==='signs') { el.innerHTML=''; return; }
-    const rows = entries.map(e => schedRow(e.year, parseFloat(e.amount)||0, e.paid)).join('');
+    const rows = entries.map(e => schedRow(e.year, parseFloat(e.amount)||0)).join('');
     el.innerHTML = `<h3>💰 Yearly Schedule</h3><div id="srows">${rows}</div>
         <button class="btn btn-sm btn-gray" onclick="addRow()" style="margin-top:8px">+ Add Year</button>`;
 }
 
-function schedRow(year, amount, paid) {
-    const paidSel = tab==='vendors' ? `<select class="sp"><option value="false" ${!paid?'selected':''}>Unpaid</option><option value="true" ${paid?'selected':''}>Paid</option></select>` : '';
+function schedRow(year, amount) {
     return `<div class="sr">
         <input type="number" class="sy" value="${year||2026}" style="width:80px">
         <input type="number" class="sa" value="${amount||''}" placeholder="$" style="width:110px">
-        ${paidSel}
         <button class="btn btn-sm btn-red" onclick="this.parentElement.remove()">✕</button>
     </div>`;
 }
 
 function addRow() {
-    document.getElementById('srows').insertAdjacentHTML('beforeend', schedRow(2026, '', false));
+    document.getElementById('srows').insertAdjacentHTML('beforeend', schedRow(2026, ''));
 }
 
 // ─── Logos ───
@@ -728,9 +727,7 @@ async function save() {
             rows.forEach(r => {
                 const year = parseInt(r.querySelector('.sy').value);
                 const amount = parseFloat(r.querySelector('.sa').value) || 0;
-                const paidEl = r.querySelector('.sp');
-                const paid = paidEl ? paidEl.value === 'true' : false;
-                if (year) entries.push({ year, amount, paid });
+                if (year) entries.push({ year, amount });
             });
 
             const schedUrl = tab==='sponsors' ? API+'/sponsor-schedule/'+recordId : API+'/vendor-schedule/'+recordId;
