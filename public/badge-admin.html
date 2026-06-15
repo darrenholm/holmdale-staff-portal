@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Badge Admin — Holmdale Pro Rodeo</title>
+<script>
+(function(){
+  const token = localStorage.getItem('auth_token');
+  if (!token) { window.location.href='login.html'; return; }
+  try { const p=JSON.parse(atob(token.split('.')[1])); if(p.exp&&p.exp<Math.floor(Date.now()/1000)) window.location.href='login.html?expired=1'; }
+  catch(e){ window.location.href='login.html'; }
+})();
+</script>
+<style>
+  :root{ --green:#00B74A; --gold:#F5A623; --bg:#111; --panel:#1a1a1a; --surface:#222; --line:#333; --txt:#eee; --dim:#888; --danger:#ef4444; }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--bg);color:var(--txt);}
+  .header{background:var(--panel);border-bottom:1px solid var(--line);padding:14px 24px;display:flex;align-items:center;justify-content:space-between;}
+  .header h1{font-size:20px;color:var(--green);} .header a{color:var(--dim);text-decoration:none;font-size:14px;} .header a:hover{color:#fff;}
+  .container{max-width:1300px;margin:0 auto;padding:20px;}
+  .summary{display:flex;gap:14px;margin-bottom:18px;flex-wrap:wrap;}
+  .scard{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px 18px;flex:1;min-width:120px;}
+  .scard .v{font-size:26px;font-weight:800;color:var(--green);} .scard .l{font-size:11px;color:var(--dim);text-transform:uppercase;letter-spacing:1px;}
+  .scard.gold .v{color:var(--gold);}
+
+  details.zonebox{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px 18px;margin-bottom:18px;}
+  details.zonebox summary{cursor:pointer;font-weight:700;color:var(--gold);}
+  .ztable{width:100%;margin-top:12px;border-collapse:collapse;}
+  .ztable td{padding:6px 8px;border-top:1px solid var(--line);font-size:14px;}
+  .ztable input{background:var(--surface);border:1px solid var(--line);color:#fff;border-radius:6px;padding:6px 8px;font-size:13px;width:100%;}
+
+  .toolbar{display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap;}
+  .toolbar input,.toolbar select{background:var(--surface);border:1px solid var(--line);color:#fff;border-radius:8px;padding:9px 12px;font-size:14px;}
+  .toolbar input.search{flex:1;min-width:200px;}
+
+  table.main{width:100%;border-collapse:collapse;background:var(--panel);border:1px solid var(--line);border-radius:12px;overflow:hidden;}
+  table.main th{background:var(--surface);color:#999;font-size:11px;text-transform:uppercase;letter-spacing:1px;padding:10px;text-align:left;}
+  table.main td{padding:9px 10px;border-top:1px solid #282828;font-size:13px;vertical-align:middle;}
+  tr:hover td{background:#1f1f1f;}
+  .av{width:36px;height:36px;border-radius:8px;object-fit:cover;background:var(--surface);}
+  .badge{display:inline-block;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;}
+  .b-vip{background:rgba(245,166,35,.18);color:var(--gold);} .b-sponsor{background:rgba(0,183,74,.18);color:var(--green);} .b-volunteer{background:rgba(120,160,255,.18);color:#9db4ff;}
+  .b-printed{background:rgba(0,183,74,.15);color:#7be0a4;} .b-queued{background:rgba(245,166,35,.15);color:var(--gold);} .b-off{background:#3a2020;color:#f9a;}
+  .perk-unl{color:var(--gold);font-weight:700;} .perk-cr{color:var(--green);font-weight:700;}
+  .btn{padding:6px 11px;border-radius:6px;border:none;font-size:12px;font-weight:700;cursor:pointer;}
+  .btn-gray{background:var(--surface);color:#ccc;border:1px solid var(--line);} .btn-green{background:var(--green);color:#fff;} .btn-red{background:rgba(239,68,68,.2);color:#f88;}
+  .muted{color:var(--dim);}
+  .empty{text-align:center;padding:50px;color:#555;}
+
+  .ovl{display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:100;align-items:center;justify-content:center;padding:16px;}
+  .ovl.open{display:flex;}
+  .modal{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:22px;width:100%;max-width:560px;max-height:92vh;overflow-y:auto;}
+  .modal h2{font-size:18px;margin-bottom:16px;}
+  label.fl{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--dim);margin:10px 0 4px;}
+  .modal input[type=text],.modal input[type=number],.modal select{width:100%;background:var(--surface);border:1px solid var(--line);color:#fff;border-radius:8px;padding:10px;font-size:14px;}
+  .row2{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+  .zchk{display:flex;flex-wrap:wrap;gap:8px;margin-top:6px;}
+  .zchk label{display:flex;align-items:center;gap:6px;background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:8px 10px;font-size:13px;cursor:pointer;}
+  .mrow{display:flex;align-items:center;gap:10px;margin-top:10px;}
+  .mactions{display:flex;gap:8px;justify-content:flex-end;margin-top:18px;}
+  .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--green);color:#fff;padding:11px 22px;border-radius:10px;font-weight:700;display:none;z-index:200;}
+  .toast.err{background:var(--danger);}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>🪪 Badge Admin</h1>
+  <div><a href="badge-print.html" style="margin-right:16px;">🖨️ Print Station</a><a href="index.html">← Portal</a></div>
+</div>
+
+<div class="container">
+  <div class="summary" id="summary"></div>
+
+  <details class="zonebox">
+    <summary>⚙️ Access Zones — assign each suite to its sponsor</summary>
+    <table class="ztable" id="ztable"></table>
+    <div style="margin-top:10px;"><button class="btn btn-green" onclick="saveZones()">Save Zones</button></div>
+  </details>
+
+  <div class="toolbar">
+    <input class="search" id="search" placeholder="🔎 Search name / company / card…" oninput="render()">
+    <select id="fType" onchange="render()"><option value="">All types</option><option value="vip">VIP</option><option value="sponsor">Sponsor</option><option value="volunteer">Volunteer</option></select>
+    <select id="fStatus" onchange="render()"><option value="">All statuses</option><option value="queued">Queued</option><option value="printed">Printed</option></select>
+  </div>
+
+  <div id="tableHost"><div class="empty">Loading…</div></div>
+</div>
+
+<div class="ovl" id="ovl"><div class="modal">
+  <h2 id="mtitle">Edit Badge</h2>
+  <label class="fl">Name</label><input type="text" id="m_name">
+  <div class="row2">
+    <div><label class="fl">Title / Role</label><input type="text" id="m_title"></div>
+    <div><label class="fl">Company</label><input type="text" id="m_company"></div>
+  </div>
+  <div class="row2">
+    <div><label class="fl">Type</label><select id="m_type"><option value="vip">VIP</option><option value="sponsor">Sponsor</option><option value="volunteer">Volunteer</option></select></div>
+    <div><label class="fl">Tier</label><input type="text" id="m_tier"></div>
+  </div>
+  <div class="mrow"><input type="checkbox" id="m_unlimited" onchange="mToggleUnl()"><label for="m_unlimited">Unlimited food &amp; drink</label></div>
+  <div id="m_creditWrap"><label class="fl">Bar / food credit ($)</label><input type="number" id="m_credit" min="0" step="5"></div>
+  <div class="mrow"><input type="checkbox" id="m_age"><label for="m_age">19+ verified (alcohol)</label></div>
+  <label class="fl">Area access</label>
+  <div class="zchk" id="m_zones"></div>
+  <div class="mactions">
+    <button class="btn btn-gray" onclick="closeModal()">Cancel</button>
+    <button class="btn btn-green" onclick="saveBadge()">Save</button>
+  </div>
+</div></div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const API='https://rodeo-fresh-production-7348.up.railway.app/api';
+const token=localStorage.getItem('auth_token');
+const authHdr={'Authorization':'Bearer '+token,'Content-Type':'application/json'};
+let badges=[], ZONES=[], editId=null;
+
+function esc(s){ return (s==null?'':String(s)).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function toast(m,err){ const t=document.getElementById('toast'); t.textContent=m; t.className='toast'+(err?' err':''); t.style.display='block'; setTimeout(()=>t.style.display='none',err?3500:2000); }
+function zlabel(k){ return (ZONES.find(z=>z.key===k)||{}).label||k; }
+
+async function load(){
+  try{
+    const [zr,br]=await Promise.all([
+      fetch(API+'/badges/zones',{headers:authHdr}),
+      fetch(API+'/badges',{headers:authHdr}),
+    ]);
+    if(zr.status===401||br.status===401){ location.href='login.html?expired=1'; return; }
+    ZONES=await zr.json();
+    badges=await br.json();
+  }catch(e){ toast('Load failed',true); return; }
+  renderZoneTable();
+  render();
+}
+
+function renderZoneTable(){
+  document.getElementById('ztable').innerHTML = ZONES.map(z=>`
+    <tr data-key="${z.key}">
+      <td style="width:90px;"><span class="muted">${esc(z.key)}</span></td>
+      <td><input value="${esc(z.label)}" data-f="label"></td>
+      <td><input value="${esc(z.sponsor_label||'')}" placeholder="Sponsor (for suites)" data-f="sponsor_label"></td>
+    </tr>`).join('');
+}
+async function saveZones(){
+  const rows=[...document.querySelectorAll('#ztable tr')];
+  try{
+    for(const r of rows){
+      const key=r.dataset.key;
+      const label=r.querySelector('[data-f=label]').value.trim();
+      const sponsor_label=r.querySelector('[data-f=sponsor_label]').value.trim()||null;
+      await fetch(API+'/badges/zones/'+key,{method:'PUT',headers:authHdr,body:JSON.stringify({label,sponsor_label})});
+    }
+    toast('Zones saved'); await load();
+  }catch(e){ toast('Save failed',true); }
+}
+
+function render(){
+  const q=document.getElementById('search').value.toLowerCase();
+  const ft=document.getElementById('fType').value;
+  const fs=document.getElementById('fStatus').value;
+  let items=badges.filter(b=>
+    (!ft||b.badge_type===ft) && (!fs||b.print_status===fs) &&
+    ((b.customer_name||'').toLowerCase().includes(q)||(b.company||'').toLowerCase().includes(q)||(b.rfid_uid||'').toLowerCase().includes(q))
+  );
+  renderSummary();
+  const host=document.getElementById('tableHost');
+  if(!items.length){ host.innerHTML='<div class="empty">No badges</div>'; return; }
+  host.innerHTML=`<table class="main"><thead><tr>
+    <th></th><th>Name</th><th>Type</th><th>Perks</th><th>Access</th><th>Card</th><th>Status</th><th></th>
+  </tr></thead><tbody>${items.map(rowHtml).join('')}</tbody></table>`;
+}
+function renderSummary(){
+  const n=t=>badges.filter(b=>b.badge_type===t).length;
+  const q=badges.filter(b=>b.print_status==='queued').length;
+  document.getElementById('summary').innerHTML=`
+    <div class="scard"><div class="v">${badges.length}</div><div class="l">Total badges</div></div>
+    <div class="scard gold"><div class="v">${n('vip')}</div><div class="l">VIP</div></div>
+    <div class="scard"><div class="v">${n('sponsor')}</div><div class="l">Sponsor</div></div>
+    <div class="scard"><div class="v">${n('volunteer')}</div><div class="l">Volunteer</div></div>
+    <div class="scard gold"><div class="v">${q}</div><div class="l">Queued to print</div></div>`;
+}
+function rowHtml(b){
+  const perks=b.unlimited?'<span class="perk-unl">★ Unlimited</span>'
+    :(parseFloat(b.credits)>0?`<span class="perk-cr">$${Math.round(b.remaining)}</span> <span class="muted">/ $${Math.round(b.credits)}</span>`:'<span class="muted">—</span>');
+  const zones=(b.access_zones||[]).map(zlabel).join(', ')||'<span class="muted">general</span>';
+  const status=!b.badge_active?'<span class="badge b-off">revoked</span>'
+    :`<span class="badge b-${b.print_status}">${b.print_status}</span>`;
+  return `<tr>
+    <td>${b.photo_url?`<img class="av" src="${esc(b.photo_url)}">`:'<div class="av"></div>'}</td>
+    <td><b>${esc(b.customer_name)}</b><br><span class="muted">${esc(b.company||b.title||'')}</span></td>
+    <td><span class="badge b-${b.badge_type}">${esc(b.badge_type)}</span>${b.tier?'<br><span class="muted">'+esc(b.tier)+'</span>':''}</td>
+    <td>${perks}${b.alcohol_approved?' <span class="muted">·19+</span>':''}</td>
+    <td>${zones}</td>
+    <td><span class="muted" style="font-family:monospace;font-size:11px;">${esc((b.rfid_uid||'').slice(0,12))}</span></td>
+    <td>${status}</td>
+    <td style="white-space:nowrap;">
+      <button class="btn btn-gray" onclick="openEdit('${b.id}')">Edit</button>
+      <button class="btn btn-gray" onclick="reprint('${b.id}')">Reprint</button>
+      ${b.badge_active?`<button class="btn btn-red" onclick="deactivate('${b.id}')">Revoke</button>`:''}
+    </td></tr>`;
+}
+
+function openEdit(id){
+  const b=badges.find(x=>x.id===id); if(!b) return;
+  editId=id;
+  document.getElementById('mtitle').textContent='Edit — '+b.customer_name;
+  document.getElementById('m_name').value=b.customer_name||'';
+  document.getElementById('m_title').value=b.title||'';
+  document.getElementById('m_company').value=b.company||'';
+  document.getElementById('m_type').value=b.badge_type;
+  document.getElementById('m_tier').value=b.tier||'';
+  document.getElementById('m_unlimited').checked=!!b.unlimited;
+  document.getElementById('m_credit').value=Math.round(b.credits||0);
+  document.getElementById('m_age').checked=!!b.alcohol_approved;
+  document.getElementById('m_zones').innerHTML=ZONES.filter(z=>z.active).map(z=>`
+    <label><input type="checkbox" value="${z.key}" ${(b.access_zones||[]).includes(z.key)?'checked':''}> ${esc(z.label)}</label>`).join('');
+  mToggleUnl();
+  document.getElementById('ovl').classList.add('open');
+}
+function mToggleUnl(){ document.getElementById('m_creditWrap').style.display=document.getElementById('m_unlimited').checked?'none':''; }
+function closeModal(){ document.getElementById('ovl').classList.remove('open'); editId=null; }
+
+async function saveBadge(){
+  const zones=[...document.querySelectorAll('#m_zones input:checked')].map(c=>c.value);
+  const body={
+    name:document.getElementById('m_name').value.trim(),
+    title:document.getElementById('m_title').value.trim()||null,
+    company:document.getElementById('m_company').value.trim()||null,
+    badge_type:document.getElementById('m_type').value,
+    tier:document.getElementById('m_tier').value.trim()||null,
+    unlimited:document.getElementById('m_unlimited').checked,
+    credits:parseFloat(document.getElementById('m_credit').value)||0,
+    alcohol_approved:document.getElementById('m_age').checked,
+    access_zones:zones,
+  };
+  try{
+    const r=await fetch(API+'/badges/'+editId,{method:'PUT',headers:authHdr,body:JSON.stringify(body)});
+    if(!r.ok){ const d=await r.json(); toast(d.error||'Save failed',true); return; }
+    closeModal(); toast('Saved'); await load();
+  }catch(e){ toast('Network error',true); }
+}
+async function reprint(id){
+  try{ const r=await fetch(API+'/badges/'+id+'/queue',{method:'POST',headers:authHdr});
+    if(!r.ok){ toast('Failed',true); return; } toast('Re-queued for printing'); await load();
+  }catch(e){ toast('Network error',true); }
+}
+async function deactivate(id){
+  if(!confirm('Revoke this badge? Its card will lose all access, credit and bar privileges.')) return;
+  try{ const r=await fetch(API+'/badges/'+id+'/deactivate',{method:'POST',headers:authHdr});
+    if(!r.ok){ toast('Failed',true); return; } toast('Badge revoked'); await load();
+  }catch(e){ toast('Network error',true); }
+}
+
+load();
+</script>
+</body>
+</html>

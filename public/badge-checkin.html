@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VIP / Volunteer Check-In — Holmdale Pro Rodeo</title>
+<script>
+(function(){
+  const token = localStorage.getItem('auth_token');
+  if (!token) { window.location.href = 'login.html'; return; }
+  try {
+    const p = JSON.parse(atob(token.split('.')[1]));
+    if (p.exp && p.exp < Math.floor(Date.now()/1000)) { window.location.href = 'login.html?expired=1'; }
+  } catch(e) { window.location.href = 'login.html'; }
+})();
+</script>
+<style>
+  :root{
+    --green:#00B74A; --green-dk:#009940; --gold:#F5A623; --gold-lt:#FFD07A;
+    --bg:#111; --panel:#1a1a1a; --surface:#222; --line:#333; --txt:#eee; --dim:#888; --danger:#ef4444;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--bg);color:var(--txt);min-height:100vh;}
+  .header{background:var(--panel);border-bottom:1px solid var(--line);padding:14px 24px;display:flex;align-items:center;justify-content:space-between;}
+  .header h1{font-size:20px;color:var(--green);}
+  .header a{color:var(--dim);text-decoration:none;font-size:14px;}
+  .header a:hover{color:#fff;}
+  .wrap{max-width:1100px;margin:0 auto;padding:20px;display:grid;grid-template-columns:1fr 1fr;gap:20px;}
+  @media(max-width:860px){ .wrap{grid-template-columns:1fr;} }
+  .col{display:flex;flex-direction:column;gap:16px;}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px;}
+  .card h2{font-size:13px;text-transform:uppercase;letter-spacing:1px;color:var(--dim);margin-bottom:14px;display:flex;align-items:center;gap:8px;}
+  .card h2 .step{background:var(--surface);color:var(--green);width:22px;height:22px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;}
+
+  /* type pills */
+  .types{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;}
+  .type-pill{padding:16px 8px;border-radius:12px;border:2px solid var(--line);background:var(--surface);cursor:pointer;text-align:center;font-weight:800;font-size:15px;color:var(--dim);transition:.15s;}
+  .type-pill .ic{font-size:26px;display:block;margin-bottom:4px;}
+  .type-pill.sel{border-color:var(--green);background:rgba(0,183,74,.12);color:var(--green);}
+  .type-pill.vip.sel{border-color:var(--gold);background:rgba(245,166,35,.12);color:var(--gold);}
+
+  .tiers{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px;}
+  .tier-btn{padding:8px 14px;border-radius:20px;border:1px solid var(--line);background:var(--surface);color:var(--dim);font-weight:700;font-size:13px;cursor:pointer;}
+  .tier-btn.sel{border-color:var(--green);color:var(--green);background:rgba(0,183,74,.1);}
+
+  label.fl{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--dim);margin:12px 0 4px;}
+  input[type=text],input[type=email],input[type=number]{width:100%;background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:11px 12px;color:#fff;font-size:15px;}
+  input:focus{outline:none;border-color:var(--green);}
+  .row2{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+
+  .search-results{background:var(--surface);border:1px solid var(--line);border-radius:8px;margin-top:6px;max-height:200px;overflow-y:auto;}
+  .sr-item{padding:10px 12px;border-bottom:1px solid var(--line);cursor:pointer;font-size:14px;}
+  .sr-item:last-child{border-bottom:none;}
+  .sr-item:hover{background:#2a2a2a;}
+  .sr-item .who{font-weight:700;color:#fff;}
+  .sr-item .meta{font-size:12px;color:var(--dim);}
+  .sr-item .tag{font-size:10px;text-transform:uppercase;letter-spacing:1px;padding:1px 6px;border-radius:4px;margin-left:6px;}
+  .tag.sp{background:rgba(245,166,35,.18);color:var(--gold);}
+  .tag.st{background:rgba(0,183,74,.18);color:var(--green);}
+
+  /* perks */
+  .toggle-row{display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-top:1px solid var(--line);}
+  .toggle-row:first-of-type{border-top:none;}
+  .toggle-row .lbl{font-size:14px;font-weight:600;}
+  .toggle-row .sub{font-size:12px;color:var(--dim);}
+  .switch{position:relative;width:50px;height:28px;flex-shrink:0;}
+  .switch input{opacity:0;width:0;height:0;}
+  .slider{position:absolute;inset:0;background:var(--line);border-radius:28px;cursor:pointer;transition:.2s;}
+  .slider:before{content:"";position:absolute;height:22px;width:22px;left:3px;top:3px;background:#fff;border-radius:50%;transition:.2s;}
+  .switch input:checked + .slider{background:var(--green);}
+  .switch input:checked + .slider:before{transform:translateX(22px);}
+  .credit-wrap{display:flex;align-items:center;gap:8px;}
+  .credit-wrap .dollar{font-size:20px;font-weight:800;color:var(--green);}
+  .credit-wrap input{max-width:120px;font-size:18px;font-weight:700;}
+  .credit-wrap.dim{opacity:.35;pointer-events:none;}
+
+  .zones{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+  .zone-chk{display:flex;align-items:center;gap:8px;padding:10px;border:1px solid var(--line);border-radius:8px;background:var(--surface);cursor:pointer;font-size:14px;}
+  .zone-chk.on{border-color:var(--gold);background:rgba(245,166,35,.1);color:var(--gold-lt);}
+  .zone-chk input{width:18px;height:18px;accent-color:var(--gold);}
+
+  /* photo */
+  .cam-stage{position:relative;background:#000;border-radius:12px;overflow:hidden;aspect-ratio:4/3;display:flex;align-items:center;justify-content:center;}
+  .cam-stage video,.cam-stage img{width:100%;height:100%;object-fit:cover;}
+  .cam-stage .placeholder{color:#555;font-size:14px;text-align:center;padding:20px;}
+  .cam-btns{display:flex;gap:8px;margin-top:10px;}
+
+  /* card capture */
+  .uid-box{display:flex;gap:8px;}
+  .uid-box input{font-family:monospace;letter-spacing:1px;}
+  .uid-state{margin-top:8px;font-size:13px;font-weight:700;}
+  .uid-state.ok{color:var(--green);}
+  .uid-state.off{color:var(--dim);}
+
+  .btn{padding:12px 18px;border-radius:10px;border:none;font-size:14px;font-weight:700;cursor:pointer;}
+  .btn-green{background:var(--green);color:#fff;} .btn-green:hover{background:var(--green-dk);}
+  .btn-gray{background:var(--surface);color:#ccc;border:1px solid var(--line);} .btn-gray:hover{background:#2a2a2a;}
+  .btn-gold{background:var(--gold);color:#1a1a1a;}
+  .btn-block{width:100%;font-size:18px;padding:16px;}
+  .btn:disabled{opacity:.4;cursor:not-allowed;}
+
+  .save-card{position:sticky;bottom:0;}
+  .summary{font-size:13px;color:var(--dim);margin-bottom:10px;line-height:1.6;}
+  .summary b{color:#fff;}
+
+  .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--green);color:#fff;padding:12px 24px;border-radius:10px;font-weight:700;display:none;z-index:300;}
+  .toast.err{background:var(--danger);}
+
+  /* success overlay */
+  .ovl{display:none;position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:400;align-items:center;justify-content:center;padding:20px;}
+  .ovl.open{display:flex;}
+  .done{background:linear-gradient(160deg,#0a2316,#0e2b1c);border:2px solid var(--green);border-radius:18px;padding:40px;text-align:center;max-width:420px;}
+  .done .big{font-size:64px;}
+  .done h2{color:var(--green);font-size:32px;margin:8px 0;}
+  .done .nm{font-size:20px;font-weight:700;}
+  .done .sub{color:var(--dim);margin-top:10px;font-size:14px;}
+  .done .perks{margin:16px 0;font-size:14px;color:#cde;line-height:1.7;}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>🎟️ VIP / Volunteer Check-In</h1>
+  <a href="index.html">← Back to Portal</a>
+</div>
+
+<div class="wrap">
+  <!-- LEFT: identity + perks -->
+  <div class="col">
+    <div class="card">
+      <h2><span class="step">1</span> Badge Type</h2>
+      <div class="types" id="types">
+        <div class="type-pill" data-type="volunteer" onclick="setType('volunteer')"><span class="ic">🧑‍🌾</span>Volunteer</div>
+        <div class="type-pill" data-type="sponsor" onclick="setType('sponsor')"><span class="ic">🤝</span>Sponsor</div>
+        <div class="type-pill vip" data-type="vip" onclick="setType('vip')"><span class="ic">⭐</span>VIP</div>
+      </div>
+      <div class="tiers" id="tiers"></div>
+    </div>
+
+    <div class="card">
+      <h2><span class="step">2</span> Who Is This?</h2>
+      <input type="text" id="search" placeholder="🔎 Search existing sponsors / staff…" oninput="onSearch()" autocomplete="off">
+      <div id="searchResults"></div>
+      <label class="fl">Name on badge *</label>
+      <input type="text" id="f_name" placeholder="Full name">
+      <div class="row2">
+        <div><label class="fl">Title / Role</label><input type="text" id="f_title" placeholder="e.g. Gold Sponsor, Gate Captain"></div>
+        <div><label class="fl">Company / Org</label><input type="text" id="f_company" placeholder="Company"></div>
+      </div>
+      <label class="fl">Email (optional)</label>
+      <input type="email" id="f_email" placeholder="email@example.com">
+    </div>
+
+    <div class="card">
+      <h2><span class="step">3</span> Perks</h2>
+      <div class="toggle-row">
+        <div><div class="lbl">Unlimited food &amp; drink</div><div class="sub">Top sponsors / VIP — never runs out</div></div>
+        <label class="switch"><input type="checkbox" id="t_unlimited" onchange="onUnlimited()"><span class="slider"></span></label>
+      </div>
+      <div class="toggle-row">
+        <div><div class="lbl">Bar / food credit</div><div class="sub">Dollar balance usable at bar &amp; food</div></div>
+        <div class="credit-wrap" id="creditWrap"><span class="dollar">$</span><input type="number" id="f_credit" value="25" min="0" step="5"></div>
+      </div>
+      <div class="toggle-row">
+        <div><div class="lbl">19+ verified (alcohol)</div><div class="sub">Required to be served at the bar</div></div>
+        <label class="switch"><input type="checkbox" id="t_age" checked><span class="slider"></span></label>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2><span class="step">4</span> Area Access</h2>
+      <div class="zones" id="zones"><div class="sub" style="color:#888;font-size:13px;">Loading zones…</div></div>
+    </div>
+  </div>
+
+  <!-- RIGHT: photo + card + save -->
+  <div class="col">
+    <div class="card">
+      <h2><span class="step">5</span> Photo</h2>
+      <div class="cam-stage" id="camStage">
+        <video id="video" autoplay playsinline muted></video>
+        <img id="photoPreview" style="display:none;">
+        <div class="placeholder" id="camPlaceholder" style="display:none;">Camera unavailable — check webcam permission</div>
+      </div>
+      <div class="cam-btns">
+        <button class="btn btn-green" id="captureBtn" onclick="capturePhoto()">📸 Capture</button>
+        <button class="btn btn-gray" id="retakeBtn" onclick="retakePhoto()" style="display:none;">↺ Retake</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2><span class="step">6</span> NFC Card</h2>
+      <div class="uid-box">
+        <input type="text" id="uidInput" placeholder="Tap / scan card, or type UID" autocomplete="off"
+               onkeydown="if(event.key==='Enter'){event.preventDefault();lockUid();}" oninput="onUidInput()">
+        <button class="btn btn-gray" id="nfcBtn" onclick="startNfc()" style="display:none;">📶 Tap</button>
+      </div>
+      <div class="uid-state off" id="uidState">No card linked yet</div>
+      <div class="sub" style="font-size:12px;color:#666;margin-top:6px;">USB reader types here automatically. On Android, use 📶 Tap.</div>
+    </div>
+
+    <div class="card save-card">
+      <div class="summary" id="summary"></div>
+      <button class="btn btn-green btn-block" id="saveBtn" onclick="save()">✓ Save &amp; Send to Printer</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<div class="ovl" id="ovl">
+  <div class="done">
+    <div class="big">✅</div>
+    <h2>Checked In!</h2>
+    <div class="nm" id="doneName"></div>
+    <div class="perks" id="donePerks"></div>
+    <div class="sub">Sent to the print queue. <b style="color:var(--green-lt)">Next guest in <span id="cd">5</span>s</b></div>
+    <button class="btn btn-green btn-block" style="margin-top:14px;" onclick="resetForm()">Next Guest →</button>
+  </div>
+</div>
+
+<script>
+const API = 'https://rodeo-fresh-production-7348.up.railway.app/api';
+const token = localStorage.getItem('auth_token');
+const authHdr = { 'Authorization':'Bearer '+token, 'Content-Type':'application/json' };
+
+// Per-type tier defaults. Editable on screen afterward.
+const TIER_DEFAULTS = {
+  volunteer: [{ name:'Volunteer', credits:25 }],
+  sponsor:   [{ name:'Bronze', credits:50 }, { name:'Silver', credits:100 },
+              { name:'Gold', unlimited:true }, { name:'Platinum', unlimited:true }],
+  vip:       [{ name:'VIP', unlimited:true, allZones:true }],
+};
+
+let state = { type:null, tier:null, uid:'', photo:null, zones:[], companyLogo:null };
+let ZONES = [];
+
+function toast(msg, err){ const t=document.getElementById('toast'); t.textContent=msg; t.className='toast'+(err?' err':''); t.style.display='block'; setTimeout(()=>t.style.display='none', err?4000:2200); }
+
+// ── Zones ──
+async function loadZones(){
+  try{
+    const r = await fetch(API+'/badges/zones',{headers:authHdr});
+    if(r.status===401){ location.href='login.html?expired=1'; return; }
+    ZONES = (await r.json()).filter(z=>z.active);
+  }catch(e){ ZONES=[]; }
+  renderZones();
+}
+function renderZones(){
+  const el = document.getElementById('zones');
+  if(!ZONES.length){ el.innerHTML='<div class="sub" style="color:#888;font-size:13px;">No zones defined</div>'; return; }
+  el.innerHTML = ZONES.map(z=>{
+    const on = state.zones.includes(z.key);
+    const sub = z.sponsor_label ? `<div class="sub" style="font-size:11px;">${esc(z.sponsor_label)}</div>` : '';
+    return `<label class="zone-chk ${on?'on':''}">
+      <input type="checkbox" ${on?'checked':''} onchange="toggleZone('${z.key}', this.checked)">
+      <span>${esc(z.label)}${sub}</span></label>`;
+  }).join('');
+}
+function toggleZone(key, on){
+  state.zones = state.zones.filter(k=>k!==key);
+  if(on) state.zones.push(key);
+  renderZones(); updateSummary();
+}
+
+// ── Type / tier ──
+function setType(type){
+  state.type = type;
+  document.querySelectorAll('.type-pill').forEach(p=>p.classList.toggle('sel', p.dataset.type===type));
+  const tiers = TIER_DEFAULTS[type] || [];
+  const tw = document.getElementById('tiers');
+  tw.innerHTML = tiers.map((t,i)=>`<button class="tier-btn" data-i="${i}" onclick="setTier(${i})">${esc(t.name)}</button>`).join('');
+  setTier(0);
+  // default title to tier name for sponsors/vip
+  updateSummary();
+}
+function setTier(i){
+  const tiers = TIER_DEFAULTS[state.type] || [];
+  const t = tiers[i]; if(!t) return;
+  state.tier = t.name;
+  document.querySelectorAll('.tier-btn').forEach(b=>b.classList.toggle('sel', +b.dataset.i===i));
+  // apply perk defaults
+  document.getElementById('t_unlimited').checked = !!t.unlimited;
+  document.getElementById('f_credit').value = t.credits != null ? t.credits : 0;
+  onUnlimited();
+  // suggest title
+  const titleEl = document.getElementById('f_title');
+  if(state.type!=='volunteer' && !titleEl.dataset.touched) titleEl.value = t.name + (state.type==='sponsor'?' Sponsor':'');
+  // default party deck access for sponsor/vip tiers
+  const deck = ZONES.find(z=>z.key==='party_deck');
+  if(deck && (state.type==='vip' || (state.type==='sponsor'))) {
+    if(!state.zones.includes('party_deck')) state.zones.push('party_deck');
+  }
+  if(t.allZones){ state.zones = ZONES.map(z=>z.key); }
+  renderZones(); updateSummary();
+}
+document.getElementById('f_title').addEventListener('input', e=>{ e.target.dataset.touched='1'; });
+
+function onUnlimited(){
+  const unl = document.getElementById('t_unlimited').checked;
+  document.getElementById('creditWrap').classList.toggle('dim', unl);
+  if(unl) document.getElementById('t_age').checked = true; // unlimited implies served
+  updateSummary();
+}
+document.getElementById('f_credit').addEventListener('input', updateSummary);
+
+// ── Search existing ──
+let searchTimer=null;
+function onSearch(){
+  clearTimeout(searchTimer);
+  const q = document.getElementById('search').value.trim();
+  const box = document.getElementById('searchResults');
+  if(q.length<2){ box.innerHTML=''; return; }
+  searchTimer = setTimeout(async ()=>{
+    try{
+      const r = await fetch(API+'/badges/lookup?q='+encodeURIComponent(q),{headers:authHdr});
+      const d = await r.json();
+      const items = [...(d.sponsors||[]), ...(d.staff||[])];
+      if(!items.length){ box.innerHTML='<div class="search-results"><div class="sr-item"><span class="meta">No matches — just type the name above</span></div></div>'; return; }
+      box.innerHTML = '<div class="search-results">'+items.map(it=>`
+        <div class="sr-item" onclick='pick(${JSON.stringify(it).replace(/'/g,"&#39;")})'>
+          <div class="who">${esc(it.name)}<span class="tag ${it.source==='sponsor'?'sp':'st'}">${it.source}</span></div>
+          <div class="meta">${esc([it.company,it.email,it.city].filter(Boolean).join(' · '))}</div>
+        </div>`).join('')+'</div>';
+    }catch(e){ box.innerHTML=''; }
+  }, 250);
+}
+function pick(it){
+  document.getElementById('f_name').value = it.name||'';
+  if(it.company) document.getElementById('f_company').value = it.company;
+  if(it.email) document.getElementById('f_email').value = it.email;
+  state.companyLogo = it.company_logo_url || null;  // sponsor's primary logo → shown on the card
+  document.getElementById('searchResults').innerHTML='';
+  document.getElementById('search').value='';
+  // If a suite is assigned to this sponsor, auto-check it.
+  if(it.company){
+    const suite = ZONES.find(z=>(z.sponsor_label||'').toLowerCase()===it.company.toLowerCase());
+    if(suite && !state.zones.includes(suite.key)){ state.zones.push(suite.key); renderZones(); }
+  }
+  updateSummary();
+}
+
+// ── Photo ──
+let stream=null;
+async function startCamera(){
+  try{
+    stream = await navigator.mediaDevices.getUserMedia({ video:{ facingMode:'user', width:{ideal:1280}, height:{ideal:960} }, audio:false });
+    const v=document.getElementById('video'); v.srcObject=stream;
+  }catch(e){
+    document.getElementById('video').style.display='none';
+    document.getElementById('camPlaceholder').style.display='block';
+  }
+}
+function capturePhoto(){
+  const v=document.getElementById('video');
+  if(!v.videoWidth){ toast('Camera not ready', true); return; }
+  // Capture a 4:5 portrait crop centered on the frame (good for a headshot).
+  const tw=720, th=900;
+  const c=document.createElement('canvas'); c.width=tw; c.height=th;
+  const ctx=c.getContext('2d');
+  const srcAR=v.videoWidth/v.videoHeight, dstAR=tw/th;
+  let sw,sh,sx,sy;
+  if(srcAR>dstAR){ sh=v.videoHeight; sw=sh*dstAR; sx=(v.videoWidth-sw)/2; sy=0; }
+  else { sw=v.videoWidth; sh=sw/dstAR; sx=0; sy=(v.videoHeight-sh)/2; }
+  ctx.drawImage(v, sx,sy,sw,sh, 0,0,tw,th);
+  state.photo = c.toDataURL('image/jpeg', 0.85);
+  const img=document.getElementById('photoPreview'); img.src=state.photo; img.style.display='block';
+  v.style.display='none';
+  document.getElementById('captureBtn').style.display='none';
+  document.getElementById('retakeBtn').style.display='';
+  updateSummary();
+}
+function retakePhoto(){
+  state.photo=null;
+  document.getElementById('photoPreview').style.display='none';
+  document.getElementById('video').style.display='';
+  document.getElementById('captureBtn').style.display='';
+  document.getElementById('retakeBtn').style.display='none';
+  updateSummary();
+}
+
+// ── Card UID ──
+function onUidInput(){
+  const v = document.getElementById('uidInput').value.trim();
+  if(v.replace(/[^a-fA-F0-9]/g,'').length>=6){ /* enough to be a UID */ }
+  updateSummary();
+}
+function lockUid(){
+  const raw = document.getElementById('uidInput').value.trim();
+  const hex = raw.replace(/[^a-fA-F0-9]/g,'').toUpperCase();
+  if(hex.length<6){ setUidState(false,'UID looks too short — rescan'); return; }
+  state.uid = raw;
+  setUidState(true,'✓ Card linked: '+hex);
+  updateSummary();
+}
+function setUidState(ok,msg){
+  const el=document.getElementById('uidState');
+  el.className='uid-state '+(ok?'ok':'off'); el.textContent=msg;
+}
+async function startNfc(){
+  if(!('NDEFReader' in window)){ toast('Web NFC only works on Android Chrome', true); return; }
+  try{
+    const ndef=new NDEFReader(); await ndef.scan();
+    setUidState(false,'📶 Tap the card now…');
+    ndef.onreading = e=>{
+      const uid = (e.serialNumber||'').replace(/:/g,'').toUpperCase();
+      document.getElementById('uidInput').value = uid;
+      lockUid();
+    };
+  }catch(e){ toast('NFC error: '+e.message, true); }
+}
+
+// ── Summary + save ──
+function currentCredit(){ return document.getElementById('t_unlimited').checked ? null : (parseFloat(document.getElementById('f_credit').value)||0); }
+function updateSummary(){
+  const name=document.getElementById('f_name').value.trim();
+  const unl=document.getElementById('t_unlimited').checked;
+  const credit=currentCredit();
+  const zoneLabels = state.zones.map(k=>(ZONES.find(z=>z.key===k)||{}).label||k);
+  const perk = unl ? 'Unlimited food &amp; drink' : ('$'+(credit||0)+' bar/food credit');
+  document.getElementById('summary').innerHTML =
+    `<b>${esc(name)||'—'}</b> · ${state.type?(state.type.toUpperCase()):'no type'}${state.tier?(' / '+esc(state.tier)):''}<br>`+
+    `${perk} · ${state.photo?'📸 photo ✓':'no photo'} · ${state.uid?'💳 card ✓':'no card'}<br>`+
+    `Access: ${zoneLabels.length?esc(zoneLabels.join(', ')):'general only'}`;
+}
+document.getElementById('f_name').addEventListener('input',updateSummary);
+// Typing a custom company name means it's no longer the picked sponsor — drop the auto logo.
+document.getElementById('f_company').addEventListener('input',()=>{ state.companyLogo=null; updateSummary(); });
+
+async function save(){
+  const name=document.getElementById('f_name').value.trim();
+  if(!state.type){ toast('Pick a badge type', true); return; }
+  if(!name){ toast('Enter a name', true); return; }
+  if(!state.uid){ toast('Tap / scan the NFC card first', true); return; }
+  const btn=document.getElementById('saveBtn'); btn.disabled=true; btn.textContent='Saving…';
+  try{
+    const body={
+      rfid_uid: state.uid,
+      name, title: document.getElementById('f_title').value.trim()||null,
+      company: document.getElementById('f_company').value.trim()||null,
+      company_logo_url: state.companyLogo,
+      email: document.getElementById('f_email').value.trim()||null,
+      badge_type: state.type, tier: state.tier,
+      unlimited: document.getElementById('t_unlimited').checked,
+      credits: currentCredit()||0,
+      alcohol_approved: document.getElementById('t_age').checked,
+      access_zones: state.zones,
+      photo: state.photo,
+    };
+    const r=await fetch(API+'/badges',{method:'POST',headers:authHdr,body:JSON.stringify(body)});
+    const d=await r.json();
+    if(r.status===401){ location.href='login.html?expired=1'; return; }
+    if(!r.ok){ toast(d.error||'Save failed', true); btn.disabled=false; btn.textContent='✓ Save & Send to Printer'; return; }
+    showDone(d.badge);
+  }catch(e){
+    toast('Network error: '+e.message, true);
+  }finally{
+    btn.disabled=false; btn.textContent='✓ Save & Send to Printer';
+  }
+}
+
+let cdTimer=null;
+function showDone(badge){
+  document.getElementById('doneName').textContent = badge.customer_name;
+  const zoneLabels = (badge.access_zones||[]).map(k=>(ZONES.find(z=>z.key===k)||{}).label||k);
+  document.getElementById('donePerks').innerHTML =
+    (badge.unlimited?'⭐ <b>Unlimited</b> food &amp; drink':'💵 <b>$'+badge.credits+'</b> bar/food credit')+'<br>'+
+    '🔓 '+(zoneLabels.length?zoneLabels.join(', '):'General access');
+  document.getElementById('ovl').classList.add('open');
+  let n=5; document.getElementById('cd').textContent=n;
+  cdTimer=setInterval(()=>{ n--; document.getElementById('cd').textContent=n; if(n<=0) resetForm(); },1000);
+}
+function resetForm(){
+  clearInterval(cdTimer);
+  document.getElementById('ovl').classList.remove('open');
+  ['f_name','f_title','f_company','f_email','search','uidInput'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('f_title').dataset.touched='';
+  document.getElementById('searchResults').innerHTML='';
+  state={ type:state.type, tier:null, uid:'', photo:null, zones:[], companyLogo:null };
+  if(state.type) setType(state.type); // keep type, re-apply tier defaults
+  retakePhoto();
+  setUidState(false,'No card linked yet');
+  document.getElementById('uidInput').focus();
+  updateSummary();
+}
+
+function esc(s){ return (s==null?'':String(s)).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+// init
+(async function(){
+  await loadZones();
+  setType('volunteer');
+  startCamera();
+  if('NDEFReader' in window) document.getElementById('nfcBtn').style.display='';
+  document.getElementById('uidInput').focus();
+  updateSummary();
+})();
+</script>
+</body>
+</html>

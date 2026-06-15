@@ -111,6 +111,18 @@
                 <div class="menu-description">Verify 19+ and approve for alcohol at Gate 2</div>
             </a>
 
+            <a href="badge-checkin.html" class="menu-card green">
+                <div class="menu-icon">🎟️</div>
+                <div class="menu-title">VIP / Volunteer Check-In</div>
+                <div class="menu-description">Register sponsors &amp; volunteers, photo + NFC name tag</div>
+            </a>
+
+            <a href="badge-access.html" class="menu-card gate">
+                <div class="menu-icon">🔓</div>
+                <div class="menu-title">Suite / Deck Access</div>
+                <div class="menu-description">Tap badge to check private suite &amp; party deck entry</div>
+            </a>
+
             <a href="rodeo-ticket-counter.html" class="menu-card gate">
                 <div class="menu-icon">🎟️</div>
                 <div class="menu-title">POS Counter</div>
@@ -174,6 +186,12 @@
                     <div class="menu-title">Balance Checker</div>
                     <div class="menu-description">Wristband balance check kiosk</div>
                 </a>
+
+                <a href="badge-print.html" class="menu-card green">
+                    <div class="menu-icon">🖨️</div>
+                    <div class="menu-title">Badge Print Station</div>
+                    <div class="menu-description">Print queued VIP/volunteer name tags on the Seaory</div>
+                </a>
                 <a href="vendor-invite.html" class="menu-card green">
                     <div class="menu-icon">📋</div>
                     <div class="menu-title">Vendor Invite</div>
@@ -232,6 +250,12 @@
                     <div class="menu-title">Edit Staff</div>
                     <div class="menu-description">Add, edit &amp; remove staff members</div>
                 </a>
+
+                <a href="badge-admin.html" class="menu-card admin">
+                    <div class="menu-icon">🪪</div>
+                    <div class="menu-title">Badge Admin</div>
+                    <div class="menu-description">Manage VIP/sponsor/volunteer badges, credit, suites &amp; reprints</div>
+                </a>
             </div>
         </div>
 
@@ -253,8 +277,8 @@
         return;
     }
 
-    var ADMIN_NAMES = ['Darren Holm', 'Todd Holm', 'Admin User'];
-            var MANAGER_NAMES = ['Darren Holm', 'Todd Holm', 'Brady Yzerman', 'Keaton Holm', 'Chapman Holm', 'Admin User'];
+    var ADMIN_NAMES = ['Darren Holm', 'Todd Holm', 'Dawn Abel', 'Admin User'];
+            var MANAGER_NAMES = ['Darren Holm', 'Todd Holm', 'Dawn Abel', 'Brady Yzerman', 'Keaton Holm', 'Chapman Holm', 'Admin User'];
 
             var staffName = localStorage.getItem('staff_name');
 

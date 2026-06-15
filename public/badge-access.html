@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Suite / Deck Access — Holmdale Pro Rodeo</title>
+<script>
+(function(){
+  const token = localStorage.getItem('auth_token');
+  if (!token) { window.location.href = 'login.html'; return; }
+  try { const p=JSON.parse(atob(token.split('.')[1])); if(p.exp&&p.exp<Math.floor(Date.now()/1000)) window.location.href='login.html?expired=1'; }
+  catch(e){ window.location.href='login.html'; }
+})();
+</script>
+<style>
+  :root{ --green:#00C957; --gold:#F5A623; --danger:#FF3B3B; --bg:#0c0f0d; --panel:#161b18; --line:#27302b; --txt:#eaf2ec; --dim:#7d978a; }
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--bg);color:var(--txt);min-height:100vh;}
+  .top{background:var(--panel);border-bottom:1px solid var(--line);padding:12px 16px;display:flex;align-items:center;gap:10px;}
+  .top select{flex:1;background:#0c0f0d;border:1px solid var(--line);color:#fff;font-size:16px;font-weight:700;padding:10px;border-radius:10px;}
+  .top a{color:var(--dim);text-decoration:none;font-size:13px;}
+  .wrap{max-width:520px;margin:0 auto;padding:16px;}
+
+  .idle{text-align:center;padding:40px 16px;}
+  .ring{width:120px;height:120px;border-radius:50%;border:3px solid var(--green);background:rgba(0,201,87,.08);display:flex;align-items:center;justify-content:center;font-size:54px;margin:0 auto 18px;animation:pulse 2.2s infinite;}
+  @keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(0,201,87,.35);}50%{box-shadow:0 0 0 22px rgba(0,201,87,0);}}
+  .idle h2{font-size:22px;letter-spacing:1px;} .idle p{color:var(--dim);margin-top:6px;}
+  .zonebig{color:var(--gold);font-weight:800;font-size:18px;margin-top:10px;}
+
+  .result{display:none;border-radius:18px;padding:26px 20px;text-align:center;animation:pop .3s ease;}
+  @keyframes pop{from{transform:scale(.9);opacity:0;}to{transform:scale(1);opacity:1;}}
+  .result.grant{background:linear-gradient(160deg,#06351d,#072b18);border:3px solid var(--green);}
+  .result.deny{background:linear-gradient(160deg,#3a0c0c,#2a0808);border:3px solid var(--danger);}
+  .result .big{font-size:72px;}
+  .result .verdict{font-size:34px;font-weight:900;letter-spacing:2px;margin:4px 0;}
+  .result.grant .verdict{color:var(--green);} .result.deny .verdict{color:var(--danger);}
+  .result .photo{width:120px;height:120px;border-radius:50%;object-fit:cover;border:3px solid #fff;margin:12px auto;background:#222;}
+  .result .nm{font-size:24px;font-weight:800;}
+  .result .meta{color:var(--dim);font-size:15px;margin-top:4px;}
+  .result .reason{margin-top:12px;font-size:15px;font-weight:700;}
+  .result .chips{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin-top:12px;}
+  .chip{font-size:11px;text-transform:uppercase;letter-spacing:1px;padding:3px 9px;border-radius:20px;background:rgba(255,255,255,.08);color:#cfe;}
+  .chip.here{background:var(--green);color:#06150d;}
+
+  .manual{margin-top:18px;display:flex;gap:8px;}
+  .manual input{flex:1;background:var(--panel);border:1px solid var(--line);color:#fff;padding:12px;border-radius:10px;font-family:monospace;font-size:15px;}
+  .manual button{background:var(--surface,#222);border:1px solid var(--line);color:#ccc;padding:12px 16px;border-radius:10px;font-weight:700;}
+  .status{text-align:center;color:var(--dim);font-size:13px;margin-top:14px;}
+</style>
+</head>
+<body>
+
+<div class="top">
+  <select id="zoneSel" onchange="saveZone()"></select>
+  <a href="index.html">Exit</a>
+</div>
+
+<div class="wrap">
+  <div class="idle" id="idle">
+    <div class="ring">📶</div>
+    <h2>Tap badge to enter</h2>
+    <p>Guarding</p>
+    <div class="zonebig" id="zoneBig">—</div>
+  </div>
+
+  <div class="result" id="result"></div>
+
+  <div class="manual">
+    <input type="text" id="uidInput" placeholder="or scan / type card UID"
+           onkeydown="if(event.key==='Enter'){event.preventDefault();check(this.value);}">
+    <button onclick="check(document.getElementById('uidInput').value)">Check</button>
+  </div>
+  <div class="status" id="status">Initializing…</div>
+</div>
+
+<script>
+const API='https://rodeo-fresh-production-7348.up.railway.app/api';
+const token=localStorage.getItem('auth_token');
+const authHdr={'Authorization':'Bearer '+token,'Content-Type':'application/json'};
+let ZONES=[], busy=false, resetTimer=null;
+
+function esc(s){ return (s==null?'':String(s)).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function zoneKey(){ return document.getElementById('zoneSel').value; }
+function zoneLabel(k){ return (ZONES.find(z=>z.key===k)||{}).label||k; }
+
+async function loadZones(){
+  try{
+    const r=await fetch(API+'/badges/zones',{headers:authHdr});
+    if(r.status===401){ location.href='login.html?expired=1'; return; }
+    ZONES=(await r.json()).filter(z=>z.active);
+  }catch(e){ ZONES=[]; }
+  const sel=document.getElementById('zoneSel');
+  sel.innerHTML=ZONES.map(z=>`<option value="${z.key}">${esc(z.label)}${z.sponsor_label?(' — '+esc(z.sponsor_label)):''}</option>`).join('');
+  const saved=localStorage.getItem('access_zone');
+  if(saved && ZONES.find(z=>z.key===saved)) sel.value=saved;
+  document.getElementById('zoneBig').textContent=zoneLabel(zoneKey());
+}
+function saveZone(){ localStorage.setItem('access_zone', zoneKey()); document.getElementById('zoneBig').textContent=zoneLabel(zoneKey()); }
+
+async function check(rawUid){
+  const uid=(rawUid||'').trim();
+  if(!uid || busy) return;
+  busy=true;
+  try{
+    const r=await fetch(API+'/badges/access-check',{method:'POST',headers:authHdr,body:JSON.stringify({rfid_uid:uid, zone:zoneKey()})});
+    if(r.status===401){ location.href='login.html?expired=1'; return; }
+    const d=await r.json();
+    showResult(d);
+  }catch(e){ document.getElementById('status').textContent='Network error — try again'; }
+  finally{ busy=false; document.getElementById('uidInput').value=''; }
+}
+
+function showResult(d){
+  clearTimeout(resetTimer);
+  document.getElementById('idle').style.display='none';
+  const el=document.getElementById('result');
+  el.style.display='block';
+  el.className='result '+(d.granted?'grant':'deny');
+  const b=d.badge;
+  const chips=(b&&b.allowed_zones||[]).map(k=>`<span class="chip ${k===zoneKey()?'here':''}">${esc(zoneLabel(k))}</span>`).join('');
+  el.innerHTML=`
+    <div class="big">${d.granted?'✅':'⛔'}</div>
+    <div class="verdict">${d.granted?'WELCOME':'NO ENTRY'}</div>
+    ${b&&b.photo_url?`<img class="photo" src="${esc(b.photo_url)}">`:''}
+    ${b?`<div class="nm">${esc(b.name)}</div>
+        <div class="meta">${esc([b.tier,b.company].filter(Boolean).join(' · '))||esc(b.badge_type||'')}</div>`:''}
+    <div class="reason">${esc(d.reason)}${d.granted?' to '+esc(d.zone_label):''}</div>
+    ${chips?`<div class="chips">${chips}</div>`:''}`;
+  resetTimer=setTimeout(reset, d.granted?3500:5000);
+}
+function reset(){
+  document.getElementById('result').style.display='none';
+  document.getElementById('idle').style.display='block';
+}
+
+async function startNfc(){
+  const st=document.getElementById('status');
+  if(!('NDEFReader' in window)){ st.textContent='⚠️ This device has no Web NFC — use an Android phone, or type the UID.'; return; }
+  try{
+    const ndef=new NDEFReader(); await ndef.scan();
+    st.textContent='📶 NFC ready — tap a badge';
+    ndef.onreading=e=>{ const uid=(e.serialNumber||'').replace(/:/g,'').toUpperCase(); check(uid); };
+    ndef.onreadingerror=()=>{ st.textContent='Read error — tap again'; };
+  }catch(e){ st.textContent='NFC blocked: '+e.message; }
+}
+
+(async function(){
+  await loadZones();
+  startNfc();
+})();
+</script>
+</body>
+</html>

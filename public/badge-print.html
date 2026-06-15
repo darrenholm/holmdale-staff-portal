@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Badge Print Station — Holmdale Pro Rodeo</title>
+<script>
+(function(){
+  const token = localStorage.getItem('auth_token');
+  if (!token) { window.location.href = 'login.html'; return; }
+  try { const p=JSON.parse(atob(token.split('.')[1])); if(p.exp&&p.exp<Math.floor(Date.now()/1000)) window.location.href='login.html?expired=1'; }
+  catch(e){ window.location.href='login.html'; }
+})();
+</script>
+<style>
+  :root{ --green:#00B74A; --gold:#F5A623; --bg:#111; --panel:#1a1a1a; --surface:#222; --line:#333; --txt:#eee; --dim:#888; }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--bg);color:var(--txt);}
+  .header{background:var(--panel);border-bottom:1px solid var(--line);padding:14px 24px;display:flex;align-items:center;justify-content:space-between;}
+  .header h1{font-size:20px;color:var(--green);}
+  .header .right{display:flex;gap:14px;align-items:center;}
+  .header a{color:var(--dim);text-decoration:none;font-size:14px;} .header a:hover{color:#fff;}
+  .qcount{background:var(--surface);border:1px solid var(--line);padding:4px 12px;border-radius:20px;font-size:13px;}
+  .qcount b{color:var(--gold);}
+
+  .app{display:grid;grid-template-columns:340px 1fr;gap:0;height:calc(100vh - 57px);}
+  .queue{border-right:1px solid var(--line);overflow-y:auto;padding:12px;}
+  .queue .qhead{font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--dim);margin:6px 4px 10px;}
+  .qitem{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px;margin-bottom:8px;cursor:pointer;display:flex;gap:10px;align-items:center;}
+  .qitem:hover{border-color:var(--green);}
+  .qitem.sel{border-color:var(--gold);background:#20211c;}
+  .qitem .av{width:42px;height:42px;border-radius:8px;object-fit:cover;background:var(--surface);flex-shrink:0;}
+  .qitem .nm{font-weight:700;font-size:15px;}
+  .qitem .mt{font-size:12px;color:var(--dim);}
+  .qtag{font-size:10px;text-transform:uppercase;letter-spacing:1px;padding:1px 6px;border-radius:4px;}
+  .qt-vip{background:rgba(245,166,35,.18);color:var(--gold);}
+  .qt-sponsor{background:rgba(0,183,74,.18);color:var(--green);}
+  .qt-volunteer{background:rgba(120,160,255,.18);color:#9db4ff;}
+  .empty{color:#555;text-align:center;padding:40px 10px;font-size:14px;}
+
+  .stage{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;padding:24px;overflow:auto;}
+  .stage .hint{color:var(--dim);font-size:13px;}
+  .controls{display:flex;gap:10px;}
+  .btn{padding:12px 22px;border-radius:10px;border:none;font-size:15px;font-weight:700;cursor:pointer;}
+  .btn-green{background:var(--green);color:#fff;} .btn-gold{background:var(--gold);color:#1a1a1a;}
+  .btn-gray{background:var(--surface);color:#ccc;border:1px solid var(--line);}
+  .btn:disabled{opacity:.4;cursor:not-allowed;}
+
+  /* ===== CARD (CR80 portrait 2.125in x 3.375in) ===== */
+  /* ===== CARD (CR80 LANDSCAPE 3.375in x 2.125in) ===== */
+  .card{
+    width:3.375in; height:2.125in; border-radius:.1in; overflow:hidden; position:relative;
+    color:#fff; box-shadow:0 10px 40px rgba(0,0,0,.6);
+    -webkit-print-color-adjust:exact; print-color-adjust:exact;
+    font-family:'Segoe UI',Arial,sans-serif;
+  }
+  .card .bg{position:absolute;inset:0;width:100%;height:100%;z-index:0;}
+  .card .photo{position:absolute;left:.16in;top:.18in;width:.95in;height:1.06in;border-radius:.08in;object-fit:cover;border:.03in solid #fff;background:#444;z-index:2;box-shadow:0 2px 6px rgba(0,0,0,.4);}
+  .card .logo{position:absolute;right:.12in;top:.1in;height:.95in;z-index:3;filter:drop-shadow(0 1px 3px rgba(0,0,0,.45));}
+  .card .fname{position:absolute;left:.2in;top:1.27in;font-size:19pt;font-weight:800;line-height:1;z-index:2;text-shadow:0 1px 2px rgba(0,0,0,.5);}
+  .card .lname{position:absolute;left:.2in;top:1.61in;font-size:12pt;font-weight:700;line-height:1;z-index:2;opacity:.95;text-shadow:0 1px 2px rgba(0,0,0,.5);}
+  /* sponsor logo plate — centered between photo and rodeo logo, never crowds the name */
+  .card .splogo{position:absolute;left:1.22in;top:.34in;width:1.02in;height:.6in;background:#fff;border-radius:.05in;display:flex;align-items:center;justify-content:center;text-align:center;z-index:2;box-shadow:0 1px 3px rgba(0,0,0,.25);overflow:hidden;padding:.04in;}
+  .card .splogo img{max-width:100%;max-height:100%;object-fit:contain;}
+  .card .splogo.coname{color:#0a3d1c;font-size:8.5pt;font-weight:800;line-height:1.05;}
+  .card .zones{position:absolute;right:.16in;top:1.3in;font-size:7pt;font-weight:700;text-align:right;z-index:3;text-transform:uppercase;letter-spacing:.3px;opacity:.97;text-shadow:0 1px 2px rgba(0,0,0,.5);}
+  .card .rolepill{position:absolute;right:.15in;top:1.52in;height:.4in;padding:0 .16in;display:flex;align-items:center;justify-content:center;font-size:13pt;font-weight:900;letter-spacing:1px;border-radius:.06in;z-index:3;white-space:nowrap;}
+  .card .nfc{position:absolute;left:.18in;bottom:.05in;font-size:6pt;opacity:.5;z-index:3;}
+
+  /* theme: volunteer */
+  .card.volunteer .rolepill{background:#0d1410;color:#fff;}
+  /* theme: sponsor */
+  .card.sponsor .photo{border-color:var(--gold);}
+  .card.sponsor .rolepill{background:#0a3d1c;color:#fff;border:.012in solid var(--gold);}
+  /* theme: VIP (gold) */
+  .card.vip .photo{border-color:var(--gold);box-shadow:0 0 0 .015in #fff3c4,0 2px 6px rgba(0,0,0,.4);}
+  .card.vip .fname{text-shadow:0 0 6px rgba(245,166,35,.45),0 1px 2px rgba(0,0,0,.5);}
+  .card.vip .rolepill{background:linear-gradient(90deg,#b8860b,var(--gold),#fff3c4,var(--gold),#b8860b);color:#1a1a1a;}
+  .card.vip::after{content:"";position:absolute;inset:.05in;border:.015in solid rgba(245,166,35,.55);border-radius:.07in;z-index:1;pointer-events:none;}
+
+  .preview-frame{background:#000;padding:18px;border-radius:14px;border:1px solid var(--line);}
+
+  @media print{
+    @page{ size:3.375in 2.125in; margin:0; }
+    body{background:#fff;}
+    .header,.app .queue,.stage .controls,.stage .hint,.preview-label{display:none !important;}
+    .app{display:block;height:auto;}
+    .stage{padding:0;display:block;}
+    .preview-frame{padding:0;border:none;border-radius:0;background:#fff;}
+    .card{box-shadow:none;border-radius:0;}
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>🖨️ Badge Print Station</h1>
+  <div class="right">
+    <span class="qcount">Queue: <b id="qn">0</b></span>
+    <label style="font-size:13px;color:var(--dim);"><input type="checkbox" id="autoSel" checked> auto-select newest</label>
+    <a href="index.html">← Portal</a>
+  </div>
+</div>
+
+<div class="app">
+  <div class="queue">
+    <div class="qhead">Waiting to print</div>
+    <div id="queueList"><div class="empty">Loading…</div></div>
+  </div>
+
+  <div class="stage">
+    <div class="preview-label hint" id="stageHint">Select a badge from the queue to print.</div>
+    <div class="preview-frame"><div id="cardHost"></div></div>
+    <div class="controls" id="controls" style="display:none;">
+      <button class="btn btn-green" onclick="doPrint()">🖨️ Print Card</button>
+      <button class="btn btn-gold" id="markBtn" onclick="markPrinted()">✓ Mark Printed</button>
+      <button class="btn btn-gray" onclick="skip()">Skip</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const API='https://rodeo-fresh-production-7348.up.railway.app/api';
+const token=localStorage.getItem('auth_token');
+const authHdr={'Authorization':'Bearer '+token,'Content-Type':'application/json'};
+const EVENT='Holmdale Pro Rodeo';
+let queue=[], selected=null, ZONES=[];
+
+function esc(s){ return (s==null?'':String(s)).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+async function loadZones(){
+  try{ const r=await fetch(API+'/badges/zones',{headers:authHdr}); ZONES=await r.json(); }catch(e){ ZONES=[]; }
+}
+function zoneLabels(keys){ return (keys||[]).map(k=>(ZONES.find(z=>z.key===k)||{}).label||k); }
+
+async function loadQueue(){
+  try{
+    const r=await fetch(API+'/badges/print-queue',{headers:authHdr});
+    if(r.status===401){ location.href='login.html?expired=1'; return; }
+    queue=await r.json();
+  }catch(e){ return; }
+  document.getElementById('qn').textContent=queue.length;
+  renderQueue();
+  if(document.getElementById('autoSel').checked && !selected && queue.length){
+    select(queue[queue.length-1].id); // newest queued
+  }
+  if(selected && !queue.find(b=>b.id===selected.id)){ selected=null; clearStage(); }
+}
+
+function renderQueue(){
+  const el=document.getElementById('queueList');
+  if(!queue.length){ el.innerHTML='<div class="empty">No badges waiting.<br>New check-ins appear here automatically.</div>'; return; }
+  el.innerHTML=queue.map(b=>`
+    <div class="qitem ${selected&&selected.id===b.id?'sel':''}" onclick="select('${b.id}')">
+      ${b.photo_url?`<img class="av" src="${esc(b.photo_url)}">`:'<div class="av"></div>'}
+      <div style="flex:1;min-width:0;">
+        <div class="nm">${esc(b.customer_name)}</div>
+        <div class="mt">${esc(b.company||b.title||'')}</div>
+      </div>
+      <span class="qtag qt-${b.badge_type}">${esc(b.badge_type)}</span>
+    </div>`).join('');
+}
+
+function select(id){
+  selected=queue.find(b=>b.id===id);
+  if(!selected) return;
+  renderQueue();
+  document.getElementById('cardHost').innerHTML=renderCard(selected);
+  document.getElementById('controls').style.display='flex';
+  document.getElementById('stageHint').textContent='Set the printer to the Seaory S25 (CR80 card). Then Print.';
+}
+function clearStage(){
+  document.getElementById('cardHost').innerHTML='';
+  document.getElementById('controls').style.display='none';
+  document.getElementById('stageHint').textContent='Select a badge from the queue to print.';
+}
+
+// Plaid-left / white-wave / green background, recreated in SVG so it prints crisp.
+const BG_SVG = `<svg class="bg" viewBox="0 0 338 213" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bgg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#1f8a40"/><stop offset=".55" stop-color="#0f6a2c"/><stop offset="1" stop-color="#083f1a"/>
+    </linearGradient>
+    <linearGradient id="wv" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#f5f8f5"/><stop offset="1" stop-color="#c4d1c6"/>
+    </linearGradient>
+    <linearGradient id="pf" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#0f6a2c" stop-opacity="0"/><stop offset="1" stop-color="#0f6a2c" stop-opacity="1"/>
+    </linearGradient>
+    <pattern id="tt" width="24" height="24" patternUnits="userSpaceOnUse">
+      <rect width="24" height="24" fill="#0c5224"/>
+      <rect width="24" height="12" fill="#0e6128" opacity=".55"/>
+      <rect width="12" height="24" fill="#0e6128" opacity=".4"/>
+      <rect x="10" width="3" height="24" fill="#fff" opacity=".08"/>
+      <rect y="10" width="24" height="3" fill="#fff" opacity=".08"/>
+      <rect width="1.5" height="24" fill="#063815" opacity=".5"/>
+      <rect height="1.5" width="24" fill="#063815" opacity=".5"/>
+    </pattern>
+  </defs>
+  <rect width="338" height="213" fill="url(#bgg)"/>
+  <path d="M0,60 C90,38 150,80 338,46 L338,112 C210,96 120,124 0,118 Z" fill="url(#wv)"/>
+  <g><rect width="150" height="213" fill="url(#tt)"/><rect width="150" height="213" fill="url(#pf)"/></g>
+</svg>`;
+
+function renderCard(b){
+  const zl=zoneLabels(b.access_zones);
+  const role = b.badge_type==='vip' ? 'VIP'
+             : b.badge_type==='sponsor' ? 'SPONSOR' : 'VOLUNTEER';
+  // Bar/food credit is intentionally NOT printed — it lives on the NFC chip/ID only,
+  // so balances can change without reprinting the card.
+  const access = zl.length ? zl.join(' · ') : 'General Admission';
+  const parts=(b.customer_name||'').trim().split(/\s+/);
+  const fname=esc(parts.shift()||''); const lname=esc(parts.join(' '));
+  const photo = b.photo_url ? `<img class="photo" src="${esc(b.photo_url)}" crossorigin="anonymous">` : '<div class="photo"></div>';
+  return `
+    <div class="card ${esc(b.badge_type)}">
+      ${BG_SVG}
+      ${photo}
+      <img class="logo" src="badge-logo.png" alt="${EVENT}">
+      <div class="zones">🔓 ${esc(access)}</div>
+      <div class="fname">${fname}</div>
+      ${lname?`<div class="lname">${lname}</div>`:''}
+      ${b.company_logo_url
+          ? `<div class="splogo"><img src="${esc(b.company_logo_url)}" crossorigin="anonymous"></div>`
+          : (b.company && b.badge_type!=='volunteer' ? `<div class="splogo coname">${esc(b.company)}</div>` : '')}
+      <div class="rolepill">${role}</div>
+      <div class="nfc">((•))</div>
+    </div>`;
+}
+
+function doPrint(){
+  if(!selected) return;
+  window.print();
+}
+async function markPrinted(){
+  if(!selected) return;
+  const id=selected.id;
+  try{
+    const r=await fetch(API+'/badges/'+id+'/printed',{method:'POST',headers:authHdr});
+    if(!r.ok){ const d=await r.json(); alert(d.error||'Could not mark printed'); return; }
+    selected=null; clearStage();
+    await loadQueue();
+  }catch(e){ alert('Network error'); }
+}
+function skip(){ selected=null; clearStage(); }
+
+(async function(){
+  await loadZones();
+  await loadQueue();
+  setInterval(loadQueue, 5000); // live queue refresh
+})();
+</script>
+</body>
+</html>
