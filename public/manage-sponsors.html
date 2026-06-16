@@ -263,18 +263,19 @@ function renderSummary(yr) {
     const list = type==='sponsors'?sSched:vSched;
     const key = type==='sponsors'?'sponsor_id':'vendor_id';
     const items = type==='sponsors'?sponsors:vendors;
+    const activeItems = items.filter(x => x.active !== false);   // exclude inactive (decluttered) records
     if (yr==='all') {
-        el.innerHTML = `<div class="scard"><div class="v">${items.length}</div><div class="l">Total ${type}</div></div>`;
+        el.innerHTML = `<div class="scard"><div class="v">${activeItems.length}</div><div class="l">Total ${type}</div></div>`;
     } else {
         const yearItems = list.filter(s=>s.year==yr);
         const total = yearItems.reduce((s,x) => s+(parseFloat(x.amount)||0), 0);
         const count = new Set(yearItems.filter(x=>parseFloat(x.amount)>0).map(x=>x[key])).size;
-        const paid = items.filter(x=>x.paid).length;
-        const inKind = items.filter(x=>x.in_kind).length;
-        el.innerHTML = `<div class="scard"><div class="v">${items.length}</div><div class="l">Total</div></div>
+        const paid = activeItems.filter(x=>x.paid).length;
+        const inKind = activeItems.filter(x=>x.in_kind).length;
+        el.innerHTML = `<div class="scard"><div class="v">${activeItems.length}</div><div class="l">Total</div></div>
             <div class="scard blue"><div class="v">${count}</div><div class="l">Active ${yr}</div></div>
             <div class="scard amber"><div class="v">$${total.toLocaleString()}</div><div class="l">Amount ${yr}</div></div>
-            <div class="scard"><div class="v">${paid}/${items.length}</div><div class="l">Paid</div></div>
+            <div class="scard"><div class="v">${paid}/${activeItems.length}</div><div class="l">Paid</div></div>
             <div class="scard"><div class="v">${inKind}</div><div class="l">In Kind</div></div>`;
     }
 }
