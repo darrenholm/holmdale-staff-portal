@@ -149,6 +149,7 @@ tr:hover td { background:#1f1f1f; }
                 <option value="2027">2027</option>
                 <option value="2028">2028</option>
             </select>
+            <label class="filter" id="inactiveToggle" style="display:flex;align-items:center;gap:6px;cursor:pointer;"><input type="checkbox" id="showInactive" onchange="render()"> Show inactive</label>
         </div>
         <button class="btn btn-green" id="addBtn" onclick="openAdd()">+ Add Sponsor</button>
     </div>
@@ -192,6 +193,7 @@ document.getElementById('tabBar').addEventListener('click', e => {
     tab = e.target.dataset.tab;
     document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tab));
     document.getElementById('yearFilter').style.display = tab === 'signs' ? 'none' : '';
+    document.getElementById('inactiveToggle').style.display = tab === 'signs' ? 'none' : '';
     document.getElementById('addBtn').textContent = tab === 'sponsors' ? '+ Add Sponsor' : tab === 'vendors' ? '+ Add Vendor' : '+ Add Location';
     render();
 });
@@ -232,6 +234,7 @@ function toast(msg) {
 }
 function flagBadges(x) {
     let b = '';
+    if (x.active === false) b += ' <span class="badge br">Inactive</span>';
     if (x.paid) b += ' <span class="badge bg">Paid</span>';
     if (x.in_kind) b += ' <span class="badge by">In Kind</span>';
     return b;
@@ -283,6 +286,7 @@ function renderSponsors(q, yr) {
         (s.city||'').toLowerCase().includes(q) ||
         (s.email||'').toLowerCase().includes(q)
     );
+    if (!document.getElementById('showInactive').checked) items = items.filter(s => s.active !== false);
     if (yr!=='all') items.sort((a,b) => yearAmt('sponsors',b.id,yr) - yearAmt('sponsors',a.id,yr));
 
     const el = document.getElementById('table');
@@ -312,6 +316,7 @@ function renderVendors(q, yr) {
         (v.product||'').toLowerCase().includes(q) ||
         (v.email||'').toLowerCase().includes(q)
     );
+    if (!document.getElementById('showInactive').checked) items = items.filter(v => v.active !== false);
     const el = document.getElementById('table');
     if (!items.length) { el.innerHTML = '<div class="empty">No vendors found</div>'; return; }
     el.innerHTML = `<table><thead><tr>
@@ -408,6 +413,7 @@ function flagsRow(item) {
     const ckStyle = 'flex-direction:row; align-items:center; gap:8px; cursor:pointer;';
     const lblStyle = 'text-transform:none; font-size:14px; color:#eee;';
     return `<div class="fi full" style="flex-direction:row; gap:28px; align-items:center;">
+        <label class="fi" style="${ckStyle}"><input type="checkbox" id="f_active" ${item.active !== false ? 'checked':''} style="width:auto;"><span style="${lblStyle}">✅ Active</span></label>
         <label class="fi" style="${ckStyle}"><input type="checkbox" id="f_paid" ${item.paid?'checked':''} style="width:auto;"><span style="${lblStyle}">💵 Paid</span></label>
         <label class="fi" style="${ckStyle}"><input type="checkbox" id="f_inkind" ${item.in_kind?'checked':''} style="width:auto;"><span style="${lblStyle}">🎁 In Kind</span></label>
     </div>`;
@@ -704,6 +710,7 @@ async function save() {
                 notes: document.getElementById('f_notes').value,
                 paid: document.getElementById('f_paid').checked,
                 in_kind: document.getElementById('f_inkind').checked,
+                active: document.getElementById('f_active').checked,
             };
             url = editId ? API+'/sponsors/'+editId : API+'/sponsors';
             method = editId ? 'PUT' : 'POST';
@@ -720,6 +727,7 @@ async function save() {
                 comment: document.getElementById('f_notes').value,
                 paid: document.getElementById('f_paid').checked,
                 in_kind: document.getElementById('f_inkind').checked,
+                active: document.getElementById('f_active').checked,
             };
             url = editId ? API+'/vendors/'+editId : API+'/vendors';
             method = editId ? 'PUT' : 'POST';
