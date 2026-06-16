@@ -300,7 +300,7 @@ function renderSponsors(q, yr) {
             <td>${s.phone||''}</td>
             <td>${s.email ? `<a href="mailto:${s.email}" style="color:#3b82f6;">${s.email}</a>` : ''}</td>
             ${yr!=='all'?`<td class="amt">${a>0?'$'+a.toLocaleString():'-'}</td>`:`<td>${yrs||'-'}</td>`}
-            <td><button class="btn btn-sm btn-gray" onclick="openEdit('sponsors',${s.id})">Edit</button></td>
+            <td style="white-space:nowrap;"><button class="btn btn-sm btn-gray" onclick="openEdit('sponsors',${s.id})">Edit</button> <button class="btn btn-sm btn-red" onclick="deleteRecord('sponsors',${s.id})">Delete</button></td>
         </tr>`;
     }).join('')}</tbody></table>`;
 }
@@ -329,7 +329,7 @@ function renderVendors(q, yr) {
             <td>${v.booth_size||''}</td>
             ${yr!=='all'?`<td class="amt">${entry?'$'+parseFloat(entry.amount).toLocaleString():'-'}</td>`
                 :`<td>${yrs||'-'}</td>`}
-            <td><button class="btn btn-sm btn-gray" onclick="openEdit('vendors',${v.id})">Edit</button></td>
+            <td style="white-space:nowrap;"><button class="btn btn-sm btn-gray" onclick="openEdit('vendors',${v.id})">Edit</button> <button class="btn btn-sm btn-red" onclick="deleteRecord('vendors',${v.id})">Delete</button></td>
         </tr>`;
     }).join('')}</tbody></table>`;
 }
@@ -349,12 +349,32 @@ function renderSigns(q) {
         <td>${s.installed?'<span class="badge bg">Yes</span>':'<span class="badge by">No</span>'}</td>
         <td>${s.install_date?new Date(s.install_date).toLocaleDateString():''}</td>
         <td>${s.removed?'<span class="badge br">Yes</span>':'<span class="badge by">No</span>'}</td>
-        <td><button class="btn btn-sm btn-gray" onclick="openEdit('signs',${s.id})">Edit</button></td>
+        <td style="white-space:nowrap;"><button class="btn btn-sm btn-gray" onclick="openEdit('signs',${s.id})">Edit</button> <button class="btn btn-sm btn-red" onclick="deleteRecord('signs',${s.id})">Delete</button></td>
     </tr>`).join('')}</tbody></table>`;
 }
 
 // ─── Modal ───
 function closeModal() { document.getElementById('overlay').classList.remove('open'); editId=null; }
+
+async function deleteRecord(type, id) {
+    const list = type==='sponsors' ? sponsors : type==='vendors' ? vendors : signs;
+    const item = list.find(x => x.id === id) || {};
+    const name = item.name || item.location || 'this record';
+    const labels = { sponsors:'sponsor', vendors:'vendor', signs:'sign location' };
+    if (!confirm('Delete ' + (labels[type]||'record') + ' "' + name + '"? This cannot be undone.')) return;
+    const path = type==='signs' ? '/sign-locations/' : '/' + type + '/';
+    try {
+        const res = await fetch(API + path + id, { method:'DELETE', headers:h() });
+        if (res.status === 401 || res.status === 403) { window.location.href = 'login.html'; return; }
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.error || ('Delete failed (HTTP ' + res.status + ')'));
+        toast('Deleted');
+        await load();
+    } catch (err) {
+        console.error('deleteRecord error:', err);
+        alert('Delete failed: ' + err.message);
+    }
+}
 
 function openAdd() {
     editId = null;
