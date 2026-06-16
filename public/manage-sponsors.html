@@ -715,10 +715,14 @@ async function save() {
             method = editId ? 'PUT' : 'POST';
         }
 
-        // Save main record
+        // Save main record — stop here if it fails, so we don't fire the
+        // schedule request against an undefined id or report a false success.
         const resp = await fetch(url, { method, headers:h(), body:JSON.stringify(body) });
-        const saved = await resp.json();
+        const saved = await resp.json().catch(() => ({}));
+        if (!resp.ok) throw new Error(saved.error || ('Save failed (HTTP ' + resp.status + ')'));
+
         const recordId = editId || saved.id;
+        if (!recordId) throw new Error('Server did not return a record id — aborting before schedule write.');
 
         // Save schedule entries if not signs
         if (tab !== 'signs') {
@@ -731,7 +735,12 @@ async function save() {
             });
 
             const schedUrl = tab==='sponsors' ? API+'/sponsor-schedule/'+recordId : API+'/vendor-schedule/'+recordId;
-            await fetch(schedUrl, { method:'PUT', headers:h(), body:JSON.stringify({entries}) });
+            const schedResp = await fetch(schedUrl, { method:'PUT', headers:h(), body:JSON.stringify({entries}) });
+            if (!schedResp.ok) {
+                const schedErr = await schedResp.json().catch(() => ({}));
+                throw new Error('Record saved, but the yearly schedule failed to save: ' +
+                    (schedErr.error || ('HTTP ' + schedResp.status)) + '. Re-open the record to retry.');
+            }
         }
 
         closeModal();
