@@ -557,7 +557,7 @@ document.getElementById('f_company').addEventListener('input',()=>{ state.compan
 // bridge is down — the badge is already saved either way.
 const BRIDGE = localStorage.getItem('print_bridge_url') || 'http://127.0.0.1:7777';
 async function printBadge(badgeId){
-  const card=document.querySelector('#cardPreview .pvcard');
+  const card=document.getElementById('cardPreview');  // this element IS the .pvcard
   if(!card || typeof html2canvas!=='function') return { ok:false, reason:'renderer not ready' };
   let png;
   try{
