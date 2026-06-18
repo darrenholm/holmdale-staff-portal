@@ -130,7 +130,7 @@
 </style>
 </head>
 <body>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="html2canvas.min.js"></script>
 
 <div class="header">
   <h1>🎟️ VIP / Volunteer Check-In</h1>
@@ -584,7 +584,7 @@ async function printAfterSave(badgeId){
   const pr=await printBadge(badgeId);
   if(ps) ps.innerHTML = pr.ok
     ? '🖨️ Printing on the S25 ✓'
-    : '⚠️ Saved &amp; queued — printer not reached ('+esc(pr.reason)+'). Print it from the Print Station.';
+    : '⚠️ Saved — couldn\'t reach the printer ('+esc(pr.reason)+'). Check the print-bridge is running, then reprint from Badge Admin.';
 }
 
 async function save(){
