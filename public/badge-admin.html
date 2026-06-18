@@ -67,7 +67,7 @@
 
 <div class="header">
   <h1>🪪 Badge Admin</h1>
-  <div><a href="badge-print.html" style="margin-right:16px;">🖨️ Print Station</a><a href="index.html">← Portal</a></div>
+  <div><a href="index.html">← Portal</a></div>
 </div>
 
 <div class="container">
@@ -200,6 +200,7 @@ function rowHtml(b){
       <button class="btn btn-gray" onclick="openEdit('${b.id}')">Edit</button>
       <button class="btn btn-gray" onclick="reprint('${b.id}')">Reprint</button>
       ${b.badge_active?`<button class="btn btn-red" onclick="deactivate('${b.id}')">Revoke</button>`:''}
+      <button class="btn btn-red" onclick="deleteBadge('${b.id}')">Delete</button>
     </td></tr>`;
 }
 
@@ -251,6 +252,13 @@ async function deactivate(id){
   if(!confirm('Revoke this badge? Its card will lose all access, credit and bar privileges.')) return;
   try{ const r=await fetch(API+'/badges/'+id+'/deactivate',{method:'POST',headers:authHdr});
     if(!r.ok){ toast('Failed',true); return; } toast('Badge revoked'); await load();
+  }catch(e){ toast('Network error',true); }
+}
+async function deleteBadge(id){
+  const b=badges.find(x=>x.id===id)||{};
+  if(!confirm('Permanently DELETE '+(b.customer_name||'this badge')+'?\n\nThis removes the record and frees its NFC card so it can be re-issued. This cannot be undone.')) return;
+  try{ const r=await fetch(API+'/badges/'+id,{method:'DELETE',headers:authHdr});
+    if(!r.ok){ const d=await r.json().catch(()=>({})); toast(d.error||'Delete failed',true); return; } toast('Badge deleted'); await load();
   }catch(e){ toast('Network error',true); }
 }
 
