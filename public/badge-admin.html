@@ -143,7 +143,7 @@ const TIER_BAR = {
   gold:{bg:'#F5A623',fg:'#5a3d00',label:'Sponsor'}, platinum:{bg:'#E5E4E2',fg:'#333',label:'Sponsor'},
   title:{bg:'#1a1a1a',fg:'#F5A623',label:'Sponsor'}, friend:{bg:'#2F80ED',fg:'#fff',label:'Friend'},
 };
-const STAFF_BAR = {bg:'#1BD400',fg:'#0a3d1c',label:'Staff'};
+const STAFF_BAR = {bg:'#1BD400',fg:'#ffffff',label:'Staff'};
 function barFor(type,tier){ if(type==='volunteer') return STAFF_BAR; const k=(tier||'').toLowerCase(); return TIER_BAR[k]||{bg:'#0a3d1c',fg:'#fff',label:'Sponsor'}; }
 function nameHtml(name){ const p=(name||'').trim().split(/\s+/); const f=esc(p.shift()||''); const l=esc(p.join(' ')); return `<span class="fn">${f}</span>`+(l?`<span class="ln">${l}</span>`:''); }
 function fitName(scope){ const fn=scope&&scope.querySelector('.fn'); if(!fn) return; fn.style.fontSize=''; let s=parseFloat(getComputedStyle(fn).fontSize),g=0; while(fn.scrollWidth>fn.clientWidth+1&&s>12&&g<80){ s-=1; fn.style.fontSize=s+'px'; g++; } }
