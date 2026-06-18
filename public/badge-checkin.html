@@ -33,7 +33,7 @@
   .card h2 .step{background:var(--surface);color:var(--green);width:22px;height:22px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;}
 
   /* type pills */
-  .types{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;}
+  .types{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;}
   .type-pill{padding:16px 8px;border-radius:12px;border:2px solid var(--line);background:var(--surface);cursor:pointer;text-align:center;font-weight:800;font-size:15px;color:var(--dim);transition:.15s;}
   .type-pill .ic{font-size:26px;display:block;margin-bottom:4px;}
   .type-pill.sel{border-color:var(--green);background:rgba(0,183,74,.12);color:var(--green);}
@@ -115,9 +115,22 @@
   .done .nm{font-size:20px;font-weight:700;}
   .done .sub{color:var(--dim);margin-top:10px;font-size:14px;}
   .done .perks{margin:16px 0;font-size:14px;color:#cde;line-height:1.7;}
+
+  /* live badge preview — mirrors the portrait CR80 print card */
+  .pvcard{position:relative;width:2.125in;height:3.375in;border-radius:.1in;overflow:hidden;background:#0f7a36;color:#fff;font-family:Arial,sans-serif;box-shadow:0 6px 20px rgba(0,0,0,.5);}
+  .pvcard .bg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:0;}
+  .pvcard .ph{position:absolute;left:8.5%;top:10.5%;width:38%;height:31%;border-radius:.06in;object-fit:cover;background:#2a2a2a;z-index:2;}
+  .pvcard .nm{position:absolute;left:0;top:44%;width:100%;padding:0 6%;text-align:center;font-size:17pt;font-weight:bold;line-height:1.05;color:#0a3d1c;z-index:2;text-shadow:-1px -1px 0 #fff,1px -1px 0 #fff,-1px 1px 0 #fff,1px 1px 0 #fff,0 0 3px #fff;}
+  .pvcard .nm .fn{display:block;font-size:40pt;line-height:.9;white-space:nowrap;}
+  .pvcard .nm .ln{display:block;font-size:18pt;line-height:.9;margin-top:.05in;}
+  .pvcard.staff .nm{top:56%;}   /* staff has no logo plate — drop the name ~10mm */
+  .pvcard .lg{position:absolute;left:14%;top:71%;width:72%;height:12%;background:#fff;border-radius:.05in;display:flex;align-items:center;justify-content:center;overflow:hidden;padding:.05in;z-index:2;}
+  .pvcard .lg img{max-width:100%;max-height:100%;object-fit:contain;}
+  .pvcard .bar{position:absolute;left:0;bottom:0;width:100%;height:14.8%;display:flex;align-items:center;justify-content:center;font-size:19pt;font-weight:bold;letter-spacing:.5px;z-index:3;}
 </style>
 </head>
 <body>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 
 <div class="header">
   <h1>🎟️ VIP / Volunteer Check-In</h1>
@@ -130,9 +143,8 @@
     <div class="card">
       <h2><span class="step">1</span> Badge Type</h2>
       <div class="types" id="types">
-        <div class="type-pill" data-type="volunteer" onclick="setType('volunteer')"><span class="ic">🧑‍🌾</span>Volunteer</div>
         <div class="type-pill" data-type="sponsor" onclick="setType('sponsor')"><span class="ic">🤝</span>Sponsor</div>
-        <div class="type-pill vip" data-type="vip" onclick="setType('vip')"><span class="ic">⭐</span>VIP</div>
+        <div class="type-pill" data-type="volunteer" onclick="setType('volunteer')"><span class="ic">🧑‍🌾</span>Volunteer</div>
       </div>
       <div class="tiers" id="tiers"></div>
     </div>
@@ -141,10 +153,11 @@
       <h2><span class="step">2</span> Who Is This?</h2>
       <input type="text" id="search" placeholder="🔎 Search existing sponsors / staff…" oninput="onSearch()" autocomplete="off">
       <div id="searchResults"></div>
+      <div id="sponsorGuests"></div>
       <label class="fl">Name on badge *</label>
       <input type="text" id="f_name" placeholder="Full name">
-      <div class="row2">
-        <div><label class="fl">Title / Role</label><input type="text" id="f_title" placeholder="e.g. Gold Sponsor, Gate Captain"></div>
+      <input type="hidden" id="f_title">
+      <div class="row2" id="titleRow">
         <div><label class="fl">Company / Org</label><input type="text" id="f_company" placeholder="Company"></div>
       </div>
       <label class="fl">Email (optional)</label>
@@ -173,8 +186,13 @@
     </div>
   </div>
 
-  <!-- RIGHT: photo + card + save -->
+  <!-- RIGHT: preview + photo + card + save -->
   <div class="col">
+    <div class="card">
+      <h2>👁️ Live Preview</h2>
+      <div style="display:flex;justify-content:center;"><div class="pvcard" id="cardPreview"></div></div>
+    </div>
+
     <div class="card">
       <h2><span class="step">5</span> Photo</h2>
       <div class="cam-stage" id="camStage">
@@ -214,7 +232,8 @@
     <h2>Checked In!</h2>
     <div class="nm" id="doneName"></div>
     <div class="perks" id="donePerks"></div>
-    <div class="sub">Sent to the print queue. <b style="color:var(--green-lt)">Next guest in <span id="cd">5</span>s</b></div>
+    <div class="sub" id="printStatus" style="margin-bottom:6px;"></div>
+    <div class="sub"><b style="color:var(--green-lt)">Next guest in <span id="cd">5</span>s</b></div>
     <button class="btn btn-green btn-block" style="margin-top:14px;" onclick="resetForm()">Next Guest →</button>
   </div>
 </div>
@@ -224,16 +243,63 @@ const API = 'https://rodeo-fresh-production-7348.up.railway.app/api';
 const token = localStorage.getItem('auth_token');
 const authHdr = { 'Authorization':'Bearer '+token, 'Content-Type':'application/json' };
 
-// Per-type tier defaults. Editable on screen afterward.
-const TIER_DEFAULTS = {
-  volunteer: [{ name:'Volunteer', credits:25 }],
-  sponsor:   [{ name:'Bronze', credits:50 }, { name:'Silver', credits:100 },
-              { name:'Gold', unlimited:true }, { name:'Platinum', unlimited:true }],
-  vip:       [{ name:'VIP', unlimited:true, allZones:true }],
-};
+// Sponsorship levels (low → high). A sponsor's pledged $ maps to a level
+// (server-side), which pre-selects the dropdown; the level drives bar colour +
+// perks. Volunteers don't use these.
+const LEVELS = [
+  { key:'friend',   display:'Friend',        tier:'Friend',   amount:500,   credits:25 },
+  { key:'bronze',   display:'Bronze',        tier:'Bronze',   amount:1000,  credits:50 },
+  { key:'silver',   display:'Silver',        tier:'Silver',   amount:2500,  credits:100 },
+  { key:'gold',     display:'Gold',          tier:'Gold',     amount:5000,  unlimited:true },
+  { key:'platinum', display:'Platinum',      tier:'Platinum', amount:6500,  unlimited:true },
+  { key:'title',    display:'Title Sponsor', tier:'Title',    amount:10000, unlimited:true, allZones:true },
+];
 
-let state = { type:null, tier:null, uid:'', photo:null, zones:[], companyLogo:null };
+let state = { type:null, tier:null, uid:'', photo:null, zones:[], companyLogo:null, sponsorGuestId:null, sponsorLevel:'' };
 let ZONES = [];
+
+// ── Live badge preview (mirrors badge-print.html) ──
+// All paid sponsor tiers read "Sponsor" — the bar COLOUR encodes the tier.
+const TIER_BAR = {
+  bronze:   { bg:'#CD7F32', fg:'#ffffff', label:'Sponsor' },
+  silver:   { bg:'#C0C0C0', fg:'#333333', label:'Sponsor' },
+  gold:     { bg:'#F5A623', fg:'#5a3d00', label:'Sponsor' },
+  platinum: { bg:'#E5E4E2', fg:'#333333', label:'Sponsor' },
+  title:    { bg:'#1a1a1a', fg:'#F5A623', label:'Sponsor' },
+  friend:   { bg:'#2F80ED', fg:'#ffffff', label:'Friend' },
+};
+const STAFF_BAR = { bg:'#1BD400', fg:'#0a3d1c', label:'Staff' };  // C89 M15 Y100 K2
+function barFor(type, tier){
+  if(type==='volunteer') return STAFF_BAR;
+  const k=(tier||'').toLowerCase();
+  return TIER_BAR[k] || { bg:'#0a3d1c', fg:'#ffffff', label:'Sponsor' };
+}
+function nameHtml(type, name){
+  const full=(name||'').trim();
+  const p=full.split(/\s+/); const f=esc(p.shift()||''); const l=esc(p.join(' '));
+  return `<span class="fn">${f}</span>`+(l?`<span class="ln">${l}</span>`:'');
+}
+function updatePreview(){
+  const el=document.getElementById('cardPreview'); if(!el) return;
+  el.classList.toggle('staff', state.type==='volunteer');
+  const name=document.getElementById('f_name').value;
+  const ph = state.photo ? `<img class="ph" src="${state.photo}">` : '<div class="ph"></div>';
+  const lg = state.companyLogo ? `<div class="lg"><img src="${esc(state.companyLogo)}"></div>` : '';
+  let bar='';
+  if(state.type){ const b=barFor(state.type, state.tier); bar=`<div class="bar" style="background:${b.bg};color:${b.fg};">${esc(b.label)}</div>`; }
+  el.innerHTML = `<img class="bg" src="badge-art/badge.png" onerror="this.style.display='none'">${ph}<div class="nm">${nameHtml(state.type,name)}</div>${lg}${bar}`;
+  fitName(el);
+}
+// Shrink the first name until it fits the card width (no wrap/overflow).
+function fitName(scope){
+  const fn = scope && scope.querySelector('.fn');
+  if(!fn) return;
+  fn.style.fontSize='';
+  let size = parseFloat(getComputedStyle(fn).fontSize), guard=0;
+  while(fn.scrollWidth > fn.clientWidth + 1 && size > 12 && guard < 80){
+    size -= 1; fn.style.fontSize = size+'px'; guard++;
+  }
+}
 
 function toast(msg, err){ const t=document.getElementById('toast'); t.textContent=msg; t.className='toast'+(err?' err':''); t.style.display='block'; setTimeout(()=>t.style.display='none', err?4000:2200); }
 
@@ -263,38 +329,44 @@ function toggleZone(key, on){
   renderZones(); updateSummary();
 }
 
-// ── Type / tier ──
+// ── Type / sponsorship level ──
 function setType(type){
   state.type = type;
   document.querySelectorAll('.type-pill').forEach(p=>p.classList.toggle('sel', p.dataset.type===type));
-  const tiers = TIER_DEFAULTS[type] || [];
   const tw = document.getElementById('tiers');
-  tw.innerHTML = tiers.map((t,i)=>`<button class="tier-btn" data-i="${i}" onclick="setTier(${i})">${esc(t.name)}</button>`).join('');
-  setTier(0);
-  // default title to tier name for sponsors/vip
+  if(type==='sponsor'){
+    document.getElementById('titleRow').style.display = '';
+    const opts = LEVELS.map(L=>`<option value="${L.key}">${esc(L.display)} — $${L.amount.toLocaleString()}</option>`).join('');
+    tw.innerHTML = `<label class="fl" style="margin:0 0 4px;">Sponsorship Level</label>
+      <select id="levelSelect" onchange="applyLevel(this.value)" style="width:100%;background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:10px 12px;color:#fff;font-size:15px;">${opts}</select>`;
+    const def = state.sponsorLevel || 'bronze';
+    document.getElementById('levelSelect').value = def;
+    applyLevel(def);
+  } else { // volunteer / staff
+    document.getElementById('titleRow').style.display = 'none';
+    document.getElementById('f_title').value = '';
+    document.getElementById('f_company').value = ''; state.companyLogo = null;
+    tw.innerHTML = '<span style="color:var(--dim);font-size:13px;">Staff badge — no sponsorship level</span>';
+    state.tier = 'Volunteer';
+    document.getElementById('t_unlimited').checked = false;
+    document.getElementById('f_credit').value = 25;
+    onUnlimited();
+  }
   updateSummary();
 }
-function setTier(i){
-  const tiers = TIER_DEFAULTS[state.type] || [];
-  const t = tiers[i]; if(!t) return;
-  state.tier = t.name;
-  document.querySelectorAll('.tier-btn').forEach(b=>b.classList.toggle('sel', +b.dataset.i===i));
-  // apply perk defaults
-  document.getElementById('t_unlimited').checked = !!t.unlimited;
-  document.getElementById('f_credit').value = t.credits != null ? t.credits : 0;
+function applyLevel(key){
+  const L = LEVELS.find(x=>x.key===key) || LEVELS[1];
+  state.tier = L.tier;
+  document.getElementById('f_title').value = L.display;   // stored on the record (not printed)
+  document.getElementById('t_unlimited').checked = !!L.unlimited;
+  document.getElementById('f_credit').value = L.credits != null ? L.credits : 0;
   onUnlimited();
-  // suggest title
-  const titleEl = document.getElementById('f_title');
-  if(state.type!=='volunteer' && !titleEl.dataset.touched) titleEl.value = t.name + (state.type==='sponsor'?' Sponsor':'');
-  // default party deck access for sponsor/vip tiers
+  // Party deck for any sponsor; Title gets every zone.
   const deck = ZONES.find(z=>z.key==='party_deck');
-  if(deck && (state.type==='vip' || (state.type==='sponsor'))) {
-    if(!state.zones.includes('party_deck')) state.zones.push('party_deck');
-  }
-  if(t.allZones){ state.zones = ZONES.map(z=>z.key); }
+  if(deck && !state.zones.includes('party_deck')) state.zones.push('party_deck');
+  if(L.allZones) state.zones = ZONES.map(z=>z.key);
   renderZones(); updateSummary();
 }
-document.getElementById('f_title').addEventListener('input', e=>{ e.target.dataset.touched='1'; });
 
 function onUnlimited(){
   const unl = document.getElementById('t_unlimited').checked;
@@ -330,13 +402,60 @@ function pick(it){
   if(it.company) document.getElementById('f_company').value = it.company;
   if(it.email) document.getElementById('f_email').value = it.email;
   state.companyLogo = it.company_logo_url || null;  // sponsor's primary logo → shown on the card
+  state.sponsorLevel = it.sponsorship_level || '';  // derived from their pledged $ (server)
   document.getElementById('searchResults').innerHTML='';
   document.getElementById('search').value='';
+  // Picking a sponsor → sponsor badge (defaults the level); picking staff → volunteer.
+  if(it.source==='sponsor') setType('sponsor');
+  else if(it.source==='staff') setType('volunteer');
   // If a suite is assigned to this sponsor, auto-check it.
   if(it.company){
     const suite = ZONES.find(z=>(z.sponsor_label||'').toLowerCase()===it.company.toLowerCase());
     if(suite && !state.zones.includes(suite.key)){ state.zones.push(suite.key); renderZones(); }
   }
+  // If this is a sponsor, pull any guests they pre-registered online.
+  if(it.source==='sponsor' && it.ref_id) loadSponsorGuests(it.ref_id);
+  else document.getElementById('sponsorGuests').innerHTML='';
+  updateSummary();
+}
+
+// ── Pre-registered sponsor guests ──
+async function loadSponsorGuests(sponsorId){
+  const box = document.getElementById('sponsorGuests');
+  box.innerHTML = '';
+  try{
+    const r = await fetch(API+'/badges/sponsor-guests?sponsor_id='+encodeURIComponent(sponsorId),{headers:authHdr});
+    if(!r.ok) return;
+    const d = await r.json();
+    const guests = d.guests||[];
+    const logo = d.sponsor ? d.sponsor.company_logo_url : null;
+    const company = d.sponsor ? d.sponsor.company : '';
+    const level = d.sponsor ? d.sponsor.sponsorship_level : '';
+    if(!guests.length) return;
+    box.innerHTML = '<div class="sub" style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--gold);margin:10px 0 4px;">Pre-registered guests ('+guests.length+')</div>'+
+      '<div class="search-results">'+guests.map(g=>`
+        <div class="sr-item" onclick='pickGuest(${JSON.stringify({g, company, logo, level}).replace(/'/g,"&#39;")})'>
+          <div class="who">${esc(g.name)}<span class="tag sp">guest</span></div>
+          <div class="meta">${esc([g.title, (g.access_zones||[]).map(zoneLabel).join(', ')].filter(Boolean).join(' · ')) || 'no extras'}</div>
+        </div>`).join('')+'</div>';
+  }catch(e){ /* non-fatal */ }
+}
+function zoneLabel(key){ return (ZONES.find(z=>z.key===key)||{}).label || key; }
+function pickGuest(payload){
+  const g = payload.g || {};
+  state.sponsorLevel = payload.level || '';
+  setType('sponsor');                       // applies the company's level as the dropdown default
+  document.getElementById('f_name').value = g.name||'';
+  document.getElementById('f_email').value = g.email||'';
+  if(payload.company) document.getElementById('f_company').value = payload.company;
+  state.companyLogo = payload.logo || null;
+  state.sponsorGuestId = g.sponsor_guest_id || null;
+  // Use exactly the zones the sponsor requested for this guest.
+  state.zones = (g.access_zones||[]).filter(k=>ZONES.some(z=>z.key===k));
+  document.getElementById('sponsorGuests').innerHTML='';
+  document.getElementById('searchResults').innerHTML='';
+  document.getElementById('search').value='';
+  renderZones();
   updateSummary();
 }
 
@@ -369,6 +488,9 @@ function capturePhoto(){
   document.getElementById('captureBtn').style.display='none';
   document.getElementById('retakeBtn').style.display='';
   updateSummary();
+  // Jump straight to the NFC field so the USB reader can scan with no extra click.
+  const uid=document.getElementById('uidInput');
+  uid.focus(); uid.scrollIntoView({block:'center', behavior:'smooth'});
 }
 function retakePhoto(){
   state.photo=null;
@@ -422,10 +544,43 @@ function updateSummary(){
     `<b>${esc(name)||'—'}</b> · ${state.type?(state.type.toUpperCase()):'no type'}${state.tier?(' / '+esc(state.tier)):''}<br>`+
     `${perk} · ${state.photo?'📸 photo ✓':'no photo'} · ${state.uid?'💳 card ✓':'no card'}<br>`+
     `Access: ${zoneLabels.length?esc(zoneLabels.join(', ')):'general only'}`;
+  updatePreview();
+  // Force a badge-type choice before saving (no accidental default).
+  document.getElementById('saveBtn').disabled = !state.type;
 }
 document.getElementById('f_name').addEventListener('input',updateSummary);
 // Typing a custom company name means it's no longer the picked sponsor — drop the auto logo.
 document.getElementById('f_company').addEventListener('input',()=>{ state.companyLogo=null; updateSummary(); });
+
+// One-click print: rasterize the live preview card (exact CR80 @ 300 DPI) and
+// send it to the local Seaory bridge. Falls back to leaving it queued if the
+// bridge is down — the badge is already saved either way.
+const BRIDGE = localStorage.getItem('print_bridge_url') || 'http://127.0.0.1:7777';
+async function printBadge(badgeId){
+  const card=document.querySelector('#cardPreview .pvcard');
+  if(!card || typeof html2canvas!=='function') return { ok:false, reason:'renderer not ready' };
+  let png;
+  try{
+    const c=await html2canvas(card,{ scale:300/96, backgroundColor:null, useCORS:true, logging:false });
+    png=c.toDataURL('image/png');
+  }catch(e){ return { ok:false, reason:'render failed' }; }
+  try{
+    const r=await fetch(BRIDGE+'/print',{ method:'POST', headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({ pngBase64:png, badgeId, name:document.getElementById('f_name').value }) });
+    const d=await r.json().catch(()=>({}));
+    if(!r.ok || !d.ok) return { ok:false, reason:d.error||('bridge '+r.status) };
+    fetch(API+'/badges/'+badgeId+'/printed',{ method:'POST', headers:authHdr }).catch(()=>{});
+    return { ok:true };
+  }catch(e){ return { ok:false, reason:'bridge offline' }; }
+}
+async function printAfterSave(badgeId){
+  const ps=document.getElementById('printStatus');
+  if(ps) ps.innerHTML='🖨️ Sending to the S25…';
+  const pr=await printBadge(badgeId);
+  if(ps) ps.innerHTML = pr.ok
+    ? '🖨️ Printing on the S25 ✓'
+    : '⚠️ Saved &amp; queued — printer not reached ('+esc(pr.reason)+'). Print it from the Print Station.';
+}
 
 async function save(){
   const name=document.getElementById('f_name').value.trim();
@@ -446,12 +601,14 @@ async function save(){
       alcohol_approved: document.getElementById('t_age').checked,
       access_zones: state.zones,
       photo: state.photo,
+      sponsor_guest_id: state.sponsorGuestId,
     };
     const r=await fetch(API+'/badges',{method:'POST',headers:authHdr,body:JSON.stringify(body)});
     const d=await r.json();
     if(r.status===401){ location.href='login.html?expired=1'; return; }
     if(!r.ok){ toast(d.error||'Save failed', true); btn.disabled=false; btn.textContent='✓ Save & Send to Printer'; return; }
     showDone(d.badge);
+    printAfterSave(d.badge.id);
   }catch(e){
     toast('Network error: '+e.message, true);
   }finally{
@@ -476,7 +633,8 @@ function resetForm(){
   ['f_name','f_title','f_company','f_email','search','uidInput'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('f_title').dataset.touched='';
   document.getElementById('searchResults').innerHTML='';
-  state={ type:state.type, tier:null, uid:'', photo:null, zones:[], companyLogo:null };
+  document.getElementById('sponsorGuests').innerHTML='';
+  state={ type:state.type, tier:null, uid:'', photo:null, zones:[], companyLogo:null, sponsorGuestId:null, sponsorLevel:'' };
   if(state.type) setType(state.type); // keep type, re-apply tier defaults
   retakePhoto();
   setUidState(false,'No card linked yet');
@@ -489,7 +647,8 @@ function esc(s){ return (s==null?'':String(s)).replace(/[&<>"']/g,c=>({'&':'&amp
 // init
 (async function(){
   await loadZones();
-  setType('volunteer');
+  // No default type — staff must pick Sponsor or Volunteer first.
+  document.getElementById('tiers').innerHTML='<span style="color:var(--dim);font-size:13px;">← Pick a badge type to choose a tier</span>';
   startCamera();
   if('NDEFReader' in window) document.getElementById('nfcBtn').style.display='';
   document.getElementById('uidInput').focus();

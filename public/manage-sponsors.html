@@ -179,6 +179,7 @@ let sSched = [], vSched = [];
 let editId = null;
 let currentLogos = [];   // logos for the record currently open in the modal
 let editingLogoId = null; // id of the logo whose inline edit form is open
+let accessZones = [];    // controlled-access zones (suites + deck) for the guest portal
 
 const PREVIEW_EXTS = ['svg', 'png', 'jpg', 'jpeg', 'gif', 'webp'];
 const VECTOR_EXTS = ['svg', 'eps', 'ai', 'pdf'];
@@ -214,6 +215,10 @@ async function load() {
         sSched = Array.isArray(d)?d:[];
         vSched = Array.isArray(e)?e:[];
     } catch(err) { console.error('Load error', err); }
+    try {
+        const z = await fetch(API+'/badges/zones',{headers:h()}).then(r=>r.json());
+        accessZones = Array.isArray(z) ? z.filter(x=>x.active!==false) : [];
+    } catch(err) { console.error('Zones load error', err); accessZones = []; }
     render();
 }
 
@@ -420,6 +425,30 @@ function flagsRow(item) {
     </div>`;
 }
 
+// Guest self-registration portal controls (sponsors only).
+function portalSection(item) {
+    const selected = new Set(Array.isArray(item.allocated_zones) ? item.allocated_zones : []);
+    const zoneCbs = accessZones.length
+        ? accessZones.map(z => `<label style="display:inline-flex;align-items:center;gap:6px;text-transform:none;font-size:13px;color:#ddd;margin-right:14px;cursor:pointer;">
+              <input type="checkbox" class="f_zone_cb" value="${escapeHtml(z.key)}" ${selected.has(z.key)?'checked':''} style="width:auto;"> ${escapeHtml(z.label)}</label>`).join('')
+        : '<span style="color:#666;font-size:12px;">No access zones configured.</span>';
+    const inviteBtn = item.id
+        ? `<button type="button" class="btn btn-sm btn-gray" onclick="sendPortalInvite('${escapeHtml(item.email||'')}')">✉ Send Portal Invite</button>
+           <span id="inviteNote" style="font-size:12px;color:#888;margin-left:8px;"></span>`
+        : `<span style="font-size:12px;color:#666;">Save the sponsor first to send a portal invite.</span>`;
+    return `
+        <div class="fi full" style="border-top:1px solid #333; padding-top:14px; margin-top:6px;">
+            <label style="font-size:12px;color:#00B74A;letter-spacing:.5px;">🎫 GUEST REGISTRATION PORTAL</label>
+        </div>
+        <label class="fi" style="flex-direction:row;align-items:center;gap:8px;cursor:pointer;">
+            <input type="checkbox" id="f_portal_enabled" ${item.portal_enabled?'checked':''} style="width:auto;">
+            <span style="text-transform:none;font-size:14px;color:#eee;">Enable self-registration</span>
+        </label>
+        <div class="fi"><label>Max Guests</label><input type="number" min="0" id="f_max_guests" value="${item.max_guests==null?'':item.max_guests}" placeholder="(no limit)"></div>
+        <div class="fi full"><label>Areas Guests May Access</label><div id="f_zones" style="padding:6px 0;">${zoneCbs}</div></div>
+        <div class="fi full">${inviteBtn}</div>`;
+}
+
 function buildForm(item) {
     const f = document.getElementById('mform');
     if (tab==='sponsors') {
@@ -433,7 +462,8 @@ function buildForm(item) {
             <div class="fi"><label>Address</label><input id="f_address" value="${item.address||''}"></div>
             <div class="fi"><label>Postal Code</label><input id="f_postal" value="${item.postal_code||''}"></div>
             ${flagsRow(item)}
-            <div class="fi full"><label>Notes</label><textarea id="f_notes">${item.notes||''}</textarea></div>`;
+            <div class="fi full"><label>Notes</label><textarea id="f_notes">${item.notes||''}</textarea></div>
+            ${portalSection(item)}`;
     } else if (tab==='vendors') {
         f.innerHTML = `
             <div class="fi"><label>Name</label><input id="f_name" value="${item.name||''}"></div>
@@ -693,6 +723,28 @@ async function deleteLogo(id) {
     }
 }
 
+// Email a magic sign-in link to the sponsor. Only takes effect if the sponsor
+// is saved with self-registration enabled (the API silently no-ops otherwise).
+async function sendPortalInvite(email) {
+    const note = document.getElementById('inviteNote');
+    const addr = (email || document.getElementById('f_email').value || '').trim();
+    if (!addr) { if (note) note.textContent = 'Add an email address first.'; return; }
+    if (!document.getElementById('f_portal_enabled').checked) {
+        if (note) note.textContent = 'Enable self-registration and Save before inviting.';
+        return;
+    }
+    if (note) note.textContent = 'Sending…';
+    try {
+        await fetch(API+'/sponsor-portal/request-link', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email: addr })
+        });
+        if (note) note.textContent = '✓ Invite emailed to ' + addr;
+    } catch (err) {
+        if (note) note.textContent = 'Could not send — try again.';
+    }
+}
+
 // ─── Save ───
 async function save() {
     try {
@@ -712,6 +764,9 @@ async function save() {
                 paid: document.getElementById('f_paid').checked,
                 in_kind: document.getElementById('f_inkind').checked,
                 active: document.getElementById('f_active').checked,
+                portal_enabled: document.getElementById('f_portal_enabled').checked,
+                max_guests: document.getElementById('f_max_guests').value,
+                allocated_zones: Array.from(document.querySelectorAll('.f_zone_cb:checked')).map(cb => cb.value),
             };
             url = editId ? API+'/sponsors/'+editId : API+'/sponsors';
             method = editId ? 'PUT' : 'POST';

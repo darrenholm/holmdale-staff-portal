@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>My Guests — Holmdale Pro Rodeo</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #1a1a1a; color: #eee; min-height: 100vh; }
+    .topbar { background: #111; padding: 16px 22px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #333; }
+    .topbar h1 { color: #00B74A; font-size: 18px; text-transform: uppercase; letter-spacing: 1.5px; }
+    .topbar .who { color: #888; font-size: 13px; }
+    .topbar a { color: #888; font-size: 13px; text-decoration: none; margin-left: 16px; }
+    .topbar a:hover { color: #fff; }
+    .wrap { max-width: 760px; margin: 0 auto; padding: 24px 18px 60px; }
+    .panel { background: #2A2A2A; border-radius: 14px; padding: 22px; margin-bottom: 20px; }
+    .allot { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
+    .allot .count { font-size: 28px; font-weight: 800; color: #fff; }
+    .allot .count small { font-size: 15px; color: #888; font-weight: 600; }
+    .bar { height: 8px; background: #1a1a1a; border-radius: 5px; overflow: hidden; margin-top: 12px; }
+    .bar > div { height: 100%; background: #00B74A; transition: width 0.3s; }
+    .zone-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+    .chip { background: #14361f; color: #4ade80; border: 1px solid #1f5132; border-radius: 999px; padding: 3px 10px; font-size: 12px; font-weight: 600; }
+    h2 { font-size: 15px; text-transform: uppercase; letter-spacing: 1px; color: #aaa; margin-bottom: 14px; }
+    label { display: block; color: #ccc; font-size: 12px; font-weight: 600; margin-bottom: 5px; text-transform: uppercase; letter-spacing: 0.5px; }
+    input[type=text], input[type=email] { width: 100%; padding: 11px 14px; background: #1a1a1a; border: 1px solid #444; border-radius: 8px; color: #fff; font-size: 15px; }
+    input:focus { outline: none; border-color: #00B74A; }
+    .row { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; }
+    .row > div { flex: 1; min-width: 200px; }
+    .zones-pick { display: flex; flex-wrap: wrap; gap: 8px; }
+    .zones-pick label { display: flex; align-items: center; gap: 7px; background: #1a1a1a; border: 1px solid #444; border-radius: 8px; padding: 8px 12px; font-size: 13px; text-transform: none; letter-spacing: 0; color: #ddd; cursor: pointer; margin: 0; }
+    .zones-pick input { width: auto; margin: 0; }
+    button { padding: 12px 20px; background: #00B74A; color: white; border: none; border-radius: 8px; font-size: 14px; font-weight: 700; cursor: pointer; text-transform: uppercase; letter-spacing: 0.5px; }
+    button:hover { background: #009d3e; }
+    button:disabled { background: #444; cursor: not-allowed; }
+    button.ghost { background: transparent; border: 1px solid #555; color: #bbb; }
+    button.ghost:hover { background: #333; color: #fff; }
+    button.danger { background: transparent; border: 1px solid #7a2222; color: #e74c3c; }
+    button.danger:hover { background: #3a1a1a; }
+    button.small { padding: 6px 12px; font-size: 12px; }
+    table { width: 100%; border-collapse: collapse; }
+    th { text-align: left; color: #888; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; padding: 8px 10px; border-bottom: 1px solid #333; }
+    td { padding: 11px 10px; border-bottom: 1px solid #2f2f2f; font-size: 14px; vertical-align: middle; }
+    .status { font-size: 11px; font-weight: 700; text-transform: uppercase; padding: 3px 9px; border-radius: 999px; }
+    .status.pending { background: #3a3416; color: #facc15; }
+    .status.checked_in { background: #14361f; color: #4ade80; }
+    .empty { color: #777; font-size: 14px; text-align: center; padding: 24px 0; }
+    .error { background: #3a1a1a; border: 1px solid #c0392b; color: #e74c3c; padding: 11px 15px; border-radius: 8px; font-size: 14px; margin-bottom: 16px; display: none; }
+    .note { color: #888; font-size: 13px; line-height: 1.5; margin-top: 6px; }
+    .tag-zones { color: #4ade80; font-size: 12px; }
+  </style>
+</head>
+<body>
+
+<div class="topbar">
+  <h1>🤠 My Rodeo Guests</h1>
+  <div>
+    <span class="who" id="who"></span>
+    <a href="#" onclick="signOut(); return false;">Sign out</a>
+  </div>
+</div>
+
+<div class="wrap">
+  <div class="error" id="errorMsg"></div>
+
+  <div class="panel">
+    <div class="allot">
+      <div>
+        <div class="count"><span id="usedCount">–</span><small> of <span id="capCount">–</span> guests</small></div>
+        <div class="bar"><div id="barFill" style="width:0%"></div></div>
+      </div>
+    </div>
+    <div id="zoneInfo" style="margin-top:14px;">
+      <label>Areas your guests can access</label>
+      <div class="zone-chips" id="zoneChips"></div>
+    </div>
+  </div>
+
+  <div class="panel" id="addPanel">
+    <h2 id="formTitle">Add a Guest</h2>
+    <input type="hidden" id="editId" value="">
+    <div class="row">
+      <div>
+        <label for="gName">Full Name *</label>
+        <input type="text" id="gName" placeholder="Jane Doe">
+      </div>
+      <div>
+        <label for="gTitle">Title / Role <span style="text-transform:none;color:#666;">(optional)</span></label>
+        <input type="text" id="gTitle" placeholder="e.g. CEO, Guest">
+      </div>
+    </div>
+    <div class="row">
+      <div>
+        <label for="gEmail">Email <span style="text-transform:none;color:#666;">(optional)</span></label>
+        <input type="email" id="gEmail" placeholder="jane@example.com">
+      </div>
+    </div>
+    <div id="zonePickWrap" style="margin-bottom:16px;">
+      <label>Area Access</label>
+      <div class="zones-pick" id="zonesPick"></div>
+    </div>
+    <div style="display:flex; gap:10px; align-items:center;">
+      <button id="saveBtn" onclick="saveGuest()">Add Guest</button>
+      <button id="cancelEditBtn" class="ghost" style="display:none;" onclick="resetForm()">Cancel</button>
+      <span class="note" id="capNote"></span>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h2>Your Guest List</h2>
+    <table>
+      <thead><tr><th>Name</th><th>Title</th><th>Areas</th><th>Status</th><th></th></tr></thead>
+      <tbody id="guestRows"></tbody>
+    </table>
+    <div class="empty" id="emptyMsg" style="display:none;">No guests added yet.</div>
+  </div>
+</div>
+
+<script>
+  var API = 'https://rodeo-fresh-production-7348.up.railway.app';
+  var TOKEN = localStorage.getItem('sponsor_token');
+  if (!TOKEN) window.location.href = 'sponsor-login.html';
+
+  var ME = null;     // { max_guests, allocated_zones, zones:[{key,label}], guest_count }
+  var GUESTS = [];
+
+  function authHdr(){ return { 'Authorization': 'Bearer ' + TOKEN, 'Content-Type': 'application/json' }; }
+  function showError(m){ var e=document.getElementById('errorMsg'); e.textContent=m; e.style.display='block'; setTimeout(function(){ e.style.display='none'; }, 6000); }
+  function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
+
+  function signOut(){ localStorage.removeItem('sponsor_token'); localStorage.removeItem('sponsor_name'); window.location.href = 'sponsor-login.html'; }
+
+  async function api(path, opts){
+    var res = await fetch(API + path, opts);
+    if (res.status === 401 || res.status === 403) { signOut(); throw new Error('Session expired'); }
+    var data = await res.json().catch(function(){ return {}; });
+    if (!res.ok) throw new Error(data.error || 'Request failed');
+    return data;
+  }
+
+  function zoneLabel(key){ var z = (ME.zones||[]).find(function(x){ return x.key===key; }); return z ? z.label : key; }
+
+  function renderAllotment(){
+    document.getElementById('who').textContent = ME.name || '';
+    var used = ME.guest_count;
+    var cap = ME.max_guests;
+    document.getElementById('usedCount').textContent = used;
+    document.getElementById('capCount').textContent = (cap == null ? '∞' : cap);
+    var pct = (cap && cap > 0) ? Math.min(100, Math.round(used / cap * 100)) : 0;
+    document.getElementById('barFill').style.width = pct + '%';
+
+    var chips = document.getElementById('zoneChips');
+    if (!ME.zones || !ME.zones.length) {
+      document.getElementById('zoneInfo').style.display = 'none';
+    } else {
+      document.getElementById('zoneInfo').style.display = 'block';
+      chips.innerHTML = ME.zones.map(function(z){ return '<span class="chip">' + esc(z.label) + '</span>'; }).join('');
+    }
+
+    // Zone pickers in the add form
+    var pickWrap = document.getElementById('zonePickWrap');
+    var pick = document.getElementById('zonesPick');
+    if (!ME.zones || !ME.zones.length) {
+      pickWrap.style.display = 'none';
+    } else {
+      pickWrap.style.display = 'block';
+      pick.innerHTML = ME.zones.map(function(z){
+        return '<label><input type="checkbox" class="zoneCb" value="' + esc(z.key) + '"> ' + esc(z.label) + '</label>';
+      }).join('');
+    }
+    updateCapState();
+  }
+
+  function updateCapState(){
+    var cap = ME.max_guests;
+    var atCap = (cap != null && ME.guest_count >= cap && !document.getElementById('editId').value);
+    var btn = document.getElementById('saveBtn');
+    btn.disabled = atCap;
+    document.getElementById('capNote').textContent = atCap
+      ? 'You have reached your guest limit. Remove a guest or contact the rodeo to add more.'
+      : '';
+  }
+
+  function renderGuests(){
+    var tbody = document.getElementById('guestRows');
+    document.getElementById('emptyMsg').style.display = GUESTS.length ? 'none' : 'block';
+    tbody.innerHTML = GUESTS.map(function(g){
+      var zones = (g.requested_zones||[]).map(zoneLabel).join(', ') || '<span style="color:#666;">—</span>';
+      var locked = g.status !== 'pending';
+      var actions = locked
+        ? '<span style="color:#666;font-size:12px;">checked in</span>'
+        : '<button class="ghost small" onclick="editGuest(' + g.id + ')">Edit</button> ' +
+          '<button class="danger small" onclick="removeGuest(' + g.id + ')">Remove</button>';
+      return '<tr>' +
+        '<td>' + esc(g.name) + '</td>' +
+        '<td>' + (g.title ? esc(g.title) : '<span style="color:#666;">—</span>') + '</td>' +
+        '<td class="tag-zones">' + zones + '</td>' +
+        '<td><span class="status ' + g.status + '">' + g.status.replace('_',' ') + '</span></td>' +
+        '<td style="text-align:right;white-space:nowrap;">' + actions + '</td>' +
+      '</tr>';
+    }).join('');
+  }
+
+  function checkedZones(){
+    return Array.prototype.slice.call(document.querySelectorAll('.zoneCb:checked')).map(function(cb){ return cb.value; });
+  }
+
+  function resetForm(){
+    document.getElementById('editId').value = '';
+    document.getElementById('gName').value = '';
+    document.getElementById('gTitle').value = '';
+    document.getElementById('gEmail').value = '';
+    document.querySelectorAll('.zoneCb').forEach(function(cb){ cb.checked = false; });
+    document.getElementById('formTitle').textContent = 'Add a Guest';
+    document.getElementById('saveBtn').textContent = 'Add Guest';
+    document.getElementById('cancelEditBtn').style.display = 'none';
+    updateCapState();
+  }
+
+  function editGuest(id){
+    var g = GUESTS.find(function(x){ return x.id === id; });
+    if (!g) return;
+    document.getElementById('editId').value = g.id;
+    document.getElementById('gName').value = g.name || '';
+    document.getElementById('gTitle').value = g.title || '';
+    document.getElementById('gEmail').value = g.email || '';
+    var set = new Set(g.requested_zones || []);
+    document.querySelectorAll('.zoneCb').forEach(function(cb){ cb.checked = set.has(cb.value); });
+    document.getElementById('formTitle').textContent = 'Edit Guest';
+    document.getElementById('saveBtn').textContent = 'Save Changes';
+    document.getElementById('cancelEditBtn').style.display = '';
+    document.getElementById('saveBtn').disabled = false;
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  async function saveGuest(){
+    var name = document.getElementById('gName').value.trim();
+    if (!name) { showError('Please enter the guest\'s name.'); return; }
+    var body = {
+      name: name,
+      title: document.getElementById('gTitle').value.trim(),
+      email: document.getElementById('gEmail').value.trim(),
+      requested_zones: checkedZones()
+    };
+    var editId = document.getElementById('editId').value;
+    var btn = document.getElementById('saveBtn');
+    btn.disabled = true; btn.textContent = 'Saving…';
+    try {
+      if (editId) {
+        await api('/api/sponsor-portal/guests/' + editId, { method: 'PUT', headers: authHdr(), body: JSON.stringify(body) });
+      } else {
+        await api('/api/sponsor-portal/guests', { method: 'POST', headers: authHdr(), body: JSON.stringify(body) });
+      }
+      resetForm();
+      await loadAll();
+    } catch (e) {
+      showError(e.message);
+      btn.disabled = false;
+    }
+    btn.textContent = document.getElementById('editId').value ? 'Save Changes' : 'Add Guest';
+  }
+
+  async function removeGuest(id){
+    if (!confirm('Remove this guest?')) return;
+    try {
+      await api('/api/sponsor-portal/guests/' + id, { method: 'DELETE', headers: authHdr() });
+      await loadAll();
+    } catch (e) { showError(e.message); }
+  }
+
+  async function loadAll(){
+    ME = await api('/api/sponsor-portal/me', { headers: authHdr() });
+    GUESTS = await api('/api/sponsor-portal/guests', { headers: authHdr() });
+    renderAllotment();
+    renderGuests();
+  }
+
+  loadAll().catch(function(e){ showError(e.message || 'Could not load your account.'); });
+</script>
+
+</body>
+</html>

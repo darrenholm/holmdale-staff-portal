@@ -46,44 +46,35 @@
   .btn-gray{background:var(--surface);color:#ccc;border:1px solid var(--line);}
   .btn:disabled{opacity:.4;cursor:not-allowed;}
 
-  /* ===== CARD (CR80 portrait 2.125in x 3.375in) ===== */
-  /* ===== CARD (CR80 LANDSCAPE 3.375in x 2.125in) ===== */
+  /* ===== CARD (CR80 PORTRAIT 2.125in x 3.375in) ===== */
+  /* One shared background art (badge-art/badge.png) for everyone; the bottom
+     bar is drawn in code and coloured per sponsor tier / staff. */
   .card{
-    width:3.375in; height:2.125in; border-radius:.1in; overflow:hidden; position:relative;
-    color:#fff; box-shadow:0 10px 40px rgba(0,0,0,.6);
+    width:2.125in; height:3.375in; border-radius:.1in; overflow:hidden; position:relative;
+    color:#fff; background:#0f7a36; box-shadow:0 10px 40px rgba(0,0,0,.6);
     -webkit-print-color-adjust:exact; print-color-adjust:exact;
-    font-family:'Segoe UI',Arial,sans-serif;
+    font-family:Arial,'Segoe UI',sans-serif;
   }
-  .card .bg{position:absolute;inset:0;width:100%;height:100%;z-index:0;}
-  .card .photo{position:absolute;left:.16in;top:.18in;width:.95in;height:1.06in;border-radius:.08in;object-fit:cover;border:.03in solid #fff;background:#444;z-index:2;box-shadow:0 2px 6px rgba(0,0,0,.4);}
-  .card .logo{position:absolute;right:.12in;top:.1in;height:.95in;z-index:3;filter:drop-shadow(0 1px 3px rgba(0,0,0,.45));}
-  .card .fname{position:absolute;left:.2in;top:1.27in;font-size:19pt;font-weight:800;line-height:1;z-index:2;text-shadow:0 1px 2px rgba(0,0,0,.5);}
-  .card .lname{position:absolute;left:.2in;top:1.61in;font-size:12pt;font-weight:700;line-height:1;z-index:2;opacity:.95;text-shadow:0 1px 2px rgba(0,0,0,.5);}
-  /* sponsor logo plate — centered between photo and rodeo logo, never crowds the name */
-  .card .splogo{position:absolute;left:1.22in;top:.34in;width:1.02in;height:.6in;background:#fff;border-radius:.05in;display:flex;align-items:center;justify-content:center;text-align:center;z-index:2;box-shadow:0 1px 3px rgba(0,0,0,.25);overflow:hidden;padding:.04in;}
+  /* Positions are % of the card so they track the shared art (badge.png).
+     The art supplies the white photo window, Holmdale logo, and colour bands. */
+  .card .bg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:0;}
+  .card .photo{position:absolute;left:8.5%;top:10.5%;width:38%;height:31%;border-radius:.06in;object-fit:cover;z-index:2;}
+  /* Name sits on the cream band — dark green text, not white */
+  .card .name{position:absolute;left:0;top:44%;width:100%;padding:0 6%;text-align:center;font-size:17pt;font-weight:bold;line-height:1.05;color:#0a3d1c;z-index:2;text-shadow:-1px -1px 0 #fff,1px -1px 0 #fff,-1px 1px 0 #fff,1px 1px 0 #fff,0 0 3px #fff;}
+  .card .name .fn{display:block;font-size:40pt;line-height:.9;white-space:nowrap;}
+  .card .name .ln{display:block;font-size:18pt;line-height:.9;margin-top:.05in;}
+  .card.staff .name{top:56%;}   /* staff has no logo plate — drop the name ~10mm */
+  /* Sponsor logo plate on the lower green — fixed box, any logo scaled to fit, centered, on white */
+  .card .splogo{position:absolute;left:14%;top:71%;width:72%;height:12%;background:#fff;border-radius:.05in;display:flex;align-items:center;justify-content:center;z-index:2;box-shadow:0 1px 3px rgba(0,0,0,.25);overflow:hidden;padding:.05in;}
   .card .splogo img{max-width:100%;max-height:100%;object-fit:contain;}
-  .card .splogo.coname{color:#0a3d1c;font-size:8.5pt;font-weight:800;line-height:1.05;}
-  .card .zones{position:absolute;right:.16in;top:1.3in;font-size:7pt;font-weight:700;text-align:right;z-index:3;text-transform:uppercase;letter-spacing:.3px;opacity:.97;text-shadow:0 1px 2px rgba(0,0,0,.5);}
-  .card .rolepill{position:absolute;right:.15in;top:1.52in;height:.4in;padding:0 .16in;display:flex;align-items:center;justify-content:center;font-size:13pt;font-weight:900;letter-spacing:1px;border-radius:.06in;z-index:3;white-space:nowrap;}
-  .card .nfc{position:absolute;left:.18in;bottom:.05in;font-size:6pt;opacity:.5;z-index:3;}
-
-  /* theme: volunteer */
-  .card.volunteer .rolepill{background:#0d1410;color:#fff;}
-  /* theme: sponsor */
-  .card.sponsor .photo{border-color:var(--gold);}
-  .card.sponsor .rolepill{background:#0a3d1c;color:#fff;border:.012in solid var(--gold);}
-  /* theme: VIP (gold) */
-  .card.vip .photo{border-color:var(--gold);box-shadow:0 0 0 .015in #fff3c4,0 2px 6px rgba(0,0,0,.4);}
-  .card.vip .fname{text-shadow:0 0 6px rgba(245,166,35,.45),0 1px 2px rgba(0,0,0,.5);}
-  .card.vip .rolepill{background:linear-gradient(90deg,#b8860b,var(--gold),#fff3c4,var(--gold),#b8860b);color:#1a1a1a;}
-  .card.vip::after{content:"";position:absolute;inset:.05in;border:.015in solid rgba(245,166,35,.55);border-radius:.07in;z-index:1;pointer-events:none;}
+  .card .tierbar{position:absolute;left:0;bottom:0;width:100%;height:14.8%;display:flex;align-items:center;justify-content:center;font-size:19pt;font-weight:bold;letter-spacing:.5px;z-index:3;}
 
   .preview-frame{background:#000;padding:18px;border-radius:14px;border:1px solid var(--line);}
 
   @media print{
-    @page{ size:3.375in 2.125in; margin:0; }
+    @page{ size:2.125in 3.375in; margin:0; }
     body{background:#fff;}
-    .header,.app .queue,.stage .controls,.stage .hint,.preview-label{display:none !important;}
+    .header,.app .queue,.stage .controls,.stage .hint,.preview-label,#bridgeHint{display:none !important;}
     .app{display:block;height:auto;}
     .stage{padding:0;display:block;}
     .preview-frame{padding:0;border:none;border-radius:0;background:#fff;}
@@ -92,6 +83,7 @@
 </style>
 </head>
 <body>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 
 <div class="header">
   <h1>🖨️ Badge Print Station</h1>
@@ -112,10 +104,12 @@
     <div class="preview-label hint" id="stageHint">Select a badge from the queue to print.</div>
     <div class="preview-frame"><div id="cardHost"></div></div>
     <div class="controls" id="controls" style="display:none;">
-      <button class="btn btn-green" onclick="doPrint()">🖨️ Print Card</button>
+      <button class="btn btn-green" id="bridgeBtn" onclick="doBridgePrint()">🖨️ Print to S25</button>
       <button class="btn btn-gold" id="markBtn" onclick="markPrinted()">✓ Mark Printed</button>
+      <button class="btn btn-gray" onclick="doPrint()">Print (browser)</button>
       <button class="btn btn-gray" onclick="skip()">Skip</button>
     </div>
+    <div class="hint" id="bridgeHint" style="display:none;font-size:12px;"></div>
   </div>
 </div>
 
@@ -161,11 +155,23 @@ function renderQueue(){
     </div>`).join('');
 }
 
+// Shrink the first name until it fits the card width (no wrap/overflow).
+function fitName(scope){
+  const fn = scope && scope.querySelector('.fn');
+  if(!fn) return;
+  fn.style.fontSize='';
+  let size = parseFloat(getComputedStyle(fn).fontSize), guard=0;
+  while(fn.scrollWidth > fn.clientWidth + 1 && size > 12 && guard < 80){
+    size -= 1; fn.style.fontSize = size+'px'; guard++;
+  }
+}
+
 function select(id){
   selected=queue.find(b=>b.id===id);
   if(!selected) return;
   renderQueue();
   document.getElementById('cardHost').innerHTML=renderCard(selected);
+  fitName(document.getElementById('cardHost'));
   document.getElementById('controls').style.display='flex';
   document.getElementById('stageHint').textContent='Set the printer to the Seaory S25 (CR80 card). Then Print.';
 }
@@ -202,35 +208,91 @@ const BG_SVG = `<svg class="bg" viewBox="0 0 338 213" preserveAspectRatio="none"
   <g><rect width="150" height="213" fill="url(#tt)"/><rect width="150" height="213" fill="url(#pf)"/></g>
 </svg>`;
 
+// Bottom-bar colour + label per category. Sponsor tiers tint the bar;
+// volunteers (staff) get their own colour. The green background art is shared.
+// All paid sponsor tiers read "Sponsor" — the bar COLOUR encodes the tier.
+const TIER_BAR = {
+  bronze:   { bg:'#CD7F32', fg:'#ffffff', label:'Sponsor' },
+  silver:   { bg:'#C0C0C0', fg:'#333333', label:'Sponsor' },
+  gold:     { bg:'#F5A623', fg:'#5a3d00', label:'Sponsor' },
+  platinum: { bg:'#E5E4E2', fg:'#333333', label:'Sponsor' },
+  title:    { bg:'#1a1a1a', fg:'#F5A623', label:'Sponsor' },
+  friend:   { bg:'#2F80ED', fg:'#ffffff', label:'Friend' },
+};
+const STAFF_BAR = { bg:'#1BD400', fg:'#0a3d1c', label:'Staff' };  // C89 M15 Y100 K2
+
+function barFor(b){
+  if(b.badge_type==='volunteer') return STAFF_BAR;
+  const key=(b.tier||'').toLowerCase();
+  return TIER_BAR[key] || { bg:'#0a3d1c', fg:'#ffffff', label:'Sponsor' };
+}
+
+// Name renders with a large first name on its own line and the rest beneath.
+function nameHtml(b){
+  const full=(b.customer_name||'').trim();
+  const parts=full.split(/\s+/);
+  const first=esc(parts.shift()||'');
+  const last=esc(parts.join(' '));
+  return `<span class="fn">${first}</span>`+(last?`<span class="ln">${last}</span>`:'');
+}
+
 function renderCard(b){
-  const zl=zoneLabels(b.access_zones);
-  const role = b.badge_type==='vip' ? 'VIP'
-             : b.badge_type==='sponsor' ? 'SPONSOR' : 'VOLUNTEER';
-  // Bar/food credit is intentionally NOT printed — it lives on the NFC chip/ID only,
-  // so balances can change without reprinting the card.
-  const access = zl.length ? zl.join(' · ') : 'General Admission';
-  const parts=(b.customer_name||'').trim().split(/\s+/);
-  const fname=esc(parts.shift()||''); const lname=esc(parts.join(' '));
+  const bar = barFor(b);
+  // Credit balance & access zones are intentionally NOT printed — they live on
+  // the chip/DB so they can change without reprinting the card.
   const photo = b.photo_url ? `<img class="photo" src="${esc(b.photo_url)}" crossorigin="anonymous">` : '<div class="photo"></div>';
+  const logo = b.company_logo_url ? `<div class="splogo"><img src="${esc(b.company_logo_url)}" crossorigin="anonymous"></div>` : '';
   return `
-    <div class="card ${esc(b.badge_type)}">
-      ${BG_SVG}
+    <div class="card${b.badge_type==='volunteer'?' staff':''}">
+      <img class="bg" src="badge-art/badge.png" onerror="this.style.display='none'">
       ${photo}
-      <img class="logo" src="badge-logo.png" alt="${EVENT}">
-      <div class="zones">🔓 ${esc(access)}</div>
-      <div class="fname">${fname}</div>
-      ${lname?`<div class="lname">${lname}</div>`:''}
-      ${b.company_logo_url
-          ? `<div class="splogo"><img src="${esc(b.company_logo_url)}" crossorigin="anonymous"></div>`
-          : (b.company && b.badge_type!=='volunteer' ? `<div class="splogo coname">${esc(b.company)}</div>` : '')}
-      <div class="rolepill">${role}</div>
-      <div class="nfc">((•))</div>
+      <div class="name">${nameHtml(b)}</div>
+      ${logo}
+      <div class="tierbar" style="background:${bar.bg};color:${bar.fg};">${esc(bar.label)}</div>
     </div>`;
 }
 
 function doPrint(){
   if(!selected) return;
   window.print();
+}
+
+// ── Seaory S25 via local print-bridge ──
+// The bridge runs on this check-in laptop (http://127.0.0.1:7777). The browser
+// can't drive the Seaory driver directly, so we rasterize the card to an exact
+// CR80 300-DPI PNG and POST it; the bridge prints it full-bleed with no margins.
+const BRIDGE = localStorage.getItem('print_bridge_url') || 'http://127.0.0.1:7777';
+
+async function renderCardPng(){
+  const card = document.querySelector('#cardHost .card');
+  if(!card) throw new Error('No card selected');
+  if(typeof html2canvas !== 'function') throw new Error('Renderer not loaded — check your connection');
+  // 300/96 scale turns the 3.375in×2.125in CSS card into ~1012×638 px (CR80 @ 300 DPI).
+  const canvas = await html2canvas(card, { scale: 300/96, backgroundColor:null, useCORS:true, logging:false });
+  return canvas.toDataURL('image/png');
+}
+
+async function doBridgePrint(){
+  if(!selected) return;
+  const btn=document.getElementById('bridgeBtn');
+  const hint=document.getElementById('bridgeHint');
+  btn.disabled=true; btn.textContent='Printing…'; hint.style.display='none';
+  try{
+    const png=await renderCardPng();
+    const r=await fetch(BRIDGE+'/print',{
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({ pngBase64:png, badgeId:selected.id, name:selected.customer_name })
+    });
+    const d=await r.json().catch(()=>({}));
+    if(!r.ok || !d.ok) throw new Error(d.error || ('Bridge responded '+r.status));
+    await markPrinted();   // marks printed + advances the queue
+  }catch(e){
+    hint.style.display='block';
+    hint.innerHTML='⚠️ Could not reach the Seaory bridge at '+esc(BRIDGE)+' — '+esc(e.message)+
+      '. Make sure the print-bridge app is running on this computer, or use <b>Print (browser)</b>.';
+  }finally{
+    btn.disabled=false; btn.textContent='🖨️ Print to S25';
+  }
 }
 async function markPrinted(){
   if(!selected) return;
