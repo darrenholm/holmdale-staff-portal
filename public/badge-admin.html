@@ -139,9 +139,9 @@ function zlabel(k){ return (ZONES.find(z=>z.key===k)||{}).label||k; }
 // ── Print a badge straight to the local Seaory bridge (same card as check-in) ──
 const BRIDGE = localStorage.getItem('print_bridge_url') || 'http://127.0.0.1:7777';
 const TIER_BAR = {
-  bronze:{bg:'#CD7F32',fg:'#fff',label:'Sponsor'}, silver:{bg:'#C0C0C0',fg:'#333',label:'Sponsor'},
-  gold:{bg:'#F5A623',fg:'#5a3d00',label:'Sponsor'}, platinum:{bg:'#E5E4E2',fg:'#333',label:'Sponsor'},
-  title:{bg:'#1a1a1a',fg:'#F5A623',label:'Sponsor'}, friend:{bg:'#2F80ED',fg:'#fff',label:'Friend'},
+  bronze:{bg:'#A85A1E',fg:'#fff',label:'Sponsor'}, silver:{bg:'#717C8C',fg:'#fff',label:'Sponsor'},
+  gold:{bg:'#F2A20C',fg:'#3d2900',label:'Sponsor'}, platinum:{bg:'#C7CDD6',fg:'#2a2f36',label:'Sponsor'},
+  title:{bg:'#111111',fg:'#F5A623',label:'Sponsor'}, friend:{bg:'#2F80ED',fg:'#fff',label:'Friend'},
 };
 const STAFF_BAR = {bg:'#1BD400',fg:'#ffffff',label:'Staff'};
 function barFor(type,tier){ if(type==='volunteer') return STAFF_BAR; const k=(tier||'').toLowerCase(); return TIER_BAR[k]||{bg:'#0a3d1c',fg:'#fff',label:'Sponsor'}; }
