@@ -61,9 +61,22 @@
   .mactions{display:flex;gap:8px;justify-content:flex-end;margin-top:18px;}
   .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--green);color:#fff;padding:11px 22px;border-radius:10px;font-weight:700;display:none;z-index:200;}
   .toast.err{background:var(--danger);}
+
+  /* off-screen badge card used to rasterize a reprint (mirrors check-in) */
+  .pvcard{position:relative;width:2.125in;height:3.375in;border-radius:.1in;overflow:hidden;background:#0f7a36;color:#fff;font-family:Arial,sans-serif;}
+  .pvcard .bg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:0;}
+  .pvcard .ph{position:absolute;left:8.5%;top:10.5%;width:38%;height:31%;border-radius:.06in;object-fit:cover;background:#2a2a2a;z-index:2;}
+  .pvcard .nm{position:absolute;left:0;top:44%;width:100%;padding:0 6%;text-align:center;font-size:17pt;font-weight:bold;line-height:1.05;color:#0a3d1c;z-index:2;text-shadow:-1px -1px 0 #fff,1px -1px 0 #fff,-1px 1px 0 #fff,1px 1px 0 #fff,0 0 3px #fff;}
+  .pvcard .nm .fn{display:block;font-size:40pt;line-height:.9;white-space:nowrap;}
+  .pvcard .nm .ln{display:block;font-size:18pt;line-height:.9;margin-top:.05in;}
+  .pvcard.staff .nm{top:56%;}
+  .pvcard .lg{position:absolute;left:14%;top:71%;width:72%;height:12%;background:#fff;border-radius:.05in;display:flex;align-items:center;justify-content:center;overflow:hidden;padding:.05in;z-index:2;}
+  .pvcard .lg img{max-width:100%;max-height:100%;object-fit:contain;}
+  .pvcard .bar{position:absolute;left:0;bottom:0;width:100%;height:14.8%;display:flex;align-items:center;justify-content:center;font-size:19pt;font-weight:bold;letter-spacing:.5px;z-index:3;}
 </style>
 </head>
 <body>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 
 <div class="header">
   <h1>🪪 Badge Admin</h1>
@@ -111,6 +124,7 @@
 </div></div>
 
 <div class="toast" id="toast"></div>
+<div id="printStage" style="position:fixed;left:-10000px;top:0;"></div>
 
 <script>
 const API='https://rodeo-fresh-production-7348.up.railway.app/api';
@@ -121,6 +135,44 @@ let badges=[], ZONES=[], editId=null;
 function esc(s){ return (s==null?'':String(s)).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 function toast(m,err){ const t=document.getElementById('toast'); t.textContent=m; t.className='toast'+(err?' err':''); t.style.display='block'; setTimeout(()=>t.style.display='none',err?3500:2000); }
 function zlabel(k){ return (ZONES.find(z=>z.key===k)||{}).label||k; }
+
+// ── Print a badge straight to the local Seaory bridge (same card as check-in) ──
+const BRIDGE = localStorage.getItem('print_bridge_url') || 'http://127.0.0.1:7777';
+const TIER_BAR = {
+  bronze:{bg:'#CD7F32',fg:'#fff',label:'Sponsor'}, silver:{bg:'#C0C0C0',fg:'#333',label:'Sponsor'},
+  gold:{bg:'#F5A623',fg:'#5a3d00',label:'Sponsor'}, platinum:{bg:'#E5E4E2',fg:'#333',label:'Sponsor'},
+  title:{bg:'#1a1a1a',fg:'#F5A623',label:'Sponsor'}, friend:{bg:'#2F80ED',fg:'#fff',label:'Friend'},
+};
+const STAFF_BAR = {bg:'#1BD400',fg:'#0a3d1c',label:'Staff'};
+function barFor(type,tier){ if(type==='volunteer') return STAFF_BAR; const k=(tier||'').toLowerCase(); return TIER_BAR[k]||{bg:'#0a3d1c',fg:'#fff',label:'Sponsor'}; }
+function nameHtml(name){ const p=(name||'').trim().split(/\s+/); const f=esc(p.shift()||''); const l=esc(p.join(' ')); return `<span class="fn">${f}</span>`+(l?`<span class="ln">${l}</span>`:''); }
+function fitName(scope){ const fn=scope&&scope.querySelector('.fn'); if(!fn) return; fn.style.fontSize=''; let s=parseFloat(getComputedStyle(fn).fontSize),g=0; while(fn.scrollWidth>fn.clientWidth+1&&s>12&&g<80){ s-=1; fn.style.fontSize=s+'px'; g++; } }
+function cardHtml(b){
+  const bar=barFor(b.badge_type,b.tier);
+  const ph=b.photo_url?`<img class="ph" src="${esc(b.photo_url)}" crossorigin="anonymous">`:'<div class="ph"></div>';
+  const lg=b.company_logo_url?`<div class="lg"><img src="${esc(b.company_logo_url)}" crossorigin="anonymous"></div>`:'';
+  return `<div class="pvcard${b.badge_type==='volunteer'?' staff':''}"><img class="bg" src="badge-art/badge.png" onerror="this.style.display='none'">${ph}<div class="nm">${nameHtml(b.customer_name)}</div>${lg}<div class="bar" style="background:${bar.bg};color:${bar.fg};">${esc(bar.label)}</div></div>`;
+}
+async function printBadgeAdmin(id){
+  const b=badges.find(x=>x.id===id); if(!b) return;
+  if(typeof html2canvas!=='function'){ toast('Renderer not loaded — check connection',true); return; }
+  const stage=document.getElementById('printStage');
+  stage.innerHTML=cardHtml(b);
+  const card=stage.querySelector('.pvcard');
+  fitName(stage);
+  toast('Sending to the S25…');
+  try{
+    await Promise.all([...card.querySelectorAll('img')].map(img=>img.complete?null:new Promise(res=>{img.onload=img.onerror=res;setTimeout(res,2500);})));
+    const c=await html2canvas(card,{scale:300/96,backgroundColor:null,useCORS:true,logging:false});
+    const png=c.toDataURL('image/png');
+    const r=await fetch(BRIDGE+'/print',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({pngBase64:png,badgeId:id,name:b.customer_name})});
+    const d=await r.json().catch(()=>({}));
+    if(!r.ok||!d.ok) throw new Error(d.error||('bridge '+r.status));
+    await fetch(API+'/badges/'+id+'/printed',{method:'POST',headers:authHdr}).catch(()=>{});
+    toast('Printing on the S25 ✓'); await load();
+  }catch(e){ toast('Print failed — is the print-bridge running? ('+e.message+')',true); }
+  finally{ stage.innerHTML=''; }
+}
 
 async function load(){
   try{
@@ -198,7 +250,7 @@ function rowHtml(b){
     <td>${status}</td>
     <td style="white-space:nowrap;">
       <button class="btn btn-gray" onclick="openEdit('${b.id}')">Edit</button>
-      <button class="btn btn-gray" onclick="reprint('${b.id}')">Reprint</button>
+      <button class="btn btn-green" onclick="printBadgeAdmin('${b.id}')">Print</button>
       ${b.badge_active?`<button class="btn btn-red" onclick="deactivate('${b.id}')">Revoke</button>`:''}
       <button class="btn btn-red" onclick="deleteBadge('${b.id}')">Delete</button>
     </td></tr>`;

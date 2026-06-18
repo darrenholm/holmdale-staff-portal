@@ -561,10 +561,11 @@ async function printBadge(badgeId){
   if(!card || typeof html2canvas!=='function') return { ok:false, reason:'renderer not ready' };
   let png;
   try{
-    // Wait for the logo/photo/background to finish loading so the capture
-    // doesn't drop a not-yet-loaded (cross-origin) sponsor logo.
+    // Wait for any still-loading images (so a cross-origin logo isn't dropped),
+    // but never block on an already-finished/failed image — resolve those
+    // immediately, with a timeout safety net so printing can't hang.
     await Promise.all([...card.querySelectorAll('img')].map(img =>
-      (img.complete && img.naturalWidth) ? null : new Promise(res => { img.onload = img.onerror = res; })));
+      img.complete ? null : new Promise(res => { img.onload = img.onerror = res; setTimeout(res, 2500); })));
     const c=await html2canvas(card,{ scale:300/96, backgroundColor:null, useCORS:true, logging:false });
     png=c.toDataURL('image/png');
   }catch(e){ return { ok:false, reason:'render failed' }; }
