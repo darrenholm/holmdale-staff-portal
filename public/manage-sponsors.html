@@ -461,6 +461,7 @@ function buildForm(item) {
             <div class="fi"><label>Province</label><input id="f_province" value="${item.province||''}"></div>
             <div class="fi"><label>Address</label><input id="f_address" value="${item.address||''}"></div>
             <div class="fi"><label>Postal Code</label><input id="f_postal" value="${item.postal_code||''}"></div>
+            <div class="fi full"><label>Website (for logo ticker link)</label><input id="f_website" value="${item.website||''}" placeholder="https://example.com"></div>
             ${flagsRow(item)}
             <div class="fi full"><label>Notes</label><textarea id="f_notes">${item.notes||''}</textarea></div>
             ${portalSection(item)}`;
@@ -474,6 +475,7 @@ function buildForm(item) {
             <div class="fi"><label>Province</label><input id="f_province" value="${item.province||''}"></div>
             <div class="fi"><label>Product</label><input id="f_product" value="${item.product||''}"></div>
             <div class="fi"><label>Booth Size</label><input id="f_booth" value="${item.booth_size||''}"></div>
+            <div class="fi full"><label>Website</label><input id="f_website" value="${item.website||''}" placeholder="https://example.com"></div>
             ${flagsRow(item)}
             <div class="fi full"><label>Comment</label><textarea id="f_notes">${item.comment||''}</textarea></div>`;
     } else {
@@ -760,6 +762,7 @@ async function save() {
                 province: document.getElementById('f_province').value,
                 address: document.getElementById('f_address').value,
                 postal_code: document.getElementById('f_postal').value,
+                website: document.getElementById('f_website').value,
                 notes: document.getElementById('f_notes').value,
                 paid: document.getElementById('f_paid').checked,
                 in_kind: document.getElementById('f_inkind').checked,
@@ -778,6 +781,7 @@ async function save() {
                 email: document.getElementById('f_email').value,
                 city: document.getElementById('f_city').value,
                 province: document.getElementById('f_province').value,
+                website: document.getElementById('f_website').value,
                 product: document.getElementById('f_product').value,
                 booth_size: document.getElementById('f_booth').value,
                 comment: document.getElementById('f_notes').value,
