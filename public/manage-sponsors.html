@@ -563,8 +563,9 @@ function renderLogos() {
 function logoCard(l) {
     const ext = (l.extension || extOf(l.filename) || '').toLowerCase();
     const previewable = PREVIEW_EXTS.includes(ext);
-    const thumb = previewable
-        ? `<div class="lthumb"><img src="${escapeHtml(l.blob_url)}" alt=""></div>`
+    const imgSrc = previewable ? l.blob_url : (l.preview_url || null);
+    const thumb = imgSrc
+        ? `<div class="lthumb"><img src="${escapeHtml(imgSrc)}" alt=""></div>`
         : `<div class="lthumb"><div class="licon"><div class="ext">.${escapeHtml(ext||'?')}</div><div class="lbl">${escapeHtml(l.format||'file')}</div></div></div>`;
 
     const variantBadge = l.variant ? `<span class="lbadge lvar">${escapeHtml(l.variant)}</span>` : '';
