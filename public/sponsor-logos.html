@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Your Logo & Website — Holmdale Pro Rodeo</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif; background:#f5f5f4; color:#1c1917; padding:20px; }
+  .wrap { max-width:680px; margin:0 auto; }
+  .card { background:#fff; border-radius:14px; box-shadow:0 4px 20px rgba(0,0,0,.08); overflow:hidden; }
+  .head { background:#1c1917; padding:28px 24px; text-align:center; }
+  .head h1 { color:#facc15; font-size:24px; letter-spacing:2px; }
+  .head p { color:#a8a29e; font-size:14px; margin-top:6px; }
+  .body { padding:24px; }
+  .body > p.lead { color:#44403c; font-size:15px; line-height:1.6; margin-bottom:8px; }
+  .section-title { font-size:13px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:#78716c; margin:26px 0 12px; padding-bottom:8px; border-bottom:2px solid #00B74A; }
+  .logos { display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:12px; }
+  .logo { border:1px solid #e7e5e4; border-radius:10px; padding:10px; text-align:center; }
+  .logo .frame { height:80px; display:flex; align-items:center; justify-content:center; background:#fafaf9; border-radius:6px; overflow:hidden; }
+  .logo .frame img { max-width:100%; max-height:100%; object-fit:contain; }
+  .logo .ph { color:#a8a29e; font-size:12px; line-height:1.4; padding:8px; }
+  .logo .meta { margin-top:8px; font-size:11px; color:#78716c; }
+  .tag { display:inline-block; padding:2px 7px; border-radius:4px; font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.5px; }
+  .tag.vec { background:#dbeafe; color:#1e40af; } .tag.bmp { background:#dcfce7; color:#166534; } .tag.pri { background:#fef9c3; color:#854d0e; margin-left:4px; }
+  .empty { color:#a8a29e; font-size:14px; padding:16px; background:#fafaf9; border-radius:10px; text-align:center; }
+  label.fl { display:block; font-size:13px; font-weight:600; color:#44403c; margin-bottom:6px; }
+  input[type=text], input[type=url] { width:100%; padding:11px 13px; border:1px solid #d6d3d1; border-radius:9px; font-size:15px; }
+  input:focus { outline:none; border-color:#00B74A; }
+  .row { display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-top:10px; }
+  .btn { padding:11px 22px; border:none; border-radius:9px; font-size:14px; font-weight:700; cursor:pointer; }
+  .btn-green { background:#00B74A; color:#fff; } .btn-green:hover { background:#00a040; }
+  .btn-dark { background:#1c1917; color:#facc15; } .btn-dark:hover { background:#292524; }
+  .btn:disabled { opacity:.6; cursor:default; }
+  .drop { border:2px dashed #d6d3d1; border-radius:12px; padding:22px; text-align:center; color:#78716c; font-size:14px; cursor:pointer; transition:.15s; }
+  .drop:hover, .drop.over { border-color:#00B74A; background:#f0fdf4; color:#166534; }
+  .note { font-size:12px; color:#a8a29e; margin-top:8px; line-height:1.5; }
+  .msg { margin-top:12px; padding:11px 14px; border-radius:9px; font-size:14px; display:none; }
+  .msg.ok { background:#dcfce7; color:#166534; display:block; } .msg.err { background:#fee2e2; color:#991b1b; display:block; }
+  .foot { background:#1c1917; padding:16px 24px; text-align:center; }
+  .foot p { color:#a8a29e; font-size:12px; }
+  .foot a { color:#facc15; }
+  .center { text-align:center; padding:40px 20px; color:#78716c; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="card">
+    <div class="head">
+      <h1>🤠 HOLMDALE PRO RODEO</h1>
+      <p>Sponsor Logo & Website</p>
+    </div>
+    <div class="body" id="body">
+      <div class="center" id="loading">Loading your details…</div>
+      <div id="content" style="display:none;">
+        <p class="lead">Hi <strong id="who"></strong>, thank you for sponsoring the <strong>2026 Holmdale Pro Rodeo</strong>! Below is the artwork we currently have on file. Please make sure we have your <strong>best logo</strong> so you look great on our website, social media and event signage.</p>
+
+        <div class="section-title">Logos we have on file</div>
+        <div id="logos" class="logos"></div>
+        <div id="logosEmpty" class="empty" style="display:none;">We don't have any logo on file for you yet — please upload one below.</div>
+
+        <div class="section-title">Upload a new or better logo</div>
+        <div class="drop" id="drop">
+          <strong>Click to choose a file</strong> or drag it here<br>
+          <span class="note">PNG, JPG, SVG, PDF, AI, EPS or CorelDRAW (.cdr) — up to 25&nbsp;MB. A vector file (.ai / .eps / .pdf / .svg) is best for print.</span>
+        </div>
+        <input type="file" id="file" style="display:none" accept=".png,.jpg,.jpeg,.webp,.gif,.tif,.tiff,.svg,.pdf,.ai,.eps,.cdr,image/*">
+
+        <div class="section-title">Your website</div>
+        <label class="fl" for="website">We link your logo to your site on holmdalerodeo.ca</label>
+        <input type="url" id="website" placeholder="https://yourbusiness.com">
+        <div class="row">
+          <button class="btn btn-green" id="saveSite">Save website</button>
+        </div>
+
+        <div class="msg" id="msg"></div>
+      </div>
+      <div class="center" id="error" style="display:none;"></div>
+    </div>
+    <div class="foot">
+      <p>Questions? Email <a href="mailto:info@holmdalerodeo.ca">info@holmdalerodeo.ca</a><br>Holmdale Rodeo Grounds — Walkerton, Ontario</p>
+    </div>
+  </div>
+</div>
+
+<script>
+const API = 'https://rodeo-fresh-production-7348.up.railway.app/api';
+const token = new URLSearchParams(location.search).get('token') || '';
+const BROWSER_IMG = ['png','jpg','jpeg','gif','webp','svg'];
+
+const $ = id => document.getElementById(id);
+function msg(text, ok) { const m=$('msg'); m.textContent=text; m.className='msg '+(ok?'ok':'err'); m.scrollIntoView({behavior:'smooth',block:'nearest'}); }
+
+function logoImgSrc(l) {
+  const ext = (l.extension||'').toLowerCase();
+  if (BROWSER_IMG.includes(ext) && l.blob_url) return l.blob_url;
+  if (l.preview_url) return l.preview_url;
+  return null;
+}
+
+function render(data) {
+  const s = data.sponsor || {};
+  $('who').textContent = (s.contact_name ? s.contact_name.split(/\s+/)[0] : s.name) || 'there';
+  $('website').value = s.website || '';
+
+  const logos = data.logos || [];
+  const wrap = $('logos');
+  if (!logos.length) { wrap.style.display='none'; $('logosEmpty').style.display='block'; }
+  else {
+    wrap.style.display='grid'; $('logosEmpty').style.display='none';
+    wrap.innerHTML = logos.map(l => {
+      const src = logoImgSrc(l);
+      const ext = (l.extension||'').toUpperCase();
+      const frame = src
+        ? `<img src="${src}" alt="logo">`
+        : `<div class="ph">${ext || 'FILE'} on file<br><span style="font-size:11px">(print-ready, no preview)</span></div>`;
+      const fmtTag = l.format === 'vector' ? '<span class="tag vec">Vector</span>' : '<span class="tag bmp">Bitmap</span>';
+      const pri = l.is_primary ? '<span class="tag pri">Primary</span>' : '';
+      return `<div class="logo"><div class="frame">${frame}</div><div class="meta">${fmtTag}${pri}<br>.${(l.extension||'').toLowerCase()}</div></div>`;
+    }).join('');
+  }
+}
+
+async function load() {
+  if (!token) { showError('This link is missing its access token. Please use the button in your email, or contact info@holmdalerodeo.ca.'); return; }
+  try {
+    const r = await fetch(`${API}/sponsor-intake?token=${encodeURIComponent(token)}`);
+    const data = await r.json();
+    if (!r.ok) return showError(data.error || 'We could not load your details.');
+    $('loading').style.display='none'; $('content').style.display='block';
+    render(data);
+  } catch (e) { showError('Something went wrong loading your details. Please try again later.'); }
+}
+function showError(text) { $('loading').style.display='none'; const e=$('error'); e.style.display='block'; e.textContent=text; }
+
+// ─── Website save ───
+$('saveSite').addEventListener('click', async () => {
+  const btn=$('saveSite'); btn.disabled=true; btn.textContent='Saving…';
+  try {
+    const r = await fetch(`${API}/sponsor-intake/website?token=${encodeURIComponent(token)}`, {
+      method:'PUT', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ website: $('website').value.trim() })
+    });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error||'Save failed');
+    $('website').value = d.website || '';
+    msg('✓ Website saved — thank you!', true);
+  } catch(e) { msg(e.message, false); }
+  btn.disabled=false; btn.textContent='Save website';
+});
+
+// ─── Logo upload ───
+const drop=$('drop'), fileInput=$('file');
+drop.addEventListener('click', () => fileInput.click());
+['dragover','dragenter'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.add('over'); }));
+['dragleave','drop'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.remove('over'); }));
+drop.addEventListener('drop', e => { if (e.dataTransfer.files[0]) uploadFile(e.dataTransfer.files[0]); });
+fileInput.addEventListener('change', () => { if (fileInput.files[0]) uploadFile(fileInput.files[0]); });
+
+async function uploadFile(file) {
+  drop.style.pointerEvents='none'; const orig=drop.innerHTML; drop.innerHTML='<strong>Uploading '+file.name+'…</strong>';
+  try {
+    const fd = new FormData(); fd.append('file', file);
+    const r = await fetch(`${API}/sponsor-intake/logo?token=${encodeURIComponent(token)}`, { method:'POST', body:fd });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error||'Upload failed');
+    render(d);
+    msg('✓ Logo uploaded — thank you! You can upload more if you have other versions.', true);
+  } catch(e) { msg(e.message, false); }
+  drop.innerHTML=orig; drop.style.pointerEvents='auto'; fileInput.value='';
+}
+
+load();
+</script>
+</body>
+</html>
