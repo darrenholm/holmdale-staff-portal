@@ -51,6 +51,9 @@ td { padding:10px 12px; border-top:1px solid #282828; font-size:13px; max-width:
 tr:hover td { background:#1f1f1f; }
 .name { font-weight:700; color:#fff; }
 .amt { font-weight:700; color:#00B74A; }
+select.lvl { background:#222; border:1px solid #444; border-radius:6px; padding:4px 8px; color:#fff; font-size:12px; max-width:140px; cursor:pointer; }
+select.lvl:focus { outline:none; border-color:#00B74A; }
+select.lvl.auto { color:#aaa; }
 .badge { display:inline-block; padding:2px 8px; border-radius:4px; font-size:11px; font-weight:600; }
 .bg { background:#00B74A22; color:#00B74A; }
 .br { background:#ef444422; color:#ef4444; }
@@ -242,6 +245,53 @@ function levelFor(amount) {
     if (a >= 500)   return 'Friend';
     return '—';
 }
+// Canonical tiers (mirror of the API's sponsor_levels reference table).
+const SPONSOR_LEVELS = ['Title','Platinum','Gold','Silver','Bronze','Friend'];
+
+// Inline LEVEL dropdown for one sponsor + the selected year. Auto (empty value)
+// shows the amount-derived tier; otherwise the saved override is pre-selected.
+function levelSelect(id, a, entry, yr) {
+    const ovr = (entry && entry.level_override) || '';
+    const opts = `<option value="" ${ovr===''?'selected':''}>Auto (${levelFor(a)})</option>` +
+        SPONSOR_LEVELS.map(l => `<option value="${l}" ${ovr===l?'selected':''}>${l}</option>`).join('');
+    return `<select class="lvl${ovr===''?' auto':''}" onchange="saveLevelOverride(${id}, ${parseInt(yr)}, this.value)">${opts}</select>`;
+}
+
+// Persist a per-year tier override immediately. The schedule PUT deletes and
+// re-inserts every year row, so we carry each existing row's amount/paid/
+// level_override through and only change the targeted year (adding the year if
+// the sponsor has no row for it yet).
+async function saveLevelOverride(sponsorId, year, value) {
+    const override = value || null;
+    const existing = schedFor('sponsors', sponsorId);
+    let found = false;
+    const entries = existing.map(e => {
+        const target = e.year == year;
+        if (target) found = true;
+        return {
+            year: e.year,
+            amount: parseFloat(e.amount) || 0,
+            paid: !!e.paid,
+            level_override: target ? override : (e.level_override || null),
+        };
+    });
+    if (!found) entries.push({ year, amount: 0, paid: false, level_override: override });
+
+    try {
+        const res = await fetch(API+'/sponsor-schedule/'+sponsorId, { method:'PUT', headers:h(), body:JSON.stringify({entries}) });
+        if (res.status===401 || res.status===403) { window.location.href='login.html'; return; }
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.error || ('HTTP '+res.status));
+        // Swap this sponsor's rows in the local cache, then re-render in place.
+        sSched = sSched.filter(s => s.sponsor_id !== sponsorId).concat(Array.isArray(data)?data:[]);
+        toast('Level updated');
+        render();
+    } catch (err) {
+        console.error('saveLevelOverride error:', err);
+        alert('Could not update level: ' + err.message);
+        render();  // revert the dropdown to the stored value
+    }
+}
 function toast(msg) {
     const t = document.getElementById('toast');
     t.textContent = msg; t.style.display = 'block';
@@ -320,7 +370,7 @@ function renderSponsors(q, yr) {
             <td>${s.city||''}</td>
             <td>${s.phone||''}</td>
             <td>${s.email ? `<a href="mailto:${s.email}" style="color:#3b82f6;">${s.email}</a>` : ''}</td>
-            <td>${yr!=='all' ? ((entry&&entry.level_override) || levelFor(a)) : '—'}</td>
+            <td>${yr!=='all' ? levelSelect(s.id, a, entry, yr) : '—'}</td>
             ${yr!=='all'?`<td class="amt">${a>0?'$'+a.toLocaleString():'-'}</td>`:`<td>${yrs||'-'}</td>`}
             <td style="white-space:nowrap;"><button class="btn btn-sm btn-gray" onclick="openEdit('sponsors',${s.id})">Edit</button> <button class="btn btn-sm btn-red" onclick="deleteRecord('sponsors',${s.id})">Delete</button></td>
         </tr>`;
@@ -835,6 +885,10 @@ async function save() {
         if (tab !== 'signs') {
             const rows = document.querySelectorAll('#srows .sr');
             const entries = [];
+            // Carry each sponsor year's existing paid flag through so this editor
+            // (which has no paid input) doesn't reset it on the full re-insert.
+            const prevByYear = {};
+            if (tab === 'sponsors') schedFor('sponsors', recordId).forEach(e => { prevByYear[e.year] = e; });
             rows.forEach(r => {
                 const year = parseInt(r.querySelector('.sy').value);
                 const amount = parseFloat(r.querySelector('.sa').value) || 0;
@@ -842,6 +896,7 @@ async function save() {
                 const entry = { year, amount };
                 const sl = r.querySelector('.sl');
                 if (sl) entry.level_override = sl.value || null;
+                if (tab === 'sponsors') { const prev = prevByYear[year]; entry.paid = prev ? !!prev.paid : false; }
                 entries.push(entry);
             });
 
