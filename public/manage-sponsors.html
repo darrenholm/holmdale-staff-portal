@@ -232,6 +232,16 @@ function yearAmt(type, id, yr) {
     const e = schedFor(type,id).find(s => s.year==yr);
     return e ? parseFloat(e.amount)||0 : 0;
 }
+function levelFor(amount) {
+    const a = parseFloat(amount) || 0;
+    if (a >= 10000) return 'Title';
+    if (a >= 6500)  return 'Platinum';
+    if (a >= 5000)  return 'Gold';
+    if (a >= 2500)  return 'Silver';
+    if (a >= 1000)  return 'Bronze';
+    if (a >= 500)   return 'Friend';
+    return '—';
+}
 function toast(msg) {
     const t = document.getElementById('toast');
     t.textContent = msg; t.style.display = 'block';
@@ -298,7 +308,7 @@ function renderSponsors(q, yr) {
     const el = document.getElementById('table');
     if (!items.length) { el.innerHTML = '<div class="empty">No sponsors found</div>'; return; }
     el.innerHTML = `<table><thead><tr>
-        <th>Name</th><th>Contact</th><th>City</th><th>Phone</th><th>Email</th>
+        <th>Name</th><th>Contact</th><th>City</th><th>Phone</th><th>Email</th><th>LEVEL</th>
         ${yr!=='all'?`<th>${yr} Amt</th>`:'<th>Years</th>'}<th></th>
     </tr></thead><tbody>${items.map(s => {
         const a = yr!=='all' ? yearAmt('sponsors',s.id,yr) : 0;
@@ -309,6 +319,7 @@ function renderSponsors(q, yr) {
             <td>${s.city||''}</td>
             <td>${s.phone||''}</td>
             <td>${s.email ? `<a href="mailto:${s.email}" style="color:#3b82f6;">${s.email}</a>` : ''}</td>
+            <td>${levelFor(a)}</td>
             ${yr!=='all'?`<td class="amt">${a>0?'$'+a.toLocaleString():'-'}</td>`:`<td>${yrs||'-'}</td>`}
             <td style="white-space:nowrap;"><button class="btn btn-sm btn-gray" onclick="openEdit('sponsors',${s.id})">Edit</button> <button class="btn btn-sm btn-red" onclick="deleteRecord('sponsors',${s.id})">Delete</button></td>
         </tr>`;
