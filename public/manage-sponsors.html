@@ -312,6 +312,7 @@ function renderSponsors(q, yr) {
         ${yr!=='all'?`<th>${yr} Amt</th>`:'<th>Years</th>'}<th></th>
     </tr></thead><tbody>${items.map(s => {
         const a = yr!=='all' ? yearAmt('sponsors',s.id,yr) : 0;
+        const entry = yr!=='all' ? schedFor('sponsors',s.id).find(x=>x.year==yr) : null;
         const yrs = [...new Set(schedFor('sponsors',s.id).map(x=>x.year))].sort().join(', ');
         return `<tr>
             <td class="name">${s.name||''}${flagBadges(s)}</td>
@@ -319,7 +320,7 @@ function renderSponsors(q, yr) {
             <td>${s.city||''}</td>
             <td>${s.phone||''}</td>
             <td>${s.email ? `<a href="mailto:${s.email}" style="color:#3b82f6;">${s.email}</a>` : ''}</td>
-            <td>${levelFor(a)}</td>
+            <td>${yr!=='all' ? ((entry&&entry.level_override) || levelFor(a)) : '—'}</td>
             ${yr!=='all'?`<td class="amt">${a>0?'$'+a.toLocaleString():'-'}</td>`:`<td>${yrs||'-'}</td>`}
             <td style="white-space:nowrap;"><button class="btn btn-sm btn-gray" onclick="openEdit('sponsors',${s.id})">Edit</button> <button class="btn btn-sm btn-red" onclick="deleteRecord('sponsors',${s.id})">Delete</button></td>
         </tr>`;
@@ -502,15 +503,21 @@ function buildForm(item) {
 function buildSched(entries) {
     const el = document.getElementById('msched');
     if (tab==='signs') { el.innerHTML=''; return; }
-    const rows = entries.map(e => schedRow(e.year, parseFloat(e.amount)||0)).join('');
+    const rows = entries.map(e => schedRow(e.year, parseFloat(e.amount)||0, e.level_override)).join('');
     el.innerHTML = `<h3>💰 Yearly Schedule</h3><div id="srows">${rows}</div>
         <button class="btn btn-sm btn-gray" onclick="addRow()" style="margin-top:8px">+ Add Year</button>`;
 }
 
-function schedRow(year, amount) {
+function schedRow(year, amount, override) {
+    const levels = ['Title','Platinum','Gold','Silver','Bronze','Friend'];
+    const lvlSel = tab==='sponsors' ? `<select class="sl" style="width:110px">
+            <option value="" ${!override?'selected':''}>Auto</option>
+            ${levels.map(l=>`<option value="${l}" ${override===l?'selected':''}>${l}</option>`).join('')}
+        </select>` : '';
     return `<div class="sr">
         <input type="number" class="sy" value="${year||2026}" style="width:80px">
         <input type="number" class="sa" value="${amount||''}" placeholder="$" style="width:110px">
+        ${lvlSel}
         <button class="btn btn-sm btn-red" onclick="this.parentElement.remove()">✕</button>
     </div>`;
 }
@@ -831,7 +838,11 @@ async function save() {
             rows.forEach(r => {
                 const year = parseInt(r.querySelector('.sy').value);
                 const amount = parseFloat(r.querySelector('.sa').value) || 0;
-                if (year) entries.push({ year, amount });
+                if (!year) return;
+                const entry = { year, amount };
+                const sl = r.querySelector('.sl');
+                if (sl) entry.level_override = sl.value || null;
+                entries.push(entry);
             });
 
             const schedUrl = tab==='sponsors' ? API+'/sponsor-schedule/'+recordId : API+'/vendor-schedule/'+recordId;
