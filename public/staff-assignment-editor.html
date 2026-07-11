@@ -350,26 +350,41 @@
     <script>
         const API = 'https://rodeo-fresh-production-7348.up.railway.app/api';
         let token = '';
+        let currentUser = null;
         let allShifts = [];
         let allStaff = [];
         let currentShiftId = null;
         let filteredDate = 'all';
         let filteredRole = 'all';
 
+        function redirectToLogin() {
+            localStorage.removeItem('auth_token');
+            window.location.href = 'login.html?expired=1';
+        }
+
+        function decodeToken(t) {
+            try {
+                return JSON.parse(atob(t.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));
+            } catch (e) { return null; }
+        }
+
         window.onload = async function() {
             try {
-                const r = await fetch(API + '/auth/login', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({email: 'darren@holmgraphics.ca', password: 'changeme123'})
-                });
-                const d = await r.json();
-                token = d.token;
-                
+                token = localStorage.getItem('auth_token');
+                if (!token) { redirectToLogin(); return; }
+
+                currentUser = decodeToken(token);
+                const roles = (currentUser && currentUser.roles) || [];
+                if (!roles.includes('admin') && !roles.includes('manager')) {
+                    // Not an admin page for this user — back to the menu
+                    window.location.href = 'index.html';
+                    return;
+                }
+
                 await loadStaff();
                 await loadShifts();
                 populateDateFilter();
-                
+
             } catch(err) {
                 console.error('Error:', err);
                 showMessage('❌ Failed to connect', 'error');
@@ -381,6 +396,7 @@
                 const r = await fetch(API + '/staff', {
                     headers: {'Authorization': 'Bearer ' + token}
                 });
+                if (r.status === 401 || r.status === 403) { redirectToLogin(); return; }
                 allStaff = await r.json();
                 console.log('Loaded', allStaff.length, 'staff members');
             } catch(err) {
@@ -393,6 +409,7 @@
                 const r = await fetch(API + '/shifts-manage', {
                     headers: {'Authorization': 'Bearer ' + token}
                 });
+                if (r.status === 401 || r.status === 403) { redirectToLogin(); return; }
                 allShifts = await r.json();
                 
                 // Load details for each shift
@@ -637,10 +654,12 @@
                     },
                     body: JSON.stringify({
                         staff_id: staffId,
-                        staff_name: staffName
+                        staff_name: staffName,
+                        assigned_by: currentUser.id
                     })
                 });
-                
+
+                if (r.status === 401 || r.status === 403) { redirectToLogin(); return; }
                 const d = await r.json();
                 
                 if (r.ok) {
@@ -665,7 +684,8 @@
                     method: 'DELETE',
                     headers: {'Authorization': 'Bearer ' + token}
                 });
-                
+
+                if (r.status === 401 || r.status === 403) { redirectToLogin(); return; }
                 const d = await r.json();
                 
                 if (r.ok) {
