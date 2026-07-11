@@ -285,10 +285,16 @@
                 const raw = await r.json();
                 const staff = Array.isArray(raw) ? raw : [];
 
-                currentStaff = staff.find(s => s.email === 'darren@holmgraphics.ca') || staff[0];
-                if (currentStaff) {
-                    document.getElementById('staffName').textContent = currentStaff.fullname;
+                const myId = parseInt(localStorage.getItem('staff_id'), 10);
+                const myEmail = (localStorage.getItem('staff_email') || '').toLowerCase();
+                currentStaff = staff.find(s => s.id === myId)
+                    || staff.find(s => (s.email || '').toLowerCase() === myEmail);
+                if (!currentStaff) {
+                    // Can't tell who is logged in — force a fresh login rather than scheduling the wrong person
+                    redirectToLogin();
+                    return;
                 }
+                document.getElementById('staffName').textContent = currentStaff.fullname;
                 
             } catch(err) {
                 console.error('Error loading staff info:', err);
