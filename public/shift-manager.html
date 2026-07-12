@@ -194,6 +194,32 @@
         .alert-success { background: #c6f6d5; color: #22543d; }
         .alert-error { background: #fed7d7; color: #742a2a; }
         .hidden { display: none; }
+        .summary-bar {
+            background: white;
+            padding: 15px 20px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            align-items: center;
+        }
+        .summary-total {
+            font-size: 18px;
+            font-weight: 700;
+            color: #333;
+            margin-right: 5px;
+        }
+        .summary-total .open { color: #00B74A; }
+        .summary-role {
+            font-size: 14px;
+            font-weight: 600;
+            padding: 6px 12px;
+            border-radius: 8px;
+        }
+        .summary-role.ticket { background: #dbeafe; color: #1e40af; }
+        .summary-role.gate { background: #d1fae5; color: #065f46; }
+        .summary-role.bar { background: #f3e8ff; color: #6b21a8; }
     </style>
 </head>
 <body>
@@ -210,6 +236,8 @@
             <div style="flex: 1"></div>
             <button class="btn btn-secondary" onclick="window.location.href='index.html'">← Back to Menu</button>
         </div>
+
+        <div id="summaryBar" class="summary-bar hidden"></div>
 
         <div id="shiftsList"></div>
     </div>
@@ -318,7 +346,40 @@
             }
         }
 
+        function renderSummary() {
+            const bar = document.getElementById('summaryBar');
+            if (allShifts.length === 0) {
+                bar.classList.add('hidden');
+                return;
+            }
+
+            const roleLabels = { ticket: '🎫 Ticket Sales', gate: '🚪 Gate/Entry', bar: '🍺 Bar' };
+            let total = 0, filled = 0;
+            const byRole = {};
+
+            allShifts.forEach(shift => {
+                const required = shift.persons_required || 6;
+                const assigned = shift.assigned_count || 0;
+                total += required;
+                filled += assigned;
+                if (!byRole[shift.role]) byRole[shift.role] = { required: 0, assigned: 0 };
+                byRole[shift.role].required += required;
+                byRole[shift.role].assigned += assigned;
+            });
+
+            let html = `<div class="summary-total">${total} total spots · ${filled} filled · <span class="open">${total - filled} open</span></div>`;
+            Object.keys(roleLabels).forEach(role => {
+                if (byRole[role]) {
+                    html += `<div class="summary-role ${role}">${roleLabels[role]}: ${byRole[role].assigned}/${byRole[role].required}</div>`;
+                }
+            });
+
+            bar.innerHTML = html;
+            bar.classList.remove('hidden');
+        }
+
         function displayShifts() {
+            renderSummary();
             const container = document.getElementById('shiftsList');
             
             // Group by date, then by role
