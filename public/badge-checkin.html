@@ -151,8 +151,9 @@
 
     <div class="card">
       <h2><span class="step">2</span> Who Is This?</h2>
-      <input type="text" id="search" placeholder="🔎 Search existing sponsors / staff…" oninput="onSearch()" autocomplete="off">
+      <input type="text" id="search" placeholder="🔎 Search company / sponsor / staff…" oninput="onSearch()" autocomplete="off">
       <div id="searchResults"></div>
+      <div id="contactChip"></div>
       <div id="sponsorGuests"></div>
       <label class="fl">Name on badge *</label>
       <input type="text" id="f_name" placeholder="Full name">
@@ -398,24 +399,57 @@ function onSearch(){
   }, 250);
 }
 function pick(it){
-  document.getElementById('f_name').value = it.name||'';
-  if(it.company) document.getElementById('f_company').value = it.company;
-  if(it.email) document.getElementById('f_email').value = it.email;
-  state.companyLogo = it.company_logo_url || null;  // sponsor's primary logo → shown on the card
-  state.sponsorLevel = it.sponsorship_level || '';  // derived from their pledged $ (server)
+  state.sponsorGuestId = null;
   document.getElementById('searchResults').innerHTML='';
   document.getElementById('search').value='';
-  // Picking a sponsor → sponsor badge (defaults the level); picking staff → volunteer.
-  if(it.source==='sponsor') setType('sponsor');
-  else if(it.source==='staff') setType('volunteer');
-  // If a suite is assigned to this sponsor, auto-check it.
-  if(it.company){
-    const suite = ZONES.find(z=>(z.sponsor_label||'').toLowerCase()===it.company.toLowerCase());
-    if(suite && !state.zones.includes(suite.key)){ state.zones.push(suite.key); renderZones(); }
+
+  if(it.source==='sponsor'){
+    // Picking a company: several people from one sponsor may need badges, so
+    // the name stays empty to hand-type. The company contact and any
+    // pre-registered guests appear as one-tap chips instead.
+    document.getElementById('f_name').value='';
+    document.getElementById('f_email').value='';
+    if(it.company) document.getElementById('f_company').value = it.company;
+    state.companyLogo = it.company_logo_url || null;  // sponsor's primary logo → shown on the card
+    state.sponsorLevel = it.sponsorship_level || '';  // derived from their pledged $ (server)
+    setType('sponsor');
+    // If a suite is assigned to this sponsor, auto-check it.
+    if(it.company){
+      const suite = ZONES.find(z=>(z.sponsor_label||'').toLowerCase()===it.company.toLowerCase());
+      if(suite && !state.zones.includes(suite.key)){ state.zones.push(suite.key); renderZones(); }
+    }
+    renderContactChip(it);
+    if(it.ref_id) loadSponsorGuests(it.ref_id);
+    else document.getElementById('sponsorGuests').innerHTML='';
+    document.getElementById('f_name').focus();
+  } else {
+    document.getElementById('f_name').value = it.name||'';
+    if(it.company) document.getElementById('f_company').value = it.company;
+    if(it.email) document.getElementById('f_email').value = it.email;
+    state.companyLogo = it.company_logo_url || null;
+    state.sponsorLevel = '';
+    setType('volunteer');
+    document.getElementById('contactChip').innerHTML='';
+    document.getElementById('sponsorGuests').innerHTML='';
   }
-  // If this is a sponsor, pull any guests they pre-registered online.
-  if(it.source==='sponsor' && it.ref_id) loadSponsorGuests(it.ref_id);
-  else document.getElementById('sponsorGuests').innerHTML='';
+  updateSummary();
+}
+
+// One-tap chip to fill the badge name with the sponsor's main contact
+function renderContactChip(it){
+  const box = document.getElementById('contactChip');
+  if(!it.name || it.name===it.company){ box.innerHTML=''; return; }
+  const payload = { name: it.name, email: it.email||'' };
+  box.innerHTML = '<div class="sub" style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--gold);margin:10px 0 4px;">Company contact</div>'+
+    `<div class="search-results"><div class="sr-item" onclick='pickContact(${JSON.stringify(payload).replace(/'/g,"&#39;")})'>
+      <div class="who">${esc(it.name)}<span class="tag sp">contact</span></div>
+      <div class="meta">${esc(it.email||'') || 'tap to use this name'}</div>
+    </div></div>`;
+}
+function pickContact(p){
+  document.getElementById('f_name').value = p.name||'';
+  document.getElementById('f_email').value = p.email||'';
+  document.getElementById('contactChip').innerHTML='';
   updateSummary();
 }
 
@@ -453,6 +487,7 @@ function pickGuest(payload){
   // Use exactly the zones the sponsor requested for this guest.
   state.zones = (g.access_zones||[]).filter(k=>ZONES.some(z=>z.key===k));
   document.getElementById('sponsorGuests').innerHTML='';
+  document.getElementById('contactChip').innerHTML='';
   document.getElementById('searchResults').innerHTML='';
   document.getElementById('search').value='';
   renderZones();
@@ -639,6 +674,7 @@ function resetForm(){
   document.getElementById('f_title').dataset.touched='';
   document.getElementById('searchResults').innerHTML='';
   document.getElementById('sponsorGuests').innerHTML='';
+  document.getElementById('contactChip').innerHTML='';
   state={ type:state.type, tier:null, uid:'', photo:null, zones:[], companyLogo:null, sponsorGuestId:null, sponsorLevel:'' };
   if(state.type) setType(state.type); // keep type, re-apply tier defaults
   retakePhoto();
