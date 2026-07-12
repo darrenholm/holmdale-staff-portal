@@ -68,33 +68,46 @@
             color: #333;
         }
         .role-section {
+            display: flex;
+            gap: 10px;
+            align-items: stretch;
             margin-bottom: 20px;
         }
-        .role-header {
-            display: inline-block;
-            padding: 8px 16px;
+        .role-rail {
+            writing-mode: vertical-rl;
+            transform: rotate(180deg);
+            text-align: center;
+            padding: 12px 6px;
             border-radius: 8px;
-            font-size: 16px;
-            font-weight: 600;
-            margin-bottom: 12px;
+            font-size: 15px;
+            font-weight: 700;
+            letter-spacing: 1px;
+            flex-shrink: 0;
         }
-        .role-header.ticket {
+        .role-section.ticket .role-rail {
             background: #dbeafe;
             color: #1e40af;
         }
-        .role-header.gate {
+        .role-section.gate .role-rail {
             background: #d1fae5;
             color: #065f46;
         }
-        .role-header.bar {
+        .role-section.bar .role-rail {
             background: #f3e8ff;
             color: #6b21a8;
         }
+        .role-shifts {
+            flex: 1;
+            min-width: 0;
+        }
+        .role-shifts .shift-card:last-child {
+            margin-bottom: 0;
+        }
         .shift-card {
             background: white;
-            padding: 20px;
+            padding: 12px 15px;
             border-radius: 12px;
-            margin-bottom: 15px;
+            margin-bottom: 10px;
             box-shadow: 0 4px 6px rgba(0,0,0,0.1);
             transition: all 0.2s;
         }
@@ -106,10 +119,10 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 15px;
+            margin-bottom: 8px;
         }
         .shift-time {
-            font-size: 20px;
+            font-size: 17px;
             font-weight: bold;
             color: #333;
         }
@@ -117,7 +130,7 @@
             display: flex;
             align-items: center;
             gap: 10px;
-            margin-bottom: 15px;
+            margin-bottom: 8px;
         }
         .capacity-bar {
             flex: 1;
@@ -140,35 +153,35 @@
         }
         .staff-list {
             background: #f9fafb;
-            padding: 15px;
+            padding: 8px 10px;
             border-radius: 8px;
-            margin-bottom: 15px;
+            margin-bottom: 8px;
         }
         .staff-list h4 {
-            font-size: 14px;
+            font-size: 13px;
             color: #666;
-            margin-bottom: 10px;
+            margin-bottom: 6px;
         }
         .staff-names {
             display: flex;
             flex-wrap: wrap;
-            gap: 8px;
+            gap: 6px;
         }
         .staff-badge {
             background: white;
-            padding: 6px 12px;
+            padding: 3px 8px;
             border-radius: 6px;
-            font-size: 14px;
+            font-size: 13px;
             font-weight: 500;
             color: #333;
             border: 1px solid #e0e0e0;
         }
         .btn {
             width: 100%;
-            padding: 12px;
+            padding: 8px;
             border: none;
             border-radius: 8px;
-            font-size: 16px;
+            font-size: 15px;
             font-weight: 600;
             cursor: pointer;
             transition: all 0.2s;
@@ -337,7 +350,13 @@
                 });
                 if (r.status === 401 || r.status === 403) { redirectToLogin(); return; }
                 const raw = await r.json();
-                myAssignments = Array.isArray(raw) ? raw : [];
+                // This endpoint returns the shift's staff under `coworkers` —
+                // map to the fields renderShiftCard expects
+                myAssignments = (Array.isArray(raw) ? raw : []).map(s => ({
+                    ...s,
+                    assigned_staff: s.coworkers || [],
+                    assigned_count: (s.coworkers || []).length
+                }));
 
                 document.getElementById('myShiftCount').textContent = myAssignments.length;
                 displayMyShifts();
@@ -370,50 +389,16 @@
             });
             
             let html = '';
-            
+
             Object.keys(byDate).forEach(date => {
                 html += `<div class="day-section">
                     <div class="day-header">${date}</div>`;
-                
-                // Ticket shifts
-                if (byDate[date].ticket && byDate[date].ticket.length > 0) {
-                    html += `<div class="role-section">
-                        <div class="role-header ticket">🎫 Ticket Sales Shifts</div>`;
-                    
-                    byDate[date].ticket.forEach(shift => {
-                        html += renderShiftCard(shift, false);
-                    });
-                    
-                    html += '</div>';
-                }
-                
-                // Gate shifts
-                if (byDate[date].gate && byDate[date].gate.length > 0) {
-                    html += `<div class="role-section">
-                        <div class="role-header gate">🚪 Gate/Entry Shifts</div>`;
-                    
-                    byDate[date].gate.forEach(shift => {
-                        html += renderShiftCard(shift, false);
-                    });
-                    
-                    html += '</div>';
-                }
-                
-                // Bar shifts
-                if (byDate[date].bar && byDate[date].bar.length > 0) {
-                    html += `<div class="role-section">
-                        <div class="role-header bar">🍺 Bar Shifts</div>`;
-                    
-                    byDate[date].bar.forEach(shift => {
-                        html += renderShiftCard(shift, false);
-                    });
-                    
-                    html += '</div>';
-                }
-                
+                html += renderRoleSection('ticket', '🎫 Ticket Sales', byDate[date].ticket, false);
+                html += renderRoleSection('gate', '🚪 Gate/Entry', byDate[date].gate, false);
+                html += renderRoleSection('bar', '🍺 Bar', byDate[date].bar, false);
                 html += '</div>';
             });
-            
+
             container.innerHTML = html || '<div class="empty-state"><div class="empty-state-icon">📭</div><p>No shifts available</p></div>';
         }
 
@@ -445,51 +430,29 @@
             });
             
             let html = '';
-            
+
             Object.keys(byDate).forEach(date => {
                 html += `<div class="day-section">
                     <div class="day-header">${date}</div>`;
-                
-                // Ticket shifts
-                if (byDate[date].ticket && byDate[date].ticket.length > 0) {
-                    html += `<div class="role-section">
-                        <div class="role-header ticket">🎫 Ticket Sales Shifts</div>`;
-                    
-                    byDate[date].ticket.forEach(shift => {
-                        html += renderShiftCard(shift, true);
-                    });
-                    
-                    html += '</div>';
-                }
-                
-                // Gate shifts
-                if (byDate[date].gate && byDate[date].gate.length > 0) {
-                    html += `<div class="role-section">
-                        <div class="role-header gate">🚪 Gate/Entry Shifts</div>`;
-                    
-                    byDate[date].gate.forEach(shift => {
-                        html += renderShiftCard(shift, true);
-                    });
-                    
-                    html += '</div>';
-                }
-                
-                // Bar shifts
-                if (byDate[date].bar && byDate[date].bar.length > 0) {
-                    html += `<div class="role-section">
-                        <div class="role-header bar">🍺 Bar Shifts</div>`;
-                    
-                    byDate[date].bar.forEach(shift => {
-                        html += renderShiftCard(shift, true);
-                    });
-                    
-                    html += '</div>';
-                }
-                
+                html += renderRoleSection('ticket', '🎫 Ticket Sales', byDate[date].ticket, true);
+                html += renderRoleSection('gate', '🚪 Gate/Entry', byDate[date].gate, true);
+                html += renderRoleSection('bar', '🍺 Bar', byDate[date].bar, true);
                 html += '</div>';
             });
             
             container.innerHTML = html;
+        }
+
+        // One department group: vertical label rail on the left, shifts stacked on the right
+        function renderRoleSection(roleClass, label, shifts, isMine) {
+            if (!shifts || shifts.length === 0) return '';
+            let html = `<div class="role-section ${roleClass}">
+                <div class="role-rail">${label}</div>
+                <div class="role-shifts">`;
+            shifts.forEach(shift => {
+                html += renderShiftCard(shift, isMine);
+            });
+            return html + '</div></div>';
         }
 
         function renderShiftCard(shift, isMine) {
