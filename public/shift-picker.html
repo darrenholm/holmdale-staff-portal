@@ -495,8 +495,9 @@
         function renderShiftCard(shift, isMine) {
             const startTime = formatTime(shift.start_time);
             const endTime = formatTime(shift.end_time);
-            const percentage = (shift.assigned_count / 6) * 100;
-            const isFull = shift.assigned_count >= 6;
+            const capacity = shift.persons_required || 6;
+            const percentage = (shift.assigned_count / capacity) * 100;
+            const isFull = shift.assigned_count >= capacity;
             
             let capacityClass = 'capacity-ok';
             if (percentage >= 100) capacityClass = 'capacity-full';
@@ -508,7 +509,7 @@
             if (shift.assigned_staff && shift.assigned_staff.length > 0) {
                 staffList = `
                     <div class="staff-list">
-                        <h4>Working with you (${shift.assigned_count}/6):</h4>
+                        <h4>Working with you (${shift.assigned_count}/${capacity}):</h4>
                         <div class="staff-names">
                             ${shift.assigned_staff.map(s => `<span class="staff-badge">${s.staff_name}</span>`).join('')}
                         </div>
@@ -538,7 +539,7 @@
                         <div class="capacity-bar">
                             <div class="capacity-fill ${capacityClass}" style="width: ${percentage}%"></div>
                         </div>
-                        <div class="capacity-text">${shift.assigned_count}/6</div>
+                        <div class="capacity-text">${shift.assigned_count}/${capacity}</div>
                     </div>
                     ${staffList}
                     ${actionButton}

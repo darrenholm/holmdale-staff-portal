@@ -244,6 +244,11 @@
             </div>
 
             <div class="form-group">
+                <label for="shiftPersons">Persons Required</label>
+                <input type="number" id="shiftPersons" min="1" step="1" value="6">
+            </div>
+
+            <div class="form-group">
                 <label for="shiftNotes">Notes (optional)</label>
                 <input type="text" id="shiftNotes" placeholder="e.g., Morning shift">
             </div>
@@ -399,7 +404,7 @@
                 <div class="shift-row">
                     <div class="shift-time">${startTime} - ${endTime}</div>
                     <div class="shift-assignments">${staffHTML}</div>
-                    <div class="shift-count">${shift.assigned_count}/6</div>
+                    <div class="shift-count">${shift.assigned_count}/${shift.persons_required || 6}</div>
                     <div class="shift-actions">
                         <button class="btn btn-primary btn-small" onclick="openEditModal('${shift.id}')">Edit</button>
                         <button class="btn btn-danger btn-small" onclick="deleteShift('${shift.id}')">Delete</button>
@@ -423,6 +428,7 @@
             document.getElementById('shiftStartTime').value = '';
             document.getElementById('shiftEndTime').value = '';
             document.getElementById('shiftRole').value = 'gate';
+            document.getElementById('shiftPersons').value = '6';
             document.getElementById('shiftNotes').value = '';
             document.getElementById('shiftModal').classList.add('active');
         }
@@ -439,6 +445,7 @@
             document.getElementById('shiftStartTime').value = shift.start_time;
             document.getElementById('shiftEndTime').value = shift.end_time;
             document.getElementById('shiftRole').value = shift.role;
+            document.getElementById('shiftPersons').value = shift.persons_required || 6;
             document.getElementById('shiftNotes').value = shift.notes || '';
             
             document.getElementById('shiftModal').classList.add('active');
@@ -454,18 +461,29 @@
             const startTime = document.getElementById('shiftStartTime').value;
             const endTime = document.getElementById('shiftEndTime').value;
             const role = document.getElementById('shiftRole').value;
+            const personsRequired = parseInt(document.getElementById('shiftPersons').value);
             const notes = document.getElementById('shiftNotes').value;
-            
+
             if (!date || !startTime || !endTime || !role) {
                 showMessage('⚠️ Please fill in all required fields', 'error');
                 return;
             }
-            
+
+            if (!Number.isInteger(personsRequired) || personsRequired < 1) {
+                showMessage('⚠️ Persons required must be at least 1', 'error');
+                return;
+            }
+
+            // Time inputs give HH:MM normally but HH:MM:SS when a loaded shift
+            // included seconds — only append :00 when they're missing
+            const toDbTime = (t) => t.length === 5 ? t + ':00' : t;
+
             const shiftData = {
                 date: date + 'T00:00:00.000Z',
-                start_time: startTime + ':00',
-                end_time: endTime + ':00',
+                start_time: toDbTime(startTime),
+                end_time: toDbTime(endTime),
                 role: role,
+                persons_required: personsRequired,
                 notes: notes
             };
             

@@ -548,7 +548,8 @@
             const startTime = formatTime(shift.start_time);
             const endTime = formatTime(shift.end_time);
             const assignedCount = shift.assigned_staff.length;
-            const isFull = assignedCount >= 6;
+            const capacity = shift.persons_required || 6;
+            const isFull = assignedCount >= capacity;
             
             let slotsHTML = '';
             
@@ -563,7 +564,7 @@
             });
             
             // Show empty slots
-            for (let i = assignedCount; i < 6; i++) {
+            for (let i = assignedCount; i < capacity; i++) {
                 slotsHTML += `
                     <div class="staff-slot empty">
                         <span class="staff-name">— Available —</span>
@@ -575,7 +576,7 @@
                 <div class="shift-card">
                     <div class="shift-header">
                         <div class="shift-time">${startTime} - ${endTime}</div>
-                        <div class="shift-capacity ${isFull ? 'full' : ''}">${assignedCount}/6 Staff</div>
+                        <div class="shift-capacity ${isFull ? 'full' : ''}">${assignedCount}/${capacity} Staff</div>
                     </div>
                     <div class="staff-grid">
                         ${slotsHTML}
