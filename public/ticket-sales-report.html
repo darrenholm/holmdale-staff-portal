@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ticket Sales Report — Holmdale Pro Rodeo</title>
+<script>
+(function(){
+  const token = localStorage.getItem('auth_token');
+  if (!token) { window.location.href='login.html'; return; }
+  try { const p=JSON.parse(atob(token.split('.')[1])); if(p.exp&&p.exp<Math.floor(Date.now()/1000)) window.location.href='login.html?expired=1'; }
+  catch(e){ window.location.href='login.html'; }
+})();
+</script>
+<style>
+  :root{ --green:#00B74A; --gold:#F5A623; --bg:#111; --panel:#1a1a1a; --surface:#222; --line:#333; --txt:#eee; --dim:#888;
+         --series-2026:#3987e5; --series-2025:#199e70; }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--bg);color:var(--txt);}
+  .header{background:var(--panel);border-bottom:1px solid var(--line);padding:14px 24px;display:flex;align-items:center;justify-content:space-between;}
+  .header h1{font-size:20px;color:var(--green);} .header a{color:var(--dim);text-decoration:none;font-size:14px;} .header a:hover{color:#fff;}
+  .container{max-width:1100px;margin:0 auto;padding:20px;}
+  .summary{display:flex;gap:14px;margin-bottom:18px;flex-wrap:wrap;}
+  .scard{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px 18px;flex:1;min-width:150px;}
+  .scard .v{font-size:26px;font-weight:800;color:var(--green);} .scard .l{font-size:11px;color:var(--dim);text-transform:uppercase;letter-spacing:1px;}
+  .scard.gold .v{color:var(--gold);}
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:18px;margin-bottom:18px;}
+  .panel h2{font-size:15px;margin-bottom:2px;}
+  .panel p.sub{font-size:12px;color:var(--dim);margin-bottom:10px;}
+  .legend{display:flex;gap:18px;font-size:13px;margin-bottom:6px;}
+  .legend .sw{display:inline-block;width:14px;height:3px;border-radius:2px;vertical-align:middle;margin-right:6px;}
+  .grid{stroke:#2b2b2b;stroke-width:1;}
+  .tick{font-size:11px;fill:var(--dim);}
+  .dlabel{font-size:12px;font-weight:700;}
+  .tip{position:absolute;pointer-events:none;background:#000d;border:1px solid var(--line);border-radius:8px;padding:8px 10px;font-size:12px;display:none;z-index:10;}
+  .tip b{color:#fff;}
+  details{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px 18px;}
+  details summary{cursor:pointer;font-weight:700;color:var(--gold);font-size:14px;}
+  table{width:100%;border-collapse:collapse;margin-top:10px;}
+  th{color:#999;font-size:11px;text-transform:uppercase;letter-spacing:1px;text-align:left;padding:6px;}
+  td{padding:6px;border-top:1px solid #282828;font-size:13px;}
+  .err{background:#3a2020;color:#f9a;border-radius:10px;padding:14px;margin-bottom:14px;display:none;}
+</style>
+</head>
+<body>
+<div class="header">
+  <h1>📈 Ticket Sales Report</h1>
+  <div><a href="index.html">← Portal</a></div>
+</div>
+
+<div class="container">
+  <div class="err" id="err"></div>
+  <div class="summary" id="summary"></div>
+
+  <div class="panel" style="position:relative;">
+    <h2>Advance online ticket sales — cumulative, by days before opening day</h2>
+    <p class="sub">2026 pulled live from ticket orders (event opens Jul 31) vs the 2025 Stripe history (event opened Aug 1). Advance window only — event-weekend walk-up/day-of sales excluded.</p>
+    <div class="legend">
+      <span><span class="sw" style="background:var(--series-2026)"></span>2026 (this year)</span>
+      <span><span class="sw" style="background:var(--series-2025)"></span>2025 (last year)</span>
+    </div>
+    <div id="chartHost"></div>
+    <div class="tip" id="tip"></div>
+  </div>
+
+  <details>
+    <summary>Daily numbers (table view)</summary>
+    <table id="dailyTable"></table>
+  </details>
+</div>
+
+<script>
+const API='https://rodeo-fresh-production-7348.up.railway.app/api';
+const authHdr={'Authorization':'Bearer '+localStorage.getItem('auth_token')};
+
+// Last year's cumulative advance curve (from the 2025 Stripe export; event opened 2025-08-01).
+// daysOut = days before opening day. Final advance total was $12,176.56 / 316 tickets.
+const CURVE_2025=[{"daysOut":95,"cum":0.0},{"daysOut":92,"cum":0.0},{"daysOut":74,"cum":0.0},{"daysOut":62,"cum":257.95},{"daysOut":47,"cum":433.8},{"daysOut":46,"cum":574.48},{"daysOut":33,"cum":644.82},{"daysOut":32,"cum":855.84},{"daysOut":23,"cum":996.52},{"daysOut":21,"cum":1102.03},{"daysOut":19,"cum":1288.81},{"daysOut":18,"cum":1359.15},{"daysOut":17,"cum":1447.37},{"daysOut":15,"cum":2256.28},{"daysOut":14,"cum":2343.32},{"daysOut":13,"cum":2589.51},{"daysOut":12,"cum":2822.4},{"daysOut":11,"cum":2938.84},{"daysOut":9,"cum":3529.19},{"daysOut":8,"cum":3951.23},{"daysOut":7,"cum":4384.2},{"daysOut":6,"cum":5050.06},{"daysOut":5,"cum":5594.31},{"daysOut":4,"cum":7168.82},{"daysOut":3,"cum":8994.71},{"daysOut":2,"cum":10327.04},{"daysOut":1,"cum":12176.56}];
+const TICKETS_2025_AT={19:37,1:316};   // tickets sold by 19 days out / by end of advance window
+const EVENT_2026='2026-07-31';
+const MAX_DAYS=95;
+
+const money=v=>'$'+Math.round(v).toLocaleString();
+const esc=s=>(s==null?'':String(s)).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+// Fill a dense per-day cumulative array indexed by daysOut (MAX_DAYS…0)
+function dense(curve){
+  const byDay={}; curve.forEach(p=>byDay[p.daysOut]=p.cum);
+  const arr={}; let cur=0;
+  for(let d=MAX_DAYS; d>=0; d--){ if(byDay[d]!=null) cur=byDay[d]; arr[d]=cur; }
+  return arr;
+}
+
+async function load(){
+  let orders=[];
+  try{
+    const r=await fetch(API+'/ticket-orders',{headers:authHdr});
+    if(r.status===401||r.status===403){ location.href='login.html?expired=1'; return; }
+    if(!r.ok) throw new Error('API '+r.status);
+    orders=await r.json();
+  }catch(e){
+    const el=document.getElementById('err');
+    el.textContent='Could not load this year\'s orders ('+e.message+') — showing last year only.';
+    el.style.display='block';
+  }
+
+  // This year: confirmed orders since Jan 1, before opening day (advance only)
+  const ev=new Date(EVENT_2026+'T00:00:00');
+  const daily={};   // date → {amount,tickets,orders}
+  let total=0, tickets=0, count=0;
+  (Array.isArray(orders)?orders:[]).forEach(o=>{
+    if(o.status!=='confirmed') return;
+    if(o.payment_status==='refunded') return;
+    const d=(o.created_date||'').slice(0,10);
+    if(d<'2026-01-01'||d>=EVENT_2026) return;
+    const amt=parseFloat(o.total_price)||0;
+    const n=(parseInt(o.quantity_adult)||0)+(parseInt(o.quantity_child)||0);
+    if(!daily[d]) daily[d]={amount:0,tickets:0,orders:0};
+    daily[d].amount+=amt; daily[d].tickets+=n; daily[d].orders++;
+    total+=amt; tickets+=n; count++;
+  });
+
+  const curve2026=Object.keys(daily).sort().reduce((acc,d)=>{
+    const daysOut=Math.ceil((ev-new Date(d+'T00:00:00'))/86400000);
+    const prev=acc.length?acc[acc.length-1].cum:0;
+    acc.push({daysOut,cum:prev+daily[d].amount,date:d});
+    return acc;
+  },[]);
+
+  const todayOut=Math.max(0,Math.ceil((ev-new Date())/86400000));
+  const cum25=dense(CURVE_2025), cum26=dense(curve2026);
+  const lastYearSamePoint=cum25[Math.min(todayOut,MAX_DAYS)];
+  const pace=lastYearSamePoint>0?(total/lastYearSamePoint):null;
+
+  document.getElementById('summary').innerHTML=`
+    <div class="scard"><div class="v">${money(total)}</div><div class="l">2026 advance sales</div></div>
+    <div class="scard"><div class="v">${tickets.toLocaleString()}</div><div class="l">Tickets · ${count} orders</div></div>
+    <div class="scard gold"><div class="v">${money(lastYearSamePoint)}</div><div class="l">2025 at ${todayOut} days out</div></div>
+    <div class="scard"><div class="v">${pace? (pace>=1? (pace).toFixed(1)+'× ahead':'behind ('+(pace).toFixed(1)+'×)') : '—'}</div><div class="l">Pace vs last year</div></div>
+    <div class="scard gold"><div class="v">$12,177</div><div class="l">2025 full advance total</div></div>`;
+
+  drawChart(cum25,cum26,curve2026,todayOut);
+  renderTable(daily);
+}
+
+function drawChart(cum25,cum26,curve2026,todayOut){
+  const W=1040,H=380,ML=64,MR=90,MT=16,MB=40;
+  const pw=W-ML-MR, ph=H-MT-MB;
+  const maxV=Math.max(12177, cum26[0]||0, ...Object.values(cum26))*1.08;
+  const ymax=Math.ceil(maxV/3000)*3000;
+  const x=d=>ML+pw*(MAX_DAYS-d)/MAX_DAYS;     // daysOut MAX→0 left→right
+  const y=v=>MT+ph*(1-v/ymax);
+
+  let grid='';
+  for(let v=0;v<=ymax;v+=3000){
+    grid+=`<line class="grid" x1="${ML}" y1="${y(v)}" x2="${ML+pw}" y2="${y(v)}"/>`+
+          `<text class="tick" x="${ML-8}" y="${y(v)+4}" text-anchor="end">$${v/1000}k</text>`;
+  }
+  for(let d=90;d>=0;d-=15){
+    grid+=`<text class="tick" x="${x(d)}" y="${MT+ph+22}" text-anchor="middle">${d===0?'opening day':d+'d out'}</text>`;
+  }
+
+  // step-after cumulative paths
+  function path(cum,stopAt){
+    let p='',prev=null;
+    for(let d=MAX_DAYS;d>=stopAt;d--){
+      const px=x(d),py=y(cum[d]);
+      if(prev===null) p=`M${px.toFixed(1)} ${py.toFixed(1)}`;
+      else p+=` H${px.toFixed(1)} V${py.toFixed(1)}`;
+      prev=py;
+    }
+    return p;
+  }
+  const line25=`<path d="${path(cum25,0)}" fill="none" stroke="var(--series-2025)" stroke-width="2"/>`;
+  const line26=`<path d="${path(cum26,todayOut)}" fill="none" stroke="var(--series-2026)" stroke-width="2.5"/>`;
+
+  // today marker + direct end labels
+  const tx=x(todayOut);
+  const today=`<line x1="${tx}" y1="${MT}" x2="${tx}" y2="${MT+ph}" stroke="#555" stroke-dasharray="4 4"/>`+
+    `<text class="tick" x="${tx}" y="${MT-4}" text-anchor="middle">today</text>`;
+  const l25=`<text class="dlabel" fill="var(--series-2025)" x="${ML+pw+6}" y="${y(cum25[0])+4}">2025 · ${money(cum25[0])}</text>`;
+  const v26=cum26[todayOut]||0;
+  const l26=`<text class="dlabel" fill="var(--series-2026)" x="${Math.min(tx+6,ML+pw+6)}" y="${Math.max(y(v26)-8,12)}">2026 · ${money(v26)}</text>`;
+
+  document.getElementById('chartHost').innerHTML=
+    `<svg id="chart" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" style="max-width:100%;" role="img"
+      aria-label="Cumulative advance ticket sales, 2026 versus 2025, by days before opening day">${grid}${line25}${line26}${today}${l25}${l26}</svg>`;
+
+  // hover tooltip: nearest day
+  const svg=document.getElementById('chart'), tip=document.getElementById('tip');
+  svg.addEventListener('mousemove',e=>{
+    const r=svg.getBoundingClientRect();
+    const mx=(e.clientX-r.left)*(W/r.width);
+    let d=Math.round(MAX_DAYS-(mx-ML)/pw*MAX_DAYS);
+    if(d<0||d>MAX_DAYS){ tip.style.display='none'; return; }
+    tip.style.display='block';
+    tip.style.left=(e.clientX-r.left+16)+'px';
+    tip.style.top=(e.clientY-r.top-10)+'px';
+    tip.innerHTML=`<b>${d===0?'Opening day':d+' days out'}</b><br>`+
+      `<span style="color:var(--series-2026)">2026:</span> ${d>=todayOut?money(cum26[d]||0):'—'}<br>`+
+      `<span style="color:var(--series-2025)">2025:</span> ${money(cum25[d])}`;
+  });
+  svg.addEventListener('mouseleave',()=>tip.style.display='none');
+}
+
+function renderTable(daily){
+  const dates=Object.keys(daily).sort().reverse();
+  document.getElementById('dailyTable').innerHTML=
+    '<tr><th>Date (2026)</th><th>Sales</th><th>Tickets</th><th>Orders</th></tr>'+
+    (dates.length?dates.map(d=>`<tr><td>${esc(d)}</td><td>${money(daily[d].amount)}</td><td>${daily[d].tickets}</td><td>${daily[d].orders}</td></tr>`).join('')
+      :'<tr><td colspan="4" style="color:var(--dim)">No confirmed online orders yet this year</td></tr>');
+}
+
+load();
+</script>
+</body>
+</html>
