@@ -127,8 +127,12 @@
             <div id="nfcMode">
                 <div class="nfc-box">
                     <div class="nfc-icon">📳</div>
-                    <h3>Tap Wristband</h3>
-                    <p>Hold wristband to the back of the phone</p>
+                    <h3 id="nfcTitle">Tap Wristband</h3>
+                    <p id="nfcHint">Hold wristband to the back of the phone</p>
+                    <button id="nfcEnableBtn" class="hidden" onclick="startNFC()"
+                        style="width:100%;margin-top:14px;padding:16px;font-size:17px;font-weight:bold;background:#00B74A;color:white;border:none;border-radius:10px;cursor:pointer;">
+                        📳 Tap to Enable NFC
+                    </button>
                 </div>
             </div>
             <div id="nameMode" class="hidden">
@@ -201,7 +205,7 @@
         const API = 'https://rodeo-fresh-production-7348.up.railway.app/api';
         let token = '', currentBand = null, currentStaff = null;
         let drinks = [], recentTransactions = [], recentStaffTransactions = [];
-        let nfcReader = null, isProcessing = false, currentMode = 'nfc';
+        let nfcReader = null, nfcAbort = null, isProcessing = false, currentMode = 'nfc';
         let allWristbands = [];
 
         function formatDollars(cents) {
@@ -261,20 +265,42 @@
 
         async function startNFC() {
             if (currentMode !== 'nfc') return;
+            if (!('NDEFReader' in window)) { switchToName(); showMessage('⚠️ NFC not supported — using name search', 'warning'); return; }
+            stopNFC();
             try {
                 nfcReader = new NDEFReader();
+                nfcAbort = new AbortController();
                 nfcReader.onreading = async (event) => {
                     if (isProcessing) return;
                     isProcessing = true;
                     await lookupWristband(normalizeUid(event.serialNumber));
                     setTimeout(() => { isProcessing = false; }, 1000);
                 };
-                await nfcReader.scan();
-            } catch(e) { switchToName(); showMessage('⚠️ NFC unavailable — using name search', 'warning'); }
+                nfcReader.onreadingerror = () => showMessage('⚠️ Couldn\'t read that tag — hold it steady and tap again', 'warning');
+                await nfcReader.scan({ signal: nfcAbort.signal });
+                setNfcStatus(true);
+            } catch(e) {
+                if (e.name === 'NotAllowedError' || e.name === 'SecurityError') {
+                    // Chrome only grants the NFC permission from a user gesture —
+                    // show the enable button instead of silently dropping to name search
+                    setNfcStatus(false);
+                } else {
+                    switchToName(); showMessage('⚠️ NFC unavailable — using name search', 'warning');
+                }
+            }
+        }
+
+        function setNfcStatus(active) {
+            document.getElementById('nfcEnableBtn').classList.toggle('hidden', active);
+            document.getElementById('nfcTitle').textContent = active ? 'Tap Wristband' : 'NFC Needs Permission';
+            document.getElementById('nfcHint').textContent = active
+                ? 'Hold wristband to the back of the phone'
+                : 'Tap the button below, then allow NFC when prompted';
         }
 
         function stopNFC() {
-            if (nfcReader) { try { nfcReader.onreading = null; nfcReader = null; } catch(e) {} }
+            if (nfcAbort) { try { nfcAbort.abort(); } catch(e) {} nfcAbort = null; }
+            if (nfcReader) { try { nfcReader.onreading = null; nfcReader.onreadingerror = null; } catch(e) {} nfcReader = null; }
             isProcessing = false;
         }
 
@@ -285,7 +311,7 @@
             document.getElementById('nameMode').classList.add('hidden');
             document.getElementById('nfcBtn').classList.add('active');
             document.getElementById('nameBtn').classList.remove('active');
-            stopNFC(); setTimeout(() => startNFC(), 100);
+            startNFC(); // called directly so the tap's user gesture can grant the NFC permission
         }
 
         function switchToName() {
@@ -567,7 +593,7 @@
             document.getElementById('customerName').value='';
             document.getElementById('searchResults').classList.add('hidden');
             clearMessage();
-            if (currentMode==='nfc') setTimeout(()=>startNFC(),100);
+            if (currentMode==='nfc') startNFC();
             else document.getElementById('customerName').focus();
         }
 
