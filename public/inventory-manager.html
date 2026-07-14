@@ -213,7 +213,7 @@
         <div class="header">
             <h1>HOLMDALE PRO RODEO</h1>
             <h2>📊 Inventory Manager</h2>
-            <p>Manage Drink Stock & Sales</p>
+            <p>Manage Drink & Merch Stock</p>
         </div>
 
         <div id="alertContainer"></div>
@@ -261,6 +261,62 @@
                 </thead>
                 <tbody id="inventoryTable"></tbody>
             </table>
+        </div>
+
+        <div class="card">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h3 style="margin: 0; border: none; padding: 0;">Merch Inventory</h3>
+            </div>
+            <table class="inventory-table">
+                <thead>
+                    <tr>
+                        <th>Product</th>
+                        <th>Price</th>
+                        <th>Sold</th>
+                        <th>Remaining</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="merchTable"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Merch Restock Modal -->
+    <div class="modal" id="merchRestockModal">
+        <div class="modal-content">
+            <h3>Restock <span id="merchRestockName"></span></h3>
+            <div class="input-group">
+                <label for="merchRestockAmount">Add Quantity:</label>
+                <input type="number" id="merchRestockAmount" min="1" value="20">
+            </div>
+            <div class="modal-buttons">
+                <button class="btn btn-cancel" onclick="closeMerchRestock()">Cancel</button>
+                <button class="btn btn-restock" onclick="confirmMerchRestock()">Add Stock</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Merch Edit Modal -->
+    <div class="modal" id="merchEditModal">
+        <div class="modal-content">
+            <h3>Edit Product</h3>
+            <div class="input-group">
+                <label for="merchEditName">Product Name:</label>
+                <input type="text" id="merchEditName">
+            </div>
+            <div class="input-group">
+                <label for="merchEditPrice">Price:</label>
+                <input type="number" id="merchEditPrice" min="0" step="0.01">
+            </div>
+            <div class="input-group">
+                <label for="merchEditStock">Stock On Hand:</label>
+                <input type="number" id="merchEditStock" min="0">
+            </div>
+            <div class="modal-buttons">
+                <button class="btn btn-cancel" onclick="closeMerchEdit()">Cancel</button>
+                <button class="btn btn-edit" onclick="confirmMerchEdit()">Save Changes</button>
+            </div>
         </div>
     </div>
 
@@ -344,6 +400,7 @@
                 console.log('Logged in');
 
                 await loadInventory();
+                await loadMerch();
             } catch(err) {
                 console.error('Login failed:', err);
                 showMessage('❌ Failed to connect. Check internet.', 'error');
@@ -671,6 +728,185 @@
             }
         }
 
+        // ==================== MERCH INVENTORY ====================
+        let merchProducts = [];
+        let merchSoldById = {};
+        let currentProduct = null;
+
+        function asArray(v) {
+            if (Array.isArray(v)) return v;
+            if (typeof v === 'string') { try { const a = JSON.parse(v); return Array.isArray(a) ? a : []; } catch(e) { return []; } }
+            return [];
+        }
+
+        async function loadMerch() {
+            try {
+                const r = await fetch(API + '/products');
+                const raw = await r.json();
+                merchProducts = Array.isArray(raw) ? raw : [];
+
+                // Sold counts come from merch sales history (products has no sold column)
+                merchSoldById = {};
+                try {
+                    const sr = await fetch(API + '/merch/sales');
+                    const sd = await sr.json();
+                    (sd.sales || []).forEach(sale => {
+                        asArray(sale.items).forEach(it => {
+                            if (it.productId) merchSoldById[it.productId] = (merchSoldById[it.productId] || 0) + (it.qty || 1);
+                        });
+                    });
+                } catch(e) { console.warn('Could not load merch sales:', e); }
+
+                displayMerch();
+            } catch(err) {
+                console.error('Error loading merch:', err);
+                showMessage('❌ Failed to load merch inventory', 'error');
+            }
+        }
+
+        function displayMerch() {
+            const table = document.getElementById('merchTable');
+            table.innerHTML = '';
+
+            merchProducts.forEach((p, i) => {
+                const stock = p.stock || 0;
+                const sold = merchSoldById[p.id] || 0;
+                const initial = stock + sold;
+                const percentage = initial > 0 ? (stock / initial) * 100 : 0;
+
+                let stockClass = 'stock-ok', progressClass = 'progress-ok';
+                if (percentage < 20) { stockClass = 'stock-out'; progressClass = 'progress-out'; }
+                else if (percentage < 50) { stockClass = 'stock-low'; progressClass = 'progress-low'; }
+
+                const variants = [asArray(p.colors).join(' / '), asArray(p.sizes).join(' ')]
+                    .filter(Boolean).join(' · ');
+
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>
+                        <div class="drink-name"></div>
+                        <div class="merch-variants" style="font-size:12px;color:#888;margin-top:2px;"></div>
+                    </td>
+                    <td>$${parseFloat(p.price || 0).toFixed(2)}</td>
+                    <td>${sold}</td>
+                    <td>
+                        <div class="stock-level ${stockClass}">${stock}</div>
+                        <div class="progress-bar">
+                            <div class="progress-fill ${progressClass}" style="width: ${percentage}%"></div>
+                        </div>
+                    </td>
+                    <td>
+                        <div class="btn-group">
+                            <button class="btn btn-restock" onclick="openMerchRestock(${i})">+ Restock</button>
+                            <button class="btn btn-edit" onclick="openMerchEdit(${i})">⚙️ Edit</button>
+                            <button class="btn btn-remove" onclick="removeMerch(${i})">🗑️</button>
+                        </div>
+                    </td>
+                `;
+                row.querySelector('.drink-name').textContent = p.name || '';
+                row.querySelector('.merch-variants').textContent = variants;
+                table.appendChild(row);
+            });
+        }
+
+        // PUT /api/products/:id replaces every column, so always send the full
+        // product merged with the changes or omitted fields get nulled
+        async function saveMerchProduct(p, changes) {
+            const body = {
+                name: p.name, description: p.description, category: p.category,
+                price: p.price, image_url: p.image_url, stripe_price_id: p.stripe_price_id,
+                sizes: asArray(p.sizes), colors: asArray(p.colors), stock: p.stock,
+                weight: p.weight, length: p.length, width: p.width, height: p.height,
+                ...changes
+            };
+            return fetch(API + '/products/' + p.id, {
+                method: 'PUT',
+                headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+                body: JSON.stringify(body)
+            });
+        }
+
+        function openMerchRestock(i) {
+            currentProduct = merchProducts[i];
+            document.getElementById('merchRestockName').textContent = currentProduct.name;
+            document.getElementById('merchRestockAmount').value = 20;
+            document.getElementById('merchRestockModal').classList.add('active');
+            document.getElementById('merchRestockAmount').focus();
+        }
+        function closeMerchRestock() {
+            document.getElementById('merchRestockModal').classList.remove('active');
+            currentProduct = null;
+        }
+        async function confirmMerchRestock() {
+            const amount = parseInt(document.getElementById('merchRestockAmount').value);
+            if (!amount || amount < 1) { alert('Please enter a valid quantity'); return; }
+            try {
+                const r = await saveMerchProduct(currentProduct, { stock: (currentProduct.stock || 0) + amount });
+                if (r.status === 401 || r.status === 403) { redirectToLogin(); return; }
+                if (r.ok) {
+                    showMessage(`✅ Added ${amount} ${currentProduct.name} to stock!`, 'success');
+                    closeMerchRestock();
+                    await loadMerch();
+                } else {
+                    const d = await r.json().catch(() => ({}));
+                    showMessage('❌ ' + (d.error || 'Restock failed'), 'error');
+                }
+            } catch(err) { showMessage('❌ Error restocking', 'error'); }
+        }
+
+        function openMerchEdit(i) {
+            currentProduct = merchProducts[i];
+            document.getElementById('merchEditName').value = currentProduct.name || '';
+            document.getElementById('merchEditPrice').value = parseFloat(currentProduct.price || 0).toFixed(2);
+            document.getElementById('merchEditStock').value = currentProduct.stock || 0;
+            document.getElementById('merchEditModal').classList.add('active');
+            document.getElementById('merchEditName').focus();
+        }
+        function closeMerchEdit() {
+            document.getElementById('merchEditModal').classList.remove('active');
+            currentProduct = null;
+        }
+        async function confirmMerchEdit() {
+            if (!currentProduct) return;
+            const name = document.getElementById('merchEditName').value.trim();
+            const price = parseFloat(document.getElementById('merchEditPrice').value);
+            const stock = parseInt(document.getElementById('merchEditStock').value);
+            if (!name) { alert('Product name cannot be empty'); return; }
+            if (isNaN(price) || price < 0) { alert('Price must be a non-negative number'); return; }
+            if (isNaN(stock) || stock < 0) { alert('Stock must be a non-negative number'); return; }
+            try {
+                const r = await saveMerchProduct(currentProduct, { name, price, stock });
+                if (r.status === 401 || r.status === 403) { redirectToLogin(); return; }
+                if (r.ok) {
+                    showMessage(`✅ Updated ${name}`, 'success');
+                    closeMerchEdit();
+                    await loadMerch();
+                } else {
+                    const d = await r.json().catch(() => ({}));
+                    showMessage('❌ ' + (d.error || 'Update failed'), 'error');
+                }
+            } catch(err) { showMessage('❌ Error updating product', 'error'); }
+        }
+
+        async function removeMerch(i) {
+            const p = merchProducts[i];
+            if (!confirm(`Remove ${p.name} from inventory?\n\nThis permanently deletes the product (it also disappears from the merch POS and online shop).`)) return;
+            try {
+                const r = await fetch(API + '/products/' + p.id, {
+                    method: 'DELETE',
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+                if (r.status === 401 || r.status === 403) { redirectToLogin(); return; }
+                if (r.ok) {
+                    showMessage(`✅ Removed ${p.name}`, 'success');
+                    await loadMerch();
+                } else {
+                    const d = await r.json().catch(() => ({}));
+                    showMessage('❌ ' + (d.error || 'Delete failed'), 'error');
+                }
+            } catch(err) { showMessage('❌ Error removing product', 'error'); }
+        }
+
         function showMessage(msg, type) {
             const alertDiv = document.getElementById('alertContainer');
             alertDiv.innerHTML = `<div class="alert alert-${type}">${msg}</div>`;
@@ -683,6 +919,12 @@
         });
         document.getElementById('editAmount').addEventListener('keypress', (e) => {
             if (e.key === 'Enter') confirmEdit();
+        });
+        document.getElementById('merchRestockAmount').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') confirmMerchRestock();
+        });
+        document.getElementById('merchEditStock').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') confirmMerchEdit();
         });
     </script>
 </body>
