@@ -490,6 +490,8 @@
 
   .variant-opt:hover { border-color: var(--green); }
   .variant-opt.selected { border-color: var(--green); background: var(--green-dim); color: var(--green-light); }
+  .variant-opt.disabled { opacity: 0.35; pointer-events: none; text-decoration: line-through; }
+  .variant-opt .v-count { display: block; font-size: 11px; font-weight: 400; color: var(--text-dim); margin-top: 2px; text-align: center; }
 
   .modal-actions {
     display: flex;
@@ -1030,7 +1032,45 @@ function parseColors(raw) {
   catch { return []; }
 }
 
+// ===== VARIANT STOCK =====
+function variantKey(color, size) {
+  return color && size ? `${color}|${size}` : (color || size || null);
+}
+
+function variantRemaining(product, color, size) {
+  const vs = product.variant_stock;
+  if (!vs || typeof vs !== 'object') return null; // no per-variant tracking
+  const key = variantKey(color, size);
+  if (!key) return null;
+  return Math.max(0, parseInt(vs[key]) || 0);
+}
+
+function colorRemaining(product, color, sizes) {
+  if (!product.variant_stock) return null;
+  if (!sizes || sizes.length === 0) return variantRemaining(product, color, null);
+  return sizes.reduce((sum, s) => sum + (variantRemaining(product, color, s) || 0), 0);
+}
+
+function cartQtyFor(productId, size, color) {
+  const key = `${productId}_${size||''}_${color||''}`;
+  const it = cart.find(i => i.key === key);
+  return it ? it.qty : 0;
+}
+
+// How many more of this variant can go in the cart (Infinity when untracked)
+function availableToAdd(product, size, color) {
+  const rem = variantRemaining(product, color, size);
+  if (rem === null) return Infinity;
+  return rem - cartQtyFor(product.id, size, color);
+}
+
 function addToCart(product, size, color) {
+  if (availableToAdd(product, size, color) < 1) {
+    const label = [color, size].filter(Boolean).join(' ');
+    alert(`Out of stock: ${product.name}${label ? ' (' + label + ')' : ''}`);
+    return;
+  }
+
   // Check if already in cart with same variant
   const key = `${product.id}_${size||''}_${color||''}`;
   const existing = cart.find(item => item.key === key);
@@ -1055,35 +1095,48 @@ function addToCart(product, size, color) {
 // ===== VARIANT MODAL =====
 function openVariantModal(product, sizes, colors) {
   pendingProduct = product;
-  selectedSize = sizes.length > 0 ? sizes[0] : null;
-  selectedColor = colors.length > 0 ? colors[0] : null;
+
+  // Default to the first in-stock option
+  selectedColor = colors.length > 0
+    ? (colors.find(c => { const r = colorRemaining(product, c, sizes); return r === null || r > 0; }) || colors[0])
+    : null;
+  selectedSize = sizes.length > 0
+    ? (sizes.find(s => { const r = variantRemaining(product, selectedColor, s); return r === null || r > 0; }) || sizes[0])
+    : null;
 
   document.getElementById('vmTitle').textContent = product.name;
   document.getElementById('vmPrice').textContent = '$' + parseFloat(product.price).toFixed(2);
 
-  // Sizes
-  const sizeSec = document.getElementById('vmSizes');
-  if (sizes.length > 0) {
-    sizeSec.style.display = '';
-    document.getElementById('vmSizeOptions').innerHTML = sizes.map(s =>
-      `<div class="variant-opt ${s === selectedSize ? 'selected' : ''}" onclick="pickSize('${s}')">${s}</div>`
-    ).join('');
-  } else {
-    sizeSec.style.display = 'none';
-  }
+  document.getElementById('vmSizes').style.display = sizes.length > 0 ? '' : 'none';
+  document.getElementById('vmColors').style.display = colors.length > 0 ? '' : 'none';
 
-  // Colors
-  const colorSec = document.getElementById('vmColors');
-  if (colors.length > 0) {
-    colorSec.style.display = '';
-    document.getElementById('vmColorOptions').innerHTML = colors.map(c =>
-      `<div class="variant-opt ${c === selectedColor ? 'selected' : ''}" onclick="pickColor('${c}')">${c}</div>`
-    ).join('');
-  } else {
-    colorSec.style.display = 'none';
-  }
-
+  renderVariantOptions();
   document.getElementById('variantModal').classList.add('open');
+}
+
+function renderVariantOptions() {
+  const p = pendingProduct;
+  if (!p) return;
+  const sizes = parseSizes(p.sizes);
+  const colors = parseColors(p.colors);
+
+  if (colors.length > 0) {
+    document.getElementById('vmColorOptions').innerHTML = colors.map(c => {
+      const rem = colorRemaining(p, c, sizes);
+      const dis = rem !== null && rem <= 0;
+      const cnt = rem !== null ? `<span class="v-count">${rem} left</span>` : '';
+      return `<div class="variant-opt ${c === selectedColor ? 'selected' : ''} ${dis ? 'disabled' : ''}" data-val="${c}" onclick="pickColor(this.dataset.val)">${c}${cnt}</div>`;
+    }).join('');
+  }
+
+  if (sizes.length > 0) {
+    document.getElementById('vmSizeOptions').innerHTML = sizes.map(s => {
+      const rem = variantRemaining(p, selectedColor, s);
+      const dis = rem !== null && rem <= 0;
+      const cnt = rem !== null ? `<span class="v-count">${rem} left</span>` : '';
+      return `<div class="variant-opt ${s === selectedSize ? 'selected' : ''} ${dis ? 'disabled' : ''}" data-val="${s}" onclick="pickSize(this.dataset.val)">${s}${cnt}</div>`;
+    }).join('');
+  }
 }
 
 function closeVariantModal() {
@@ -1093,16 +1146,22 @@ function closeVariantModal() {
 
 function pickSize(s) {
   selectedSize = s;
-  document.querySelectorAll('#vmSizeOptions .variant-opt').forEach(el => {
-    el.classList.toggle('selected', el.textContent.trim() === s);
-  });
+  renderVariantOptions();
 }
 
 function pickColor(c) {
   selectedColor = c;
-  document.querySelectorAll('#vmColorOptions .variant-opt').forEach(el => {
-    el.classList.toggle('selected', el.textContent.trim() === c);
-  });
+  // Size availability depends on the colour — if the current size just went
+  // unavailable for this colour, hop to the first size that's in stock
+  const p = pendingProduct;
+  const sizes = parseSizes(p.sizes);
+  if (sizes.length > 0) {
+    const rem = variantRemaining(p, selectedColor, selectedSize);
+    if (rem !== null && rem <= 0) {
+      selectedSize = sizes.find(s => { const r = variantRemaining(p, selectedColor, s); return r === null || r > 0; }) || selectedSize;
+    }
+  }
+  renderVariantOptions();
 }
 
 function confirmAddToCart() {
@@ -1160,8 +1219,17 @@ function renderCart() {
 }
 
 function changeQty(idx, delta) {
-  cart[idx].qty += delta;
-  if (cart[idx].qty <= 0) cart.splice(idx, 1);
+  const item = cart[idx];
+  if (delta > 0) {
+    const product = products.find(p => p.id === item.productId);
+    if (product && availableToAdd(product, item.size, item.color) < 1) {
+      const label = [item.color, item.size].filter(Boolean).join(' ');
+      alert(`No more in stock: ${item.name}${label ? ' (' + label + ')' : ''}`);
+      return;
+    }
+  }
+  item.qty += delta;
+  if (item.qty <= 0) cart.splice(idx, 1);
   renderCart();
 }
 
@@ -1334,7 +1402,13 @@ async function recordSale(method, orderId) {
   // Success — update stock and daily stats
   cart.forEach(item => {
     const product = products.find(p => p.id === item.productId);
-    if (product) product.stock = Math.max(0, (product.stock || 0) - item.qty);
+    if (product) {
+      product.stock = Math.max(0, (product.stock || 0) - item.qty);
+      const vkey = variantKey(item.color, item.size);
+      if (vkey && product.variant_stock && vkey in product.variant_stock) {
+        product.variant_stock[vkey] = Math.max(0, (parseInt(product.variant_stock[vkey]) || 0) - item.qty);
+      }
+    }
   });
 
   todaySalesTotal += total;

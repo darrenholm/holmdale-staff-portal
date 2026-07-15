@@ -206,6 +206,29 @@
         .alert-success { background: #c6f6d5; color: #22543d; border: 2px solid #48bb78; }
         .alert-error { background: #fed7d7; color: #742a2a; border: 2px solid #f56565; }
         .hidden { display: none; }
+        .input-group select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 16px;
+            background: white;
+        }
+        .variant-chips { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; max-width: 360px; }
+        .v-chip {
+            font-size: 11px; padding: 2px 7px; border-radius: 10px; white-space: nowrap;
+            background: #eef7f0; color: #22543d; border: 1px solid #c6e6d0;
+        }
+        .v-chip.v-low { background: #fef3e2; color: #7c4a03; border-color: #f5d9a8; }
+        .v-chip.v-zero { background: #fde8e8; color: #822727; border-color: #f5b5b5; }
+        .variant-grid {
+            display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+            gap: 8px; max-height: 300px; overflow-y: auto;
+        }
+        .variant-grid label { font-size: 12px; font-weight: 600; color: #555; }
+        .variant-grid input {
+            width: 100%; padding: 8px; border: 2px solid #e0e0e0; border-radius: 6px; font-size: 14px; margin-top: 3px;
+        }
     </style>
 </head>
 <body>
@@ -286,6 +309,14 @@
     <div class="modal" id="merchRestockModal">
         <div class="modal-content">
             <h3>Restock <span id="merchRestockName"></span></h3>
+            <div class="input-group hidden" id="merchRestockColorGroup">
+                <label for="merchRestockColor">Colour:</label>
+                <select id="merchRestockColor"></select>
+            </div>
+            <div class="input-group hidden" id="merchRestockSizeGroup">
+                <label for="merchRestockSize">Size:</label>
+                <select id="merchRestockSize"></select>
+            </div>
             <div class="input-group">
                 <label for="merchRestockAmount">Add Quantity:</label>
                 <input type="number" id="merchRestockAmount" min="1" value="20">
@@ -309,9 +340,13 @@
                 <label for="merchEditPrice">Price:</label>
                 <input type="number" id="merchEditPrice" min="0" step="0.01">
             </div>
-            <div class="input-group">
+            <div class="input-group" id="merchEditStockGroup">
                 <label for="merchEditStock">Stock On Hand:</label>
                 <input type="number" id="merchEditStock" min="0">
+            </div>
+            <div class="input-group hidden" id="merchEditVariantsGroup">
+                <label>Stock by Variant (total is the sum):</label>
+                <div class="variant-grid" id="merchEditVariants"></div>
             </div>
             <div class="modal-buttons">
                 <button class="btn btn-cancel" onclick="closeMerchEdit()">Cancel</button>
@@ -739,6 +774,27 @@
             return [];
         }
 
+        function variantStockOf(p) {
+            const vs = p.variant_stock;
+            if (vs && typeof vs === 'object' && !Array.isArray(vs) && Object.keys(vs).length > 0) return vs;
+            return null;
+        }
+
+        // Variant entries ordered by the colors/sizes arrays (jsonb loses key order)
+        function variantEntries(p) {
+            const vs = variantStockOf(p);
+            if (!vs) return null;
+            const colors = asArray(p.colors), sizes = asArray(p.sizes);
+            const ordered = [];
+            if (colors.length && sizes.length) {
+                colors.forEach(c => sizes.forEach(s => { const k = c + '|' + s; if (k in vs) ordered.push([k, vs[k]]); }));
+            } else {
+                (colors.length ? colors : sizes).forEach(k => { if (k in vs) ordered.push([k, vs[k]]); });
+            }
+            Object.keys(vs).forEach(k => { if (!ordered.some(e => e[0] === k)) ordered.push([k, vs[k]]); });
+            return ordered;
+        }
+
         async function loadMerch() {
             try {
                 const r = await fetch(API + '/products');
@@ -778,14 +834,21 @@
                 if (percentage < 20) { stockClass = 'stock-out'; progressClass = 'progress-out'; }
                 else if (percentage < 50) { stockClass = 'stock-low'; progressClass = 'progress-low'; }
 
-                const variants = [asArray(p.colors).join(' / '), asArray(p.sizes).join(' ')]
+                const entries = variantEntries(p);
+                const variants = entries ? '' : [asArray(p.colors).join(' / '), asArray(p.sizes).join(' ')]
                     .filter(Boolean).join(' · ');
+                const chips = entries ? entries.map(([k, v]) => {
+                    const n = parseInt(v) || 0;
+                    const cls = n <= 0 ? 'v-zero' : (n <= 5 ? 'v-low' : '');
+                    return `<span class="v-chip ${cls}">${k.replace('|', ' ')}: ${n}</span>`;
+                }).join('') : '';
 
                 const row = document.createElement('tr');
                 row.innerHTML = `
                     <td>
                         <div class="drink-name"></div>
                         <div class="merch-variants" style="font-size:12px;color:#888;margin-top:2px;"></div>
+                        <div class="variant-chips">${chips}</div>
                     </td>
                     <td>$${parseFloat(p.price || 0).toFixed(2)}</td>
                     <td>${sold}</td>
@@ -817,6 +880,7 @@
                 price: p.price, image_url: p.image_url, stripe_price_id: p.stripe_price_id,
                 sizes: asArray(p.sizes), colors: asArray(p.colors), stock: p.stock,
                 weight: p.weight, length: p.length, width: p.width, height: p.height,
+                variant_stock: variantStockOf(p),
                 ...changes
             };
             return fetch(API + '/products/' + p.id, {
@@ -830,6 +894,16 @@
             currentProduct = merchProducts[i];
             document.getElementById('merchRestockName').textContent = currentProduct.name;
             document.getElementById('merchRestockAmount').value = 20;
+
+            // Variant products: pick which colour/size is being restocked
+            const hasVariants = !!variantStockOf(currentProduct);
+            const colors = hasVariants ? asArray(currentProduct.colors) : [];
+            const sizes = hasVariants ? asArray(currentProduct.sizes) : [];
+            document.getElementById('merchRestockColorGroup').classList.toggle('hidden', colors.length === 0);
+            document.getElementById('merchRestockSizeGroup').classList.toggle('hidden', sizes.length === 0);
+            document.getElementById('merchRestockColor').innerHTML = colors.map(c => `<option>${c}</option>`).join('');
+            document.getElementById('merchRestockSize').innerHTML = sizes.map(s => `<option>${s}</option>`).join('');
+
             document.getElementById('merchRestockModal').classList.add('active');
             document.getElementById('merchRestockAmount').focus();
         }
@@ -840,8 +914,18 @@
         async function confirmMerchRestock() {
             const amount = parseInt(document.getElementById('merchRestockAmount').value);
             if (!amount || amount < 1) { alert('Please enter a valid quantity'); return; }
+            const changes = { stock: (currentProduct.stock || 0) + amount };
+            const vs = variantStockOf(currentProduct);
+            if (vs) {
+                const color = document.getElementById('merchRestockColorGroup').classList.contains('hidden')
+                    ? null : document.getElementById('merchRestockColor').value;
+                const size = document.getElementById('merchRestockSizeGroup').classList.contains('hidden')
+                    ? null : document.getElementById('merchRestockSize').value;
+                const vkey = color && size ? `${color}|${size}` : (color || size);
+                changes.variant_stock = { ...vs, [vkey]: (parseInt(vs[vkey]) || 0) + amount };
+            }
             try {
-                const r = await saveMerchProduct(currentProduct, { stock: (currentProduct.stock || 0) + amount });
+                const r = await saveMerchProduct(currentProduct, changes);
                 if (r.status === 401 || r.status === 403) { redirectToLogin(); return; }
                 if (r.ok) {
                     showMessage(`✅ Added ${amount} ${currentProduct.name} to stock!`, 'success');
@@ -859,6 +943,18 @@
             document.getElementById('merchEditName').value = currentProduct.name || '';
             document.getElementById('merchEditPrice').value = parseFloat(currentProduct.price || 0).toFixed(2);
             document.getElementById('merchEditStock').value = currentProduct.stock || 0;
+
+            // Variant products edit stock per variant; the total is computed
+            const entries = variantEntries(currentProduct);
+            document.getElementById('merchEditStockGroup').classList.toggle('hidden', !!entries);
+            document.getElementById('merchEditVariantsGroup').classList.toggle('hidden', !entries);
+            if (entries) {
+                const grid = document.getElementById('merchEditVariants');
+                grid.innerHTML = entries.map(([k, v]) =>
+                    `<label>${k.replace('|', ' ')}<input type="number" min="0" data-vkey="${k}" value="${parseInt(v) || 0}"></label>`
+                ).join('');
+            }
+
             document.getElementById('merchEditModal').classList.add('active');
             document.getElementById('merchEditName').focus();
         }
@@ -870,12 +966,29 @@
             if (!currentProduct) return;
             const name = document.getElementById('merchEditName').value.trim();
             const price = parseFloat(document.getElementById('merchEditPrice').value);
-            const stock = parseInt(document.getElementById('merchEditStock').value);
             if (!name) { alert('Product name cannot be empty'); return; }
             if (isNaN(price) || price < 0) { alert('Price must be a non-negative number'); return; }
-            if (isNaN(stock) || stock < 0) { alert('Stock must be a non-negative number'); return; }
+
+            const changes = { name, price };
+            if (document.getElementById('merchEditVariantsGroup').classList.contains('hidden')) {
+                const stock = parseInt(document.getElementById('merchEditStock').value);
+                if (isNaN(stock) || stock < 0) { alert('Stock must be a non-negative number'); return; }
+                changes.stock = stock;
+            } else {
+                const vs = { ...variantStockOf(currentProduct) };
+                let total = 0, bad = false;
+                document.querySelectorAll('#merchEditVariants input').forEach(inp => {
+                    const n = parseInt(inp.value);
+                    if (isNaN(n) || n < 0) { bad = true; return; }
+                    vs[inp.dataset.vkey] = n;
+                    total += n;
+                });
+                if (bad) { alert('Variant stock must be non-negative numbers'); return; }
+                changes.variant_stock = vs;
+                changes.stock = total;
+            }
             try {
-                const r = await saveMerchProduct(currentProduct, { name, price, stock });
+                const r = await saveMerchProduct(currentProduct, changes);
                 if (r.status === 401 || r.status === 403) { redirectToLogin(); return; }
                 if (r.ok) {
                     showMessage(`✅ Updated ${name}`, 'success');
