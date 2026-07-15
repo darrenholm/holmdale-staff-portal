@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Entry Scanner - Holmdale Pro Rodeo</title>
-<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+<script src="lib/html5-qrcode.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
   :root {
@@ -548,7 +548,7 @@
 </div>
 
 <script>
-const API = 'https://rodeo-fresh-production-7348.up.railway.app/api';
+const API = 'https://api.holmdalerodeo.ca/api';
 const DEV_MODE = true; // ⚠️ SET TO false BEFORE RODEO — allows duplicate wristbands for testing
 let token = '';
 let ticket = null;
