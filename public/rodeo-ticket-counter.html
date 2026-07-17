@@ -37,6 +37,7 @@
     background: var(--bg);
     color: var(--text);
     height: 100vh;
+    height: 100dvh;
     display: flex;
     flex-direction: column;
     overflow: hidden;
@@ -221,6 +222,8 @@
   .cart-panel { display: flex; flex-direction: column; background: var(--surface); overflow: hidden; }
   .cart-header { padding: 12px 16px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; }
   .cart-header h2 { font-family: 'Bebas Neue', sans-serif; font-size: 22px; letter-spacing: 2px; }
+  .cart-summary-mobile { display: none; font-family: 'Inter', sans-serif; font-size: 13px; font-weight: 700; color: var(--green-light); letter-spacing: 0; margin-left: 6px; }
+  .cart-chevron { display: none; color: var(--text-dim); font-size: 16px; }
   .cart-clear { background: var(--red-dim); color: var(--red); border: none; padding: 5px 12px; border-radius: 8px; font-size: 12px; font-weight: 700; cursor: pointer; }
   .cart-items { flex: 1; overflow-y: auto; padding: 10px 14px; }
   .cart-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; opacity: 0.35; gap: 6px; }
@@ -380,6 +383,20 @@
   .btn-confirm { background: var(--gold); color: #1c1917; }
   .btn-confirm:disabled { opacity: 0.4; cursor: not-allowed; }
 
+  /* ===== MOBILE: cart becomes a collapsible bottom sheet ===== */
+  @media (max-width: 700px) {
+    .main { grid-template-columns: 1fr; grid-template-rows: minmax(0, 1fr) auto; }
+    .left-panel { border-right: none; border-bottom: 2px solid var(--border); }
+    .cart-header { cursor: pointer; -webkit-tap-highlight-color: transparent; }
+    .cart-summary-mobile { display: inline; }
+    .cart-chevron { display: inline; }
+    .cart-panel:not(.expanded) .cart-items { display: none; }
+    .cart-panel:not(.expanded) .cart-totals { display: none !important; }
+    .cart-panel.expanded .cart-items { flex: none; max-height: 38vh; overflow-y: auto; }
+    .pay-btns { flex-direction: row; padding: 10px 12px 12px; }
+    .pay-btn { padding: 14px 8px; font-size: 13px; }
+  }
+
   ::-webkit-scrollbar { width: 5px; }
   ::-webkit-scrollbar-track { background: transparent; }
   ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
@@ -417,9 +434,12 @@
 
   <!-- CART -->
   <div class="cart-panel">
-    <div class="cart-header">
-      <h2>🛒 ORDER</h2>
-      <button class="cart-clear" id="clearBtn" onclick="clearCart()" style="display:none;">✕ Clear</button>
+    <div class="cart-header" onclick="toggleCartPanel()">
+      <h2>🛒 ORDER <span class="cart-summary-mobile" id="cartSummaryMobile"></span></h2>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <button class="cart-clear" id="clearBtn" onclick="event.stopPropagation();clearCart()" style="display:none;">✕ Clear</button>
+        <span class="cart-chevron" id="cartChevron">▴</span>
+      </div>
     </div>
     <div class="cart-items" id="cartItems">
       <div class="cart-empty"><div class="emoji">👈</div><p>Tap items to add</p></div>
@@ -535,8 +555,10 @@
     </div>
     <div style="text-align:center;color:var(--text-dim);font-size:13px;margin-bottom:12px;">Tap or scan the wristband to load this amount as credits.</div>
     <input type="text" id="wristbandUidInput" autocomplete="off" inputmode="none"
-           style="width:100%;padding:14px;font-size:18px;font-family:monospace;background:var(--surface2);border:2px solid var(--border);border-radius:10px;color:var(--text);margin-bottom:12px;text-align:center;letter-spacing:2px;"
+           style="width:100%;padding:14px;font-size:18px;font-family:monospace;background:var(--surface2);border:2px solid var(--border);border-radius:10px;color:var(--text);margin-bottom:6px;text-align:center;letter-spacing:2px;"
            placeholder="Waiting for scan…">
+    <button type="button" id="wristbandManualBtn" onclick="enableManualWristbandEntry()"
+            style="background:none;border:none;color:var(--gold-light);font-size:13px;font-weight:600;cursor:pointer;margin-bottom:10px;text-decoration:underline;padding:6px;">⌨️ No scanner? Enter code manually</button>
     <div id="wristbandScanStatus" style="text-align:center;font-size:13px;min-height:18px;margin-bottom:12px;color:var(--text-dim);"></div>
     <div class="cash-actions">
       <button class="btn-cancel" onclick="closeWristbandScanModal()">Skip / Cancel</button>
@@ -830,6 +852,9 @@ function renderCart() {
   if (cart.length === 0) {
     itemsDiv.innerHTML = '<div class="cart-empty"><div class="emoji">👈</div><p>Tap items to add</p></div>';
     totalsDiv.style.display = 'none'; btnsDiv.style.display = 'none'; clearBtn.style.display = 'none';
+    document.getElementById('cartSummaryMobile').textContent = '';
+    document.querySelector('.cart-panel').classList.remove('expanded');
+    document.getElementById('cartChevron').textContent = '▴';
     return;
   }
 
@@ -852,6 +877,16 @@ function renderCart() {
   document.getElementById('subVal').textContent = '$' + subtotal.toFixed(2);
   document.getElementById('taxVal').textContent = '$' + tax.toFixed(2);
   document.getElementById('totalVal').textContent = '$' + total.toFixed(2);
+
+  const itemCount = cart.reduce((s, i) => s + i.qty, 0);
+  document.getElementById('cartSummaryMobile').textContent =
+    `· ${itemCount} item${itemCount === 1 ? '' : 's'} · $${total.toFixed(2)}`;
+}
+
+function toggleCartPanel() {
+  const panel = document.querySelector('.cart-panel');
+  panel.classList.toggle('expanded');
+  document.getElementById('cartChevron').textContent = panel.classList.contains('expanded') ? '▾' : '▴';
 }
 
 function changeQty(idx, delta) {
@@ -1078,6 +1113,8 @@ function openWristbandScanModal(amount) {
   document.getElementById('wristbandAmountDisplay').textContent = '$' + amount.toFixed(2);
   const input = document.getElementById('wristbandUidInput');
   input.value = '';
+  input.setAttribute('inputmode', 'none');
+  input.placeholder = 'Waiting for scan…';
   document.getElementById('wristbandConfirmBtn').disabled = true;
   document.getElementById('wristbandScanStatus').textContent = '';
   document.getElementById('wristbandScanStatus').style.color = 'var(--text-dim)';
@@ -1087,6 +1124,15 @@ function openWristbandScanModal(amount) {
 function closeWristbandScanModal() {
   document.getElementById('wristbandScanModal').classList.remove('open');
   pendingCreditLoad = 0;
+}
+// Fallback for phones with no hardware scanner: re-enable the on-screen keyboard.
+// Must run synchronously inside the tap handler or iOS won't show the keyboard.
+function enableManualWristbandEntry() {
+  const input = document.getElementById('wristbandUidInput');
+  input.blur();
+  input.setAttribute('inputmode', 'text');
+  input.placeholder = 'Type wristband code';
+  input.focus();
 }
 document.addEventListener('DOMContentLoaded', () => {
   const input = document.getElementById('wristbandUidInput');
