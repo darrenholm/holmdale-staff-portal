@@ -553,7 +553,7 @@
         <div class="cash-tendered-display has-value" id="wristbandAmountDisplay">$0.00</div>
       </div>
     </div>
-    <div style="text-align:center;color:var(--text-dim);font-size:13px;margin-bottom:12px;">Tap or scan the wristband to load this amount as credits.</div>
+    <div id="wristbandScanHint" style="text-align:center;color:var(--text-dim);font-size:13px;margin-bottom:12px;">Tap or scan the wristband to load this amount as credits.</div>
     <input type="text" id="wristbandUidInput" autocomplete="off" inputmode="none"
            style="width:100%;padding:14px;font-size:18px;font-family:monospace;background:var(--surface2);border:2px solid var(--border);border-radius:10px;color:var(--text);margin-bottom:6px;text-align:center;letter-spacing:2px;"
            placeholder="Waiting for scan…">
@@ -1118,6 +1118,10 @@ function openWristbandScanModal(amount) {
   document.getElementById('wristbandConfirmBtn').disabled = true;
   document.getElementById('wristbandScanStatus').textContent = '';
   document.getElementById('wristbandScanStatus').style.color = 'var(--text-dim)';
+  if ('NDEFReader' in window) {
+    document.getElementById('wristbandScanHint').textContent = 'Hold the wristband to the back of the phone.';
+    startNFC();
+  }
   document.getElementById('wristbandScanModal').classList.add('open');
   setTimeout(() => input.focus(), 100);
 }
@@ -1134,6 +1138,30 @@ function enableManualWristbandEntry() {
   input.placeholder = 'Type wristband code';
   input.focus();
 }
+
+// ===== WEB NFC (Android Chrome) — phone reads the wristband directly =====
+// Same pattern as entry-scanner / balance-checker; the API normalizes the UID server-side.
+let nfcReader = null;
+async function startNFC() {
+  if (nfcReader || !('NDEFReader' in window)) return;
+  try {
+    const ndef = new NDEFReader();
+    await ndef.scan();
+    nfcReader = ndef;
+    ndef.addEventListener('reading', (e) => {
+      const uid = (e.serialNumber || '').replace(/[^a-fA-F0-9]/g, '');
+      const modal = document.getElementById('wristbandScanModal');
+      if (!uid || !modal.classList.contains('open')) return;
+      const input = document.getElementById('wristbandUidInput');
+      input.value = uid;
+      input.dispatchEvent(new Event('input'));
+      submitWristbandLoad();
+    });
+  } catch (e) {
+    console.warn('[NFC] scan unavailable:', e.message);
+  }
+}
+if ('NDEFReader' in window) startNFC();
 document.addEventListener('DOMContentLoaded', () => {
   const input = document.getElementById('wristbandUidInput');
   if (!input) return;
@@ -1148,9 +1176,12 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 });
+let wristbandSubmitting = false;
 async function submitWristbandLoad() {
+  if (wristbandSubmitting) return;
   const uid = (document.getElementById('wristbandUidInput').value || '').trim();
   if (!uid || pendingCreditLoad <= 0) return;
+  wristbandSubmitting = true;
   const status = document.getElementById('wristbandScanStatus');
   status.style.color = 'var(--text-dim)';
   status.textContent = 'Loading…';
@@ -1180,11 +1211,14 @@ async function submitWristbandLoad() {
     }
     status.style.color = '#22c55e';
     status.textContent = '✓ Loaded. New balance: $' + (Number(data.new_balance) || 0).toFixed(2);
+    pendingCreditLoad = 0; // block repeat NFC reads from double-loading while the modal lingers
     setTimeout(() => closeWristbandScanModal(), 1500);
   } catch (e) {
     status.style.color = '#ef4444';
     status.textContent = '⚠️ Network error: ' + e.message;
     document.getElementById('wristbandConfirmBtn').disabled = false;
+  } finally {
+    wristbandSubmitting = false;
   }
 }
 
