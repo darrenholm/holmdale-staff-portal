@@ -384,6 +384,15 @@
                 currentBand = await r.json();
                 currentStaff = null;
                 recentTransactions = [];
+                // New visit: reset the per-visit serving counter (AGCO 2-drink cap)
+                try {
+                    await fetch(API + '/wristbands/start-visit', {
+                        method: 'POST',
+                        headers: {'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json'},
+                        body: JSON.stringify({ rfid_uid: normalizeUid(currentBand.rfid_uid) })
+                    });
+                    currentBand.visit_drink_count = 0;
+                } catch(e) {}
                 displayCustomer(currentBand);
             } catch(e) { showMessage('❌ Error looking up wristband', 'error'); }
         }
@@ -410,6 +419,7 @@
             grid.innerHTML = '';
             const balance = parseFloat(band.credits||0);
             if (!band.alcohol_approved) { grid.innerHTML = '<div class="no-drinks">⚠️ Age verification required</div>'; return; }
+            if ((band.visit_drink_count||0) >= 2) { grid.innerHTML = '<div class="no-drinks">🛑 2-drink limit reached this visit — press DONE; customer must re-scan for another round</div>'; return; }
             if (balance <= 0) { grid.innerHTML = '<div class="no-drinks">⚠️ No credits — customer needs to load more</div>'; return; }
             drinks.forEach(drink => {
                 const btn = document.createElement('button');
@@ -527,16 +537,20 @@
                     headers: {'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json'},
                     body: JSON.stringify({ rfid_uid: normalizeUid(currentBand.rfid_uid), drink_id: drink.id })
                 });
-                if (r.status === 401 || r.status === 403) { redirectToLogin(); return; }
-                const d = await r.json();
+                const d = await r.json().catch(()=>({}));
+                // Only a genuine auth failure should bounce to login. The serve
+                // endpoint also returns 403 for business reasons (age not verified,
+                // 2-drink visit limit) — those must show a message, not log out.
+                if (r.status === 401 || (r.status === 403 && /token/i.test(d.error||''))) { redirectToLogin(); return; }
                 if (r.ok) {
                     currentBand.credits = d.new_balance;
+                    currentBand.visit_drink_count = (currentBand.visit_drink_count||0) + 1;
                     const remCents = creditsToCents(d.new_balance);
                     showMessage(`✅ ${drink.name} served! ${formatDollars(remCents)} credits left`, 'success');
                     recentTransactions.unshift({ id:'trans_'+Date.now(), drink:drink.name, drink_id:drink.id, price:parseFloat(drink.price)||0, time:new Date().toLocaleTimeString('en-CA',{hour:'2-digit',minute:'2-digit'}) });
                     if (recentTransactions.length>5) recentTransactions=recentTransactions.slice(0,5);
                     await loadDrinks(); displayCustomer(currentBand);
-                } else { showMessage('❌ '+d.error,'error'); }
+                } else { showMessage('❌ '+(d.error||'Failed to serve drink'),'error'); }
             } catch(e) { showMessage('❌ Error serving drink','error'); }
             finally { isProcessing = false; }
         }
