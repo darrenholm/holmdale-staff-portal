@@ -53,14 +53,7 @@
     <h1>Feature Flags</h1>
     <p>Control which public features are visible on holmdalerodeo.ca</p>
   </div>
-  <div class="login-card" id="loginCard">
-    <h2>Admin Sign In</h2>
-    <div class="form-group"><label>Email</label><input type="email" id="emailInput" placeholder="admin@holmdalerodeo.ca" /></div>
-    <div class="form-group"><label>Password</label><input type="password" id="passwordInput" placeholder="Password" /></div>
-    <button class="btn-login" onclick="login()">Sign In</button>
-    <div class="error-msg" id="loginError"></div>
-  </div>
-  <div class="flags-card" id="flagsCard">
+  <div class="flags-card" id="flagsCard" style="display:block;">
     <h2>Public Feature Visibility</h2>
     <p class="subtitle">Toggle features on or off for the public website. Changes take effect immediately.</p>
     <div id="flagsList"><div class="loading">Loading flags...</div></div>
@@ -69,28 +62,17 @@
 <div class="toast" id="toast"></div>
 <script>
   var API = 'https://api.holmdalerodeo.ca/api';
-  var authToken = null;
   var LABELS = {
     buy_friend_drink:   { icon: '🍺', label: 'Buy a Friend a Drink',    desc: 'NFC wristband credit transfers on holmdalerodeo.ca/buy-a-drink' },
     online_admission:   { icon: '🎫', label: 'Online Admission Tickets', desc: 'Ticket purchase on holmdalerodeo.ca' },
     online_merchandise: { icon: '👕', label: 'Online Merchandise',       desc: 'Merch store on holmdalerodeo.ca' }
   };
-  async function login() {
-    var email = document.getElementById('emailInput').value.trim();
-    var password = document.getElementById('passwordInput').value;
-    document.getElementById('loginError').textContent = '';
-    if (!email || !password) { document.getElementById('loginError').textContent = 'Please enter email and password.'; return; }
-    try {
-      var res = await fetch(API + '/auth/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, password }) });
-      var data = await res.json();
-      if (!res.ok) throw new Error(data.error || data.message || 'Login failed');
-      authToken = data.token;
-      document.getElementById('loginCard').style.display = 'none';
-      document.getElementById('flagsCard').style.display = 'block';
-      loadFlags();
-    } catch(e) { document.getElementById('loginError').textContent = e.message; }
+  function redirectToLogin() {
+    localStorage.removeItem('auth_token');
+    window.location.href = 'login.html?expired=1';
   }
-  document.addEventListener('keydown', function(e) { if (e.key === 'Enter') login(); });
+  if (!localStorage.getItem('auth_token')) { redirectToLogin(); }
+  else { loadFlags(); }
   async function loadFlags() {
     try {
       var res = await fetch(API + '/features');
@@ -120,7 +102,8 @@
     var wrap = document.getElementById('toggle_' + key);
     wrap.classList.add('saving');
     try {
-      var res = await fetch(API + '/features/' + key, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + authToken }, body: JSON.stringify({ enabled: value }) });
+      var res = await fetch(API + '/features/' + key, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + localStorage.getItem('auth_token') }, body: JSON.stringify({ enabled: value }) });
+      if (res.status === 401 || res.status === 403) { redirectToLogin(); return; }
       if (!res.ok) throw new Error((await res.json()).error || 'Update failed');
       showToast(key + ' turned ' + (value ? 'ON' : 'OFF'));
       await loadFlags();
