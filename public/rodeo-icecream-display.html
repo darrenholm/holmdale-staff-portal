@@ -229,6 +229,114 @@
   .column-body::-webkit-scrollbar { width: 8px; }
   .column-body::-webkit-scrollbar-track { background: transparent; }
   .column-body::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+  /* ===== EDIT ORDER MODAL ===== */
+  .btn-edit {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+    border-radius: 8px;
+    padding: 6px 12px;
+    font-size: 18px;
+    cursor: pointer;
+    margin-left: 10px;
+  }
+  .btn-edit:hover { color: var(--accent); border-color: var(--accent); }
+
+  .modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.7);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 200;
+  }
+  .modal-overlay.open { display: flex; }
+
+  .modal {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 18px;
+    width: min(640px, 92vw);
+    max-height: 86vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  .modal-header {
+    padding: 18px 24px;
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 30px;
+    letter-spacing: 2px;
+    color: var(--accent);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .modal-body { padding: 12px 24px; overflow-y: auto; flex: 1; }
+
+  .edit-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+  }
+  .edit-row:last-child { border-bottom: none; }
+  .edit-name { flex: 1; font-size: 20px; font-weight: 600; }
+  .edit-qty { display: flex; align-items: center; gap: 10px; }
+  .edit-qty button {
+    width: 44px; height: 44px;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    background: var(--surface2);
+    color: var(--text);
+    font-size: 22px;
+    font-weight: 800;
+    cursor: pointer;
+  }
+  .edit-qty .qty-val { font-size: 24px; font-weight: 800; min-width: 34px; text-align: center; }
+  .edit-remove {
+    width: 44px; height: 44px;
+    border-radius: 10px;
+    border: none;
+    background: rgba(239,68,68,0.15);
+    color: var(--danger);
+    font-size: 20px;
+    cursor: pointer;
+  }
+  .edit-notes {
+    width: 100%;
+    margin-top: 6px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    font-size: 15px;
+    padding: 8px 10px;
+  }
+
+  .modal-footer {
+    padding: 16px 24px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    gap: 12px;
+  }
+  .modal-footer button {
+    flex: 1;
+    padding: 16px;
+    border: none;
+    border-radius: 12px;
+    font-weight: 800;
+    font-size: 18px;
+    cursor: pointer;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+  .btn-save { background: var(--ready); color: white; }
+  .btn-close { background: var(--surface2); color: var(--text-dim); flex: 0.4; }
 </style>
 </head>
 <body>
@@ -261,6 +369,20 @@
 
 <!-- Drag a card here to dismiss it -->
 <div class="done-zone" id="doneZone">👋 DROP TO DISMISS</div>
+
+<!-- Edit order modal -->
+<div class="modal-overlay" id="editOverlay">
+  <div class="modal">
+    <div class="modal-header">
+      <span>✎ EDIT ORDER <span id="editOrderNum"></span></span>
+    </div>
+    <div class="modal-body" id="editBody"></div>
+    <div class="modal-footer">
+      <button class="btn-close" onclick="closeEdit()">Cancel</button>
+      <button class="btn-save" onclick="saveEdit()">💾 Save</button>
+    </div>
+  </div>
+</div>
 
 <script>
 // ===== CONFIG =====
@@ -381,8 +503,9 @@ function renderCard(order, status) {
     <div class="order-card ${isUrgent ? 'urgent' : ''}" draggable="true" data-id="${order.id}" data-status="${status}">
       <div class="order-top">
         <div class="order-number">#${(order.customer_name || '').replace(/[^0-9]/g, '') || order.order_number}</div>
-        <div class="order-meta">
+        <div class="order-meta" style="display:flex;align-items:center;">
           <div class="order-time ${mins >= URGENT_MINUTES ? 'late' : ''}">${timeAgo(order.created_at)}</div>
+          <button class="btn-edit" onclick="openEdit(${order.id})" title="Edit order">✎</button>
         </div>
       </div>
       <ul class="order-items">
@@ -530,6 +653,107 @@ async function cancelOrder(id) {
   try {
     await fetch(`${API_URL}/kitchen/orders/${id}`, { method: 'DELETE' });
     orders = orders.filter(o => o.id !== id);
+    renderOrders();
+  } catch (err) {
+    console.error('[IceCream] Cancel error:', err.message);
+  }
+}
+
+// ===== EDIT ORDER =====
+let editItems = [];
+let editOrderId = null;
+
+function openEdit(id) {
+  const order = orders.find(o => o.id === id);
+  if (!order) return;
+  editOrderId = id;
+  const items = (typeof order.items === 'string' ? JSON.parse(order.items) : order.items) || [];
+  editItems = items.map(it => ({ ...it, qty: it.qty || 1 }));
+  document.getElementById('editOrderNum').textContent =
+    '#' + ((order.customer_name || '').replace(/[^0-9]/g, '') || order.order_number);
+  renderEdit();
+  document.getElementById('editOverlay').classList.add('open');
+}
+
+function renderEdit() {
+  document.getElementById('editBody').innerHTML = editItems.map((it, i) => `
+    <div class="edit-row" style="flex-wrap:wrap;">
+      <span class="edit-name">${it.emoji || ''} ${it.name}</span>
+      <span class="edit-qty">
+        <button onclick="editQty(${i}, -1)">−</button>
+        <span class="qty-val">${it.qty}</span>
+        <button onclick="editQty(${i}, 1)">+</button>
+      </span>
+      <button class="edit-remove" onclick="editRemove(${i})">🗑</button>
+      <input class="edit-notes" placeholder="Notes (e.g. no sprinkles)" value="${(it.notes || '').replace(/"/g, '&quot;')}"
+             onchange="editItems[${i}].notes = this.value">
+    </div>
+  `).join('') || '<div style="padding:24px;color:var(--text-dim);font-size:18px;">No items left — Save will cancel the whole order.</div>';
+}
+
+function editQty(i, delta) {
+  editItems[i].qty = Math.max(1, (editItems[i].qty || 1) + delta);
+  renderEdit();
+}
+
+function editRemove(i) {
+  editItems.splice(i, 1);
+  renderEdit();
+}
+
+function closeEdit() {
+  document.getElementById('editOverlay').classList.remove('open');
+  editOrderId = null;
+}
+
+async function saveEdit() {
+  const id = editOrderId;
+  if (id === null) return;
+
+  if (editItems.length === 0) {
+    if (!confirm('No items left — cancel the whole order?')) return;
+    closeEdit();
+    await cancelOrderSilent(id);
+    return;
+  }
+
+  // Recompute totals when every item carries a price (kiosk orders do)
+  const body = { items: editItems };
+  if (editItems.every(it => typeof it.price === 'number')) {
+    const subtotal = editItems.reduce((s, it) => s + it.price * it.qty, 0);
+    const tax = subtotal * 0.13;
+    body.subtotal = subtotal.toFixed(2);
+    body.tax = tax.toFixed(2);
+    body.total = (subtotal + tax).toFixed(2);
+  }
+
+  try {
+    const resp = await fetch(`${API_URL}/kitchen/orders/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+    if (!resp.ok) {
+      const err = await resp.json().catch(() => ({}));
+      alert('Save failed: ' + (err.error || resp.status));
+      return;
+    }
+    const order = orders.find(o => o.id === id);
+    if (order) order.items = editItems;
+    closeEdit();
+    lastSignature = '';
+    renderOrders();
+    setTimeout(fetchOrders, 500);
+  } catch (err) {
+    alert('Save failed: ' + err.message);
+  }
+}
+
+async function cancelOrderSilent(id) {
+  try {
+    await fetch(`${API_URL}/kitchen/orders/${id}`, { method: 'DELETE' });
+    orders = orders.filter(o => o.id !== id);
+    lastSignature = '';
     renderOrders();
   } catch (err) {
     console.error('[IceCream] Cancel error:', err.message);
