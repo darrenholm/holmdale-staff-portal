@@ -1,0 +1,7 @@
+<resources>
+    <string name="app_name">DualScreenDemo</string>
+    <string name="presentation_mediarouter">Presentation MediaRouter</string>
+    <string name="presentation_displaymanager">Presentation DisplayManager</string>
+    <string name="set_launch_display_id">setLaunchDisplayId</string>
+    <string name="presentation">Presentation Second Screen</string>
+</resources>
