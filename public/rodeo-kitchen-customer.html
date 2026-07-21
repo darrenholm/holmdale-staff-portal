@@ -401,7 +401,7 @@ function playReadySound() {
 // ===== FETCH =====
 async function fetchOrders() {
   try {
-    const resp = await fetch(API_URL + '/kitchen/orders');
+    const resp = await fetch(API_URL + '/kitchen/orders?booth=' + encodeURIComponent(new URLSearchParams(location.search).get('booth') || 'main'));
     const data = await resp.json();
     if (data.orders) {
       orders = data.orders;

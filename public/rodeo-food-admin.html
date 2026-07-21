@@ -941,6 +941,13 @@ function markSaved() {
 }
 
 const API_URL = 'https://api.holmdalerodeo.ca/api';
+// Booth mode: default 'main' (kitchen). Manage the ice cream menu at ?booth=icecream
+const BOOTH = new URLSearchParams(location.search).get('booth') || 'main';
+if (BOOTH !== 'main') {
+  document.addEventListener('DOMContentLoaded', () => {
+    document.title = 'Food Admin — ' + BOOTH;
+  });
+}
 
 async function saveChanges() {
   const saveBtn = document.getElementById('saveBtn');
@@ -948,6 +955,7 @@ async function saveChanges() {
   saveBtn.disabled = true;
 
   const data = {
+    boothId: BOOTH,
     boothName: document.getElementById('boothName').value.trim(),
     taxRate: parseFloat(document.getElementById('taxRate').value) / 100,
     taxLabel: document.getElementById('taxLabelInput').value.trim(),
@@ -990,7 +998,7 @@ function discardChanges() {
 
 function previewKiosk() {
   saveChanges().then(() => {
-    window.open('rodeo-food-kiosk.html', '_blank');
+    window.open('rodeo-food-kiosk.html' + (BOOTH !== 'main' ? '?booth=' + encodeURIComponent(BOOTH) : ''), '_blank');
   });
 }
 
@@ -998,7 +1006,7 @@ function previewKiosk() {
 async function loadSavedData() {
   // Load food menu from booth_menu table
   try {
-    const response = await fetch(API_URL + '/booth/menu');
+    const response = await fetch(API_URL + '/booth/menu?booth=' + encodeURIComponent(BOOTH));
     const data = await response.json();
     if (data && data.menu && data.menu.length > 0) {
       menuItems = data.menu;

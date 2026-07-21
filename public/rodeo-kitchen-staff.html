@@ -516,7 +516,7 @@ function renderCard(order, status) {
 // ===== API CALLS =====
 async function fetchOrders() {
   try {
-    const resp = await fetch(API_URL + '/kitchen/orders');
+    const resp = await fetch(API_URL + '/kitchen/orders?booth=main');
     const data = await resp.json();
     if (data.orders) {
       const newCount = data.orders.filter(o => o.status === 'new').length;

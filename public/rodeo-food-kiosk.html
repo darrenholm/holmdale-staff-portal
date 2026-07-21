@@ -1059,6 +1059,8 @@
 // ╚══════════════════════════════════════════════════════════════════════════════════════════════════╝
 
 const API_URL = 'https://api.holmdalerodeo.ca/api';
+// Booth mode: default 'main' (kitchen). Ice cream booth kiosk = ?booth=icecream
+const BOOTH = new URLSearchParams(location.search).get('booth') || 'main';
 
 // ===== AUTH HELPERS =====
 function authHeaders(extra) {
@@ -1108,7 +1110,7 @@ let menuLoaded = false;
 // Load menu from API
 async function loadMenuFromAPI() {
   try {
-    const response = await fetch(API_URL + '/booth/menu', { headers: authHeaders() });
+    const response = await fetch(API_URL + '/booth/menu?booth=' + encodeURIComponent(BOOTH), { headers: authHeaders() });
     if (response.status === 401 || response.status === 403) { redirectToLogin(); return false; }
     const data = await response.json();
 
@@ -1829,6 +1831,7 @@ async function sendOrderToKitchen(orderNum, paymentMethod, paymentRef) {
         tax: tax.toFixed(2),
         total: total.toFixed(2),
         source: 'kiosk',
+        booth: BOOTH,
         paymentMethod: paymentMethod || 'card',
         paymentRef: paymentRef || ('FOOD-' + Date.now())
       })
