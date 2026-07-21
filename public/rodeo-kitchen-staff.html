@@ -138,7 +138,27 @@
     padding: 16px;
     transition: all 0.3s ease;
     animation: slideIn 0.3s ease;
+    cursor: grab;
   }
+
+  .order-card:active {
+    cursor: grabbing;
+  }
+
+  .order-card.dragging {
+    opacity: 0.4;
+  }
+
+  .column-body.drag-over {
+    outline: 3px dashed var(--text-dim);
+    outline-offset: -6px;
+    border-radius: 12px;
+    background: rgba(255,255,255,0.04);
+  }
+
+  .col-new .column-body.drag-over { outline-color: var(--new); background: var(--new-bg); }
+  .col-progress .column-body.drag-over { outline-color: var(--progress); background: var(--progress-bg); }
+  .col-ready .column-body.drag-over { outline-color: var(--ready); background: var(--ready-bg); }
 
   @keyframes slideIn {
     from { opacity: 0; transform: translateY(-10px); }
@@ -375,6 +395,7 @@ const URGENT_MINUTES = 10; // Mark as urgent after 10 min
 let orders = [];
 let soundEnabled = false;
 let lastOrderCount = 0;
+let isDragging = false;
 
 // ===== AUDIO =====
 const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -439,6 +460,7 @@ function minutesSince(dateStr) {
 
 // ===== RENDER =====
 function renderOrders() {
+  if (isDragging) return; // don't wipe the board mid-drag
   const newOrders = orders.filter(o => o.status === 'new');
   const progressOrders = orders.filter(o => o.status === 'in_progress');
   const readyOrders = orders.filter(o => o.status === 'ready');
@@ -491,7 +513,7 @@ function renderCard(order, status) {
   }
 
   return `
-    <div class="order-card ${isUrgent ? 'urgent' : ''}">
+    <div class="order-card ${isUrgent ? 'urgent' : ''}" draggable="true" data-order-id="${order.id}" data-status="${status}">
       <div class="order-top">
         <div class="order-number">#${(order.customer_name || '').replace(/[^0-9]/g, '') || order.order_number}</div>
         <div class="order-meta">
@@ -562,6 +584,56 @@ async function cancelOrder(id) {
     console.error('[KDS] Cancel error:', err.message);
   }
 }
+
+// ===== DRAG & DROP (mouse on TV display) =====
+const COLUMN_STATUS = { colNew: 'new', colProgress: 'in_progress', colReady: 'ready' };
+let draggedOrderId = null;
+
+document.addEventListener('dragstart', (e) => {
+  const card = e.target.closest('.order-card');
+  if (!card) return;
+  draggedOrderId = Number(card.dataset.orderId);
+  isDragging = true;
+  card.classList.add('dragging');
+  e.dataTransfer.effectAllowed = 'move';
+  e.dataTransfer.setData('text/plain', card.dataset.orderId);
+});
+
+document.addEventListener('dragend', () => {
+  isDragging = false;
+  draggedOrderId = null;
+  document.querySelectorAll('.order-card.dragging').forEach(c => c.classList.remove('dragging'));
+  document.querySelectorAll('.column-body.drag-over').forEach(c => c.classList.remove('drag-over'));
+  renderOrders();
+});
+
+Object.keys(COLUMN_STATUS).forEach(colId => {
+  const col = document.getElementById(colId);
+
+  col.addEventListener('dragover', (e) => {
+    if (draggedOrderId === null) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    col.classList.add('drag-over');
+  });
+
+  col.addEventListener('dragleave', (e) => {
+    if (!col.contains(e.relatedTarget)) col.classList.remove('drag-over');
+  });
+
+  col.addEventListener('drop', (e) => {
+    e.preventDefault();
+    col.classList.remove('drag-over');
+    const id = draggedOrderId;
+    isDragging = false;
+    draggedOrderId = null;
+    if (id === null) return;
+    const newStatus = COLUMN_STATUS[colId];
+    const order = orders.find(o => o.id === id);
+    if (!order || order.status === newStatus) { renderOrders(); return; }
+    updateStatus(id, newStatus);
+  });
+});
 
 // ===== POLL =====
 fetchOrders();
