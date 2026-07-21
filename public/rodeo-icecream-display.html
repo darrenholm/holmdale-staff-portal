@@ -273,6 +273,8 @@ let orders = [];
 let soundEnabled = false;
 let lastOrderCount = 0;
 let draggingId = null;   // suspend re-render while a card is mid-drag
+let lastSignature = '';  // only re-render when data actually changes (a full
+                         // re-render mid-click would eat the mouse click)
 
 // Manual within-column ordering (survives refresh)
 const POS_KEY = 'icecream_order_pos';
@@ -490,7 +492,11 @@ async function fetchOrders() {
       // prune stale ids from manual ordering
       const live = new Set(orders.map(o => o.id));
       Object.keys(manualPos).forEach(k => manualPos[k] = (manualPos[k] || []).filter(id => live.has(id)));
-      renderOrders();
+      const sig = orders.map(o => `${o.id}:${o.status}:${o.updated_at}`).sort().join('|');
+      if (sig !== lastSignature) {
+        lastSignature = sig;
+        renderOrders();
+      }
     }
   } catch (err) {
     console.error('[IceCream] Fetch error:', err.message);
@@ -498,6 +504,7 @@ async function fetchOrders() {
 }
 
 async function patchStatus(id, status) {
+  lastSignature = '';   // force next fetch to re-render
   renderOrders();
   try {
     await fetch(`${API_URL}/kitchen/orders/${id}`, {
