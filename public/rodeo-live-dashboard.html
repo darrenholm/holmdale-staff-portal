@@ -596,7 +596,7 @@ async function fetchAllData() {
     // 4. Kitchen orders (food revenue) — no auth required
     let foodOrders = [];
     try {
-      const foodResp = await fetch(API_URL + '/kitchen/orders');
+      const foodResp = await fetch(API_URL + '/kitchen/orders?booth=all');
       const foodData = await foodResp.json();
       foodOrders = foodData.orders || [];
     } catch(e) {}

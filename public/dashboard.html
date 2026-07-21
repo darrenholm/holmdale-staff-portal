@@ -105,7 +105,7 @@ async function loadData() {
     const [orders, wristbands, kitchen, merch] = await Promise.all([
       fetchJson(API + '/ticket-orders',  headers, []),
       fetchJson(API + '/wristbands',     headers, []),
-      fetchJson(API + '/kitchen/orders', headers, { orders: [] }),
+      fetchJson(API + '/kitchen/orders?booth=all', headers, { orders: [] }),
       fetchJson(API + '/merch/sales',    headers, { sales: [] })
     ]);
 
