@@ -880,13 +880,16 @@ function highlightEmoji(e) {
 function saveItem() {
   const name = document.getElementById('fName').value.trim();
   const desc = document.getElementById('fDesc').value.trim();
-  const price = parseFloat(document.getElementById('fPrice').value);
+  let price = parseFloat(document.getElementById('fPrice').value);
   const cat = document.getElementById('fCat').value;
   const emoji = document.getElementById('fEmoji').value.trim() || '🍽️';
   const popular = document.getElementById('fPopular').checked;
 
+  // Flavour entries (cat 'flavours') are picker options, not sellable items — price is 0
+  if (isNaN(price) && cat === 'flavours') price = 0;
+
   if (!name) { alert('Please enter an item name.'); return; }
-  if (isNaN(price) || price <= 0) { alert('Please enter a valid price.'); return; }
+  if (isNaN(price) || price < 0) { alert('Please enter a valid price.'); return; }
 
   if (editingId) {
     const item = menuItems.find(i => i.id === editingId);
@@ -1011,7 +1014,7 @@ async function loadSavedData() {
     if (data && data.menu && data.menu.length > 0) {
       menuItems = data.menu;
       if (data.categories && data.categories.length > 0) categories = data.categories;
-      if (data.taxRate) document.getElementById('taxRate').value = Math.round(data.taxRate * 100);
+      if (data.taxRate != null) document.getElementById('taxRate').value = Math.round(data.taxRate * 100 * 10) / 10;
       if (data.taxLabel) document.getElementById('taxLabelInput').value = data.taxLabel;
       if (data.boothName) document.getElementById('boothName').value = data.boothName;
       if (data.drinkCategories && data.drinkCategories.length > 0) drinkCategories = data.drinkCategories;

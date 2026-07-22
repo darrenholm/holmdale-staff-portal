@@ -548,14 +548,14 @@
     gap: 10px;
     padding-bottom: 70px;
   }
-  #screen-customize {
+  #screen-customize, #screen-flavor {
     position: absolute; inset: 0;
     background: rgba(0,0,0,0.7);
     display: flex; align-items: center; justify-content: center;
     z-index: 100;
   }
-  #screen-customize.active { transform: none; }
-  #screen-customize .customize-popup {
+  #screen-customize.active, #screen-flavor.active { transform: none; }
+  #screen-customize .customize-popup, #screen-flavor .customize-popup {
     background: var(--charcoal);
     border: 1px solid var(--smoke);
     border-radius: 16px;
@@ -565,29 +565,29 @@
     overflow: hidden;
     box-shadow: 0 20px 60px rgba(0,0,0,0.6);
   }
-  #screen-customize .customize-popup-header {
+  #screen-customize .customize-popup-header, #screen-flavor .customize-popup-header {
     display: flex; align-items: center; gap: 10px;
     padding: 12px 14px;
     background: var(--charcoal-mid);
     border-bottom: 1px solid var(--smoke);
   }
-  #screen-customize .customize-popup-header .back-btn {
+  #screen-customize .customize-popup-header .back-btn, #screen-flavor .customize-popup-header .back-btn {
     width: 32px; height: 32px; border-radius: 8px;
     background: var(--smoke); color: var(--cream);
     display: flex; align-items: center; justify-content: center;
     font-size: 18px; cursor: pointer;
   }
-  #screen-customize .customize-popup-header .popup-title {
+  #screen-customize .customize-popup-header .popup-title, #screen-flavor .customize-popup-header .popup-title {
     font-family: 'Bebas Neue', sans-serif;
     font-size: 20px; color: var(--cream); letter-spacing: 1px;
   }
-  #screen-customize .customize-popup-body {
+  #screen-customize .customize-popup-body, #screen-flavor .customize-popup-body {
     padding: 12px;
     overflow-y: auto;
     flex: 1;
     display: flex; flex-direction: column; gap: 10px;
   }
-  #screen-customize .customize-popup-footer {
+  #screen-customize .customize-popup-footer, #screen-flavor .customize-popup-footer {
     padding: 10px 12px;
     border-top: 1px solid var(--smoke);
     background: var(--charcoal-mid);
@@ -896,17 +896,20 @@
   </div>
 
   <div class="order-footer" id="orderFooter">
-    <div class="order-summary-row">
+    <div class="order-summary-row" id="subtotalRow">
       <span class="order-summary-label">Subtotal</span>
       <span class="order-summary-value" id="subtotalValue">$0.00</span>
     </div>
-    <div class="order-summary-row">
+    <div class="order-summary-row" id="taxRow">
       <span class="order-summary-label">Tax (<span id="taxLabel">HST</span> <span id="taxPct"></span>)</span>
       <span class="order-summary-value" id="taxValue">$0.00</span>
     </div>
     <div class="order-total-row">
       <span class="order-total-label">Total</span>
       <span class="order-total-value" id="totalValue">$0.00</span>
+    </div>
+    <div class="order-summary-row" id="taxIncludedNote" style="display:none; justify-content:flex-end;">
+      <span class="order-summary-label" id="taxIncludedText">Prices include HST</span>
     </div>
     <button class="pay-btn" id="payBtn" onclick="proceedToPayment()">
       Pay Now
@@ -1046,6 +1049,23 @@
   </div>
 </div>
 
+<!-- ===== FLAVOUR PICKER POPUP ===== -->
+<div class="screen" id="screen-flavor">
+  <div class="customize-popup">
+    <div class="customize-popup-header">
+      <div class="back-btn" onclick="cancelFlavor()">←</div>
+      <div class="popup-title">Pick a Flavour</div>
+    </div>
+    <div class="customize-popup-body">
+      <div class="customize-item-header" id="flavorHeader"></div>
+      <div class="customize-section">
+        <div class="customize-section-title">Flavours</div>
+        <div class="customize-options" id="flavorOptions"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- Toast -->
 <div class="toast" id="toast">Item added!</div>
 
@@ -1115,8 +1135,16 @@ async function loadMenuFromAPI() {
     const data = await response.json();
 
     if (data && data.menu && data.menu.length > 0) {
+      const activeItems = data.menu.filter(item => !item.soldOut);
+
+      // Items in the 'flavours' category are scoop flavour options, not orderable items.
+      // Sold-out flavours drop out of the picker automatically.
+      FLAVORS = activeItems
+        .filter(item => item.cat === FLAVOR_CAT)
+        .map(item => ({ name: item.name, emoji: item.emoji || '🍦' }));
+
       // Convert API format (price in dollars) to kiosk format (price in cents)
-      MENU = data.menu.filter(item => !item.soldOut).map(item => ({
+      MENU = activeItems.filter(item => item.cat !== FLAVOR_CAT).map(item => ({
         id: item.id,
         name: item.name,
         desc: item.desc,
@@ -1127,9 +1155,9 @@ async function loadMenuFromAPI() {
       }));
 
       if (data.categories && data.categories.length > 0) {
-        CATEGORIES = [{ key: 'all', label: 'All' }, ...data.categories];
+        CATEGORIES = [{ key: 'all', label: 'All' }, ...data.categories.filter(c => c.key !== FLAVOR_CAT)];
       }
-      if (data.taxRate) TAX_RATE = data.taxRate;
+      if (data.taxRate != null) TAX_RATE = parseFloat(data.taxRate) || 0;
       if (data.taxLabel) TAX_LABEL = data.taxLabel;
       if (data.boothName) {
         const titleEl = document.getElementById('boothTitle');
@@ -1212,6 +1240,14 @@ const EXTRAS = [
 ];
 const CUSTOMIZABLE_CATS = ['burgers', 'dogs'];
 
+// Flavour picker: items in the 'scoops' category prompt for a flavour.
+// Flavours are managed in Food Admin as $0 items in the 'flavours' category.
+const FLAVOR_CAT = 'flavours';
+const FLAVOR_PICK_CATS = ['scoops'];
+let FLAVORS = [];            // [{ name, emoji }] — refreshed with the menu
+let flavorItemId = null;     // item awaiting a flavour choice
+let flavorScreenList = [];   // FLAVORS snapshot while the picker is open
+
 // Dynamic category tab rendering
 function renderCategoryTabs() {
   const tabBar = document.getElementById('catTabBar');
@@ -1255,6 +1291,12 @@ function addToCart(itemId) {
   const item = MENU.find(i => i.id === itemId);
   if (!item) return;
 
+  // Scoop items need a flavour choice first
+  if (FLAVORS.length > 0 && FLAVOR_PICK_CATS.includes(item.cat)) {
+    showFlavorScreen(item);
+    return;
+  }
+
   // If customizable, show modifier screen
   if (CUSTOMIZABLE_CATS.includes(item.cat)) {
     customizingItemId = itemId;
@@ -1263,7 +1305,7 @@ function addToCart(itemId) {
   }
 
   // Non-customizable: add directly
-  const existing = cart.find(c => c.id === itemId && Object.keys(c.mods).length === 0);
+  const existing = cart.find(c => c.id === itemId && Object.keys(c.mods).length === 0 && !c.flavor);
   if (existing) {
     existing.qty++;
   } else {
@@ -1313,6 +1355,55 @@ function showCustomizeScreen(item) {
   }
 
   goToScreen('customize');
+}
+
+// ===== FLAVOUR PICKER =====
+function showFlavorScreen(item) {
+  flavorItemId = item.id;
+  flavorScreenList = FLAVORS.slice();
+
+  document.getElementById('flavorHeader').innerHTML = `
+    <div class="cih-emoji">${item.emoji}</div>
+    <div>
+      <div class="cih-name">${item.name}</div>
+      <div class="cih-price">$${(item.price / 100).toFixed(2)}</div>
+    </div>
+  `;
+
+  document.getElementById('flavorOptions').innerHTML = flavorScreenList.map((f, idx) => `
+    <div class="mod-row" onclick="chooseFlavor(${idx})">
+      <div class="mod-left">
+        <span class="mod-emoji">${f.emoji}</span>
+        <span class="mod-name">${f.name}</span>
+      </div>
+      <div class="mod-check">✓</div>
+    </div>
+  `).join('');
+
+  goToScreen('flavor');
+}
+
+function chooseFlavor(idx) {
+  const item = MENU.find(i => i.id === flavorItemId);
+  const flavor = flavorScreenList[idx];
+  flavorItemId = null;
+  if (!item || !flavor) { goToScreen('menu'); return; }
+
+  const existing = cart.find(c => c.id === item.id && c.flavor === flavor.name);
+  if (existing) {
+    existing.qty++;
+  } else {
+    cart.push({ id: item.id, qty: 1, mods: {}, modCost: 0, flavor: flavor.name });
+  }
+  updateCartUI();
+  showToast(flavor.name + ' — added!');
+  updateMenuBadges();
+  goToScreen('menu');
+}
+
+function cancelFlavor() {
+  flavorItemId = null;
+  goToScreen('menu');
 }
 
 function toggleMod(key) {
@@ -1436,6 +1527,7 @@ function renderOrderScreen() {
       const e = EXTRAS.find(m => m.key === k);
       return c ? c.name : e ? e.name : k;
     });
+    if (entry.flavor) modNames.unshift(entry.flavor);
     const modsStr = modNames.length > 0 ? modNames.join(', ') : '';
     return `
       <div class="order-item">
@@ -1455,10 +1547,17 @@ function renderOrderScreen() {
     `;
   }).join('');
 
-  // Update totals
+  // Update totals — when the tax rate is 0, prices are tax-included:
+  // hide the subtotal/tax breakdown and show a "Prices include HST" note.
   const subtotal = getSubtotal();
   const tax = Math.round(subtotal * TAX_RATE);
   const total = subtotal + tax;
+  const taxIncluded = !(TAX_RATE > 0);
+
+  document.getElementById('subtotalRow').style.display = taxIncluded ? 'none' : '';
+  document.getElementById('taxRow').style.display = taxIncluded ? 'none' : '';
+  document.getElementById('taxIncludedNote').style.display = taxIncluded ? '' : 'none';
+  document.getElementById('taxIncludedText').textContent = 'Prices include ' + TAX_LABEL;
 
   document.getElementById('subtotalValue').textContent = '$' + (subtotal / 100).toFixed(2);
   document.getElementById('taxValue').textContent = '$' + (tax / 100).toFixed(2);
@@ -1775,7 +1874,7 @@ function onPaymentSuccess({ paymentMethod, paymentRef, newWristbandCredits } = {
   // Build summary
   const lines = cart.map(entry => {
     const item = MENU.find(i => i.id === entry.id);
-    return `${entry.qty}× ${item.name}`;
+    return `${entry.qty}× ${item.name}${entry.flavor ? ' (' + entry.flavor + ')' : ''}`;
   });
   let summary = lines.join(' · ');
   if (paymentMethod === 'wristband' && newWristbandCredits != null) {
@@ -1807,6 +1906,7 @@ async function sendOrderToKitchen(orderNum, paymentMethod, paymentRef) {
       const e = EXTRAS.find(m => m.key === k);
       return c ? c.name : e ? e.name : k;
     });
+    if (entry.flavor) modNames.unshift(entry.flavor);
     return {
       name: item.name,
       emoji: item.emoji || '',
