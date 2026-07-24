@@ -559,9 +559,11 @@
             const trans = recentTransactions.find(t=>t.id===transId);
             if (!trans) return;
             try {
+                // drink_id makes the server refund the drink's real price and
+                // restock it — omitting it falls back to a flat $7 refund.
                 const r = await fetch(API+'/wristbands/cancel-drink', {
                     method:'POST', headers:{'Authorization':'Bearer '+token,'Content-Type':'application/json'},
-                    body:JSON.stringify({rfid_uid:normalizeUid(currentBand.rfid_uid)})
+                    body:JSON.stringify({rfid_uid:normalizeUid(currentBand.rfid_uid), drink_id:trans.drink_id})
                 });
                 if (r.status === 401 || r.status === 403) { redirectToLogin(); return; }
                 const d = await r.json();
@@ -570,7 +572,7 @@
                     if (rr.status === 401 || rr.status === 403) { redirectToLogin(); return; }
                     if (rr.ok) currentBand = await rr.json();
                     recentTransactions = recentTransactions.filter(t=>t.id!==transId);
-                    const refundCents = creditsToCents(trans.price || 0);
+                    const refundCents = creditsToCents(parseFloat(d.refund) || trans.price || 0);
                     showMessage(`✅ ${trans.drink} cancelled — ${formatDollars(refundCents)} credit returned`,'success');
                     await loadDrinks(); displayCustomer(currentBand);
                 } else { showMessage('❌ Cancel failed: '+d.error,'error'); }
