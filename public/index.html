@@ -155,8 +155,26 @@
         </div>
 
         <div class="section" id="displaysSection" style="display:none;">
-            <div class="section-title">📺 Displays &amp; Kiosks</div>
+            <div class="section-title">🛠️ Management Functions</div>
             <div class="menu-grid">
+                <a href="rodeo-food-admin.html" class="menu-card admin">
+                    <div class="menu-icon">📋</div>
+                    <div class="menu-title">Food Admin</div>
+                    <div class="menu-description">Edit food/drink menus &amp; ticket pricing</div>
+                </a>
+
+                <a href="rodeo-food-admin.html?booth=icecream" class="menu-card admin">
+                    <div class="menu-icon">🍦</div>
+                    <div class="menu-title">Ice Cream Admin</div>
+                    <div class="menu-description">Edit ice cream menu &amp; flavours (sold-out toggles)</div>
+                </a>
+
+                <a href="inventory-manager.html" class="menu-card admin">
+                    <div class="menu-icon">📊</div>
+                    <div class="menu-title">Inventory Manager</div>
+                    <div class="menu-description">Manage drink stock and view sales</div>
+                </a>
+
                 <a href="rodeo-kitchen-staff.html" class="menu-card gate">
                     <div class="menu-icon">👨‍🍳</div>
                     <div class="menu-title">Kitchen Staff</div>
@@ -214,12 +232,6 @@
                     <div class="menu-icon">📅</div>
                     <div class="menu-title">Manage Events</div>
                     <div class="menu-description">Create, edit, and delete events</div>
-                </a>
-
-                <a href="inventory-manager.html" class="menu-card admin">
-                    <div class="menu-icon">📊</div>
-                    <div class="menu-title">Inventory Manager</div>
-                    <div class="menu-description">Manage drink stock and view sales</div>
                 </a>
 
                 <a href="shift-manager.html" class="menu-card admin">
@@ -320,24 +332,30 @@
         return;
     }
 
-    var ADMIN_NAMES = ['Darren Holm', 'Todd Holm', 'Dawn Abel', 'Grace Holm', 'Brady Yzerman', 'Admin User'];
-            var MANAGER_NAMES = ['Darren Holm', 'Todd Holm', 'Dawn Abel', 'Brady Yzerman', 'Keaton Holm', 'Chapman Holm', 'Grace Holm', 'Admin User'];
-
-            var staffName = localStorage.getItem('staff_name');
+    var staffName = localStorage.getItem('staff_name');
 
             var nameEl = document.getElementById('currentStaffName');
             if (nameEl && staffName) {
                 nameEl.textContent = staffName;
             }
 
-            // Normalize so the match isn't broken by case or stray/double spaces
-            // (e.g. "dawn abel", "Dawn  Abel", "Dawn Abel " all match "Dawn Abel").
-            function norm(n) { return (n || '').trim().toLowerCase().replace(/\s+/g, ' '); }
-            var normName = norm(staffName);
-            var isAdmin = normName && ADMIN_NAMES.some(function(n) { return norm(n) === normName; });
-            var isManager = normName && MANAGER_NAMES.some(function(n) { return norm(n) === normName; });
+            // Access is driven by each person's roles, set in Edit Staff →
+            // Portal Access and carried in the login token. We decode the JWT
+            // payload to read them; the server still enforces on every API
+            // call, so this only controls which menu tiles are shown.
+            // Note: role changes take effect on the user's next login (a new
+            // token is issued then).
+            function rolesFromToken(t) {
+                try {
+                    var payload = t.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
+                    return (JSON.parse(atob(payload)).roles) || [];
+                } catch (e) { return []; }
+            }
+            var roles = rolesFromToken(token);
+            var isAdmin = roles.indexOf('admin') !== -1;
+            var isManager = isAdmin || roles.indexOf('manager') !== -1;
 
-            if (isManager || isAdmin) {
+            if (isManager) {
                 document.getElementById('displaysSection').style.display = '';
             }
 

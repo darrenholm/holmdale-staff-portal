@@ -274,6 +274,14 @@
                     <input type="checkbox" id="staffY2026"> 2026
                 </label>
             </div>
+            <div class="form-group">
+                <label for="staffAccess">Portal Access</label>
+                <select id="staffAccess">
+                    <option value="staff">Staff — no admin menus</option>
+                    <option value="manager">Manager — Management Functions (food, ice cream, inventory, displays)</option>
+                    <option value="admin">Admin — full access</option>
+                </select>
+            </div>
 
             <!-- Wristband Section (edit mode only) -->
             <div class="wristband-section" id="wristbandSection" style="display:none;">
@@ -431,6 +439,7 @@
             document.getElementById('staffAdult').checked = false;
             document.getElementById('staffSmartserve').checked = false;
             document.getElementById('staffY2026').checked = true;
+            document.getElementById('staffAccess').value = 'staff';
             document.getElementById('wristbandSection').style.display = 'none';
             document.getElementById('alertModal').innerHTML = '';
             document.getElementById('staffModal').classList.add('active');
@@ -449,6 +458,11 @@
             document.getElementById('staffAdult').checked = !!s.adult;
             document.getElementById('staffSmartserve').checked = !!s.smartserve;
             document.getElementById('staffY2026').checked = !!s.y2026;
+            // Roles is a JSONB array like ["manager"]; collapse to a single access level.
+            var roles = Array.isArray(s.roles) ? s.roles : [];
+            document.getElementById('staffAccess').value =
+                roles.indexOf('admin') !== -1 ? 'admin' :
+                roles.indexOf('manager') !== -1 ? 'manager' : 'staff';
             document.getElementById('alertModal').innerHTML = '';
 
             // Show wristband section
@@ -593,7 +607,8 @@
                 phone: document.getElementById('staffPhone').value.trim(),
                 adult: document.getElementById('staffAdult').checked,
                 smartserve: document.getElementById('staffSmartserve').checked,
-                y2026: document.getElementById('staffY2026').checked
+                y2026: document.getElementById('staffY2026').checked,
+                roles: [document.getElementById('staffAccess').value]
             };
 
             try {
