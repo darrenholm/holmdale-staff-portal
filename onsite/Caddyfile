@@ -1,0 +1,25 @@
+# Caddyfile for the on-site NUC (192.168.0.101)
+# Serves the staff portal + API over HTTPS with no internet dependency.
+# Certs are obtained ahead of time (see NUC-SETUP.md step 5) — ACME is
+# disabled so Caddy never tries to reach Let's Encrypt while offline.
+
+{
+	auto_https off
+}
+
+https://staff.holmdalerodeo.ca {
+	tls C:/rodeo/certs/fullchain.pem C:/rodeo/certs/privkey.pem
+	root * C:/rodeo/holmdale-staff-portal/public
+	file_server
+	encode gzip
+}
+
+https://api.holmdalerodeo.ca {
+	tls C:/rodeo/certs/fullchain.pem C:/rodeo/certs/privkey.pem
+	reverse_proxy 127.0.0.1:3000
+}
+
+# Anyone landing on plain http gets bounced to https
+http://staff.holmdalerodeo.ca, http://api.holmdalerodeo.ca {
+	redir https://{host}{uri} permanent
+}
