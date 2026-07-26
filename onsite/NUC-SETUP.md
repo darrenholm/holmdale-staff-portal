@@ -25,7 +25,7 @@ On the NUC, in an **admin** PowerShell:
 
 ```powershell
 winget install OpenJS.NodeJS.LTS
-winget install PostgreSQL.PostgreSQL.16     # note the postgres password you choose
+winget install PostgreSQL.PostgreSQL.17     # match Railway (v17); note the postgres password you choose
 winget install CaddyServer.Caddy
 winget install Git.Git
 winget install NSSM.NSSM                    # runs node + caddy as Windows services
@@ -50,7 +50,7 @@ To update the portal later: `cd C:\rodeo\holmdale-staff-portal; git pull`.
 Create the database:
 
 ```powershell
-& "C:\Program Files\PostgreSQL\16\bin\createdb.exe" -U postgres rodeo_db
+& "C:\Program Files\PostgreSQL\17\bin\createdb.exe" -U postgres rodeo_db
 ```
 
 **Copy production data from Railway** (recommended — brings over all staff
@@ -60,8 +60,8 @@ Variables, then:
 
 ```powershell
 $env:PROD_URL = "postgresql://...railway connection string..."
-& "C:\Program Files\PostgreSQL\16\bin\pg_dump.exe" --no-owner --no-acl -d $env:PROD_URL -f C:\rodeo\prod-dump.sql
-& "C:\Program Files\PostgreSQL\16\bin\psql.exe" -U postgres -d rodeo_db -f C:\rodeo\prod-dump.sql
+& "C:\Program Files\PostgreSQL\17\bin\pg_dump.exe" --no-owner --no-acl -d $env:PROD_URL -f C:\rodeo\prod-dump.sql
+& "C:\Program Files\PostgreSQL\17\bin\psql.exe" -U postgres -d rodeo_db -f C:\rodeo\prod-dump.sql
 ```
 
 Re-run those two commands right before the event so the local copy is fresh.
