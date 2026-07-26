@@ -66,8 +66,15 @@ $env:PROD_URL = "postgresql://...railway connection string..."
 
 Re-run those two commands right before the event so the local copy is fresh.
 
-*(Alternative for a blank test setup: `npm run migrate` in the rodeo-fresh
-folder creates empty tables + a default admin login.)*
+**The production copy is required, not optional.** A dress rehearsal of this
+guide (2026-07-26) found that building the database from the repo's migrations
+produces a schema that drifted from production: `staff.password_hash` is
+missing (it exists on Railway but is in no migration file), the
+`updated_at`/`updated_date` trigger bug breaks every staff UPDATE until
+`migrations/fix-trigger.sql` is applied, and the sponsors/signs tables never
+get created. Restoring the production dump sidesteps all of that. (Also note
+`npm run migrate` doesn't read `.env` — if you ever need it, run
+`node -r dotenv/config migrations/run.js` instead.)
 
 ## 4. API
 
