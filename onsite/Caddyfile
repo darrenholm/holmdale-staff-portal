@@ -19,7 +19,23 @@ https://api.holmdalerodeo.ca {
 	reverse_proxy 127.0.0.1:3000
 }
 
-# Anyone landing on plain http gets bounced to https
-http://staff.holmdalerodeo.ca, http://api.holmdalerodeo.ca {
-	redir https://{host}{uri} permanent
+# Plain-http handling. TV browsers without the Let's Encrypt root cert load
+# the display-only pages (no camera/NFC, so no secure context needed) over
+# http; everything else still bounces to https so phones keep the padlock.
+http://staff.holmdalerodeo.ca {
+	root * C:/rodeo/holmdale-staff-portal/public
+	@tv path /rodeo-kitchen-customer.html /rodeo-kitchen-staff.html /rodeo-icecream-display.html /rodeo-live-dashboard.html /lib/* /*.png /favicon.ico
+	handle @tv {
+		file_server
+	}
+	handle {
+		redir https://{host}{uri} permanent
+	}
+	encode gzip
+}
+
+# The API answers on http too — the TV pages call it with the page's own
+# protocol (see const API_URL in those pages).
+http://api.holmdalerodeo.ca {
+	reverse_proxy 127.0.0.1:3000
 }

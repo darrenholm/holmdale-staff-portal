@@ -385,7 +385,7 @@
 
 <script>
 // ===== CONFIG =====
-const API_URL = 'https://api.holmdalerodeo.ca/api';
+const API_URL = location.protocol + '//api.holmdalerodeo.ca/api'; // match page protocol: TVs without the Let's Encrypt root load these displays over plain http
 const BOOTH = new URLSearchParams(location.search).get('booth') || 'icecream';
 const POLL_INTERVAL = 5000;
 const URGENT_MINUTES = 8;
