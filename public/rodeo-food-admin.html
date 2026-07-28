@@ -729,7 +729,8 @@ let categories = [
 
 // Icons can be an emoji or an image URL (rendered via iconHtml everywhere)
 const WINGS_ICON = 'https://d2titgpbhhuablta.public.blob.vercel-storage.com/icons/wings.png';
-const EMOJI_OPTIONS = ['🍔','🥓','🍄','🌭','🌶️','🥬','🐷','🍗',WINGS_ICON,'🥩','🥪','🍟','🧅','🥗','🥤','💧','🍋','🧊','🌮','🍕','🥧','🍦','🧁','🍩','☕','🍺','🥜','🌽','🥔','🫧','🔥'];
+const NACHOS_ICON = 'https://d2titgpbhhuablta.public.blob.vercel-storage.com/icons/nachos.png';
+const EMOJI_OPTIONS = ['🍔','🥓','🍄','🌭','🌶️','🥬','🐷','🍗',WINGS_ICON,NACHOS_ICON,'🥩','🥪','🍟','🧅','🥗','🥤','💧','🍋','🧊','🌮','🍕','🥧','🍦','🧁','🍩','☕','🍺','🥜','🌽','🥔','🫧','🔥'];
 function iconHtml(v) {
   return v && String(v).startsWith('http') ? `<img src="${v}" class="icon-img" alt="">` : (v || '');
 }
