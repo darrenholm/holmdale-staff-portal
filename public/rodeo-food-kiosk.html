@@ -187,6 +187,9 @@
     display: block;
   }
 
+  /* Image-based icons (item.emoji can be a URL as well as an emoji) */
+  .icon-img { height: 1.1em; width: auto; vertical-align: -0.15em; }
+
   .menu-item-name {
     font-family: 'Barlow Condensed', sans-serif;
     font-size: 22px; font-weight: 700;
@@ -1087,6 +1090,11 @@ const API_URL = 'https://api.holmdalerodeo.ca/api';
 // Booth mode: default 'main' (kitchen). Ice cream booth kiosk = ?booth=icecream
 const BOOTH = new URLSearchParams(location.search).get('booth') || 'main';
 
+// Icons can be an emoji or an image URL (e.g. the wings icon)
+function iconHtml(v) {
+  return v && String(v).startsWith('http') ? `<img src="${v}" class="icon-img" alt="">` : (v || '');
+}
+
 // ===== AUTH HELPERS =====
 function authHeaders(extra) {
   const h = Object.assign({ 'Accept': 'application/json' }, extra || {});
@@ -1273,7 +1281,7 @@ function renderMenu(category = 'all') {
       <div class="menu-item" onclick="addToCart('${item.id}')">
         ${item.popular ? '<div class="popular-badge">Popular</div>' : ''}
         <div class="menu-item-qty ${qty > 0 ? 'show' : ''}" id="qty-${item.id}">${qty}</div>
-        <span class="menu-item-emoji">${item.emoji}</span>
+        <span class="menu-item-emoji">${iconHtml(item.emoji)}</span>
         <div class="menu-item-name">${item.name}</div>
         <div class="menu-item-desc">${item.desc}</div>
         <div class="menu-item-bottom">
@@ -1323,7 +1331,7 @@ function addToCart(itemId) {
 
 function showCustomizeScreen(item) {
   document.getElementById('customizeHeader').innerHTML = `
-    <div class="cih-emoji">${item.emoji}</div>
+    <div class="cih-emoji">${iconHtml(item.emoji)}</div>
     <div>
       <div class="cih-name">${item.name}</div>
       <div class="cih-price">$${(item.price / 100).toFixed(2)}</div>
@@ -1368,7 +1376,7 @@ function showFlavorScreen(item) {
   flavorScreenList = FLAVORS.slice();
 
   document.getElementById('flavorHeader').innerHTML = `
-    <div class="cih-emoji">${item.emoji}</div>
+    <div class="cih-emoji">${iconHtml(item.emoji)}</div>
     <div>
       <div class="cih-name">${item.name}</div>
       <div class="cih-price">$${(item.price / 100).toFixed(2)}</div>
@@ -1536,7 +1544,7 @@ function renderOrderScreen() {
     const modsStr = modNames.length > 0 ? modNames.join(', ') : '';
     return `
       <div class="order-item">
-        <span class="order-item-emoji">${item.emoji}</span>
+        <span class="order-item-emoji">${iconHtml(item.emoji)}</span>
         <div class="order-item-info">
           <div class="order-item-name">${item.name}</div>
           ${modsStr ? `<div class="order-item-notes">${modsStr}</div>` : ''}

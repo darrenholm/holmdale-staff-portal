@@ -402,6 +402,9 @@
 
   .emoji-opt:hover { border-color: var(--border); }
   .emoji-opt.selected { border-color: var(--flame); background: rgba(217,79,30,0.15); }
+  /* Image-based icons (item.emoji can be a URL as well as an emoji) */
+  .icon-img { height: 1.1em; width: auto; vertical-align: -0.15em; }
+  .emoji-opt .icon-img { height: 28px; }
 
   .modal-actions {
     display: flex; gap: 10px;
@@ -724,7 +727,12 @@ let categories = [
   { key:'drinks', label:'Drinks' },
 ];
 
-const EMOJI_OPTIONS = ['🍔','🥓','🍄','🌭','🌶️','🥬','🐷','🍗','🥩','🥪','🍟','🧅','🥗','🥤','💧','🍋','🧊','🌮','🍕','🥧','🍦','🧁','🍩','☕','🍺','🥜','🌽','🥔','🫧','🔥'];
+// Icons can be an emoji or an image URL (rendered via iconHtml everywhere)
+const WINGS_ICON = 'https://d2titgpbhhuablta.public.blob.vercel-storage.com/icons/wings.png';
+const EMOJI_OPTIONS = ['🍔','🥓','🍄','🌭','🌶️','🥬','🐷','🍗',WINGS_ICON,'🥩','🥪','🍟','🧅','🥗','🥤','💧','🍋','🧊','🌮','🍕','🥧','🍦','🧁','🍩','☕','🍺','🥜','🌽','🥔','🫧','🔥'];
+function iconHtml(v) {
+  return v && String(v).startsWith('http') ? `<img src="${v}" class="icon-img" alt="">` : (v || '');
+}
 const DRINK_EMOJI_OPTIONS = ['🍺','🍻','🥃','🍷','🍸','🍹','🧉','🥂','🍾','🫗','🧃','🥤','💧','☕','🫧','🍵','🧊','🍋'];
 
 let drinkItems = [
@@ -756,7 +764,7 @@ function renderTable() {
 
   tbody.innerHTML = menuItems.map(item => `
     <tr style="${item.soldOut ? 'opacity:0.45;' : ''}">
-      <td class="item-emoji">${item.emoji}</td>
+      <td class="item-emoji">${iconHtml(item.emoji)}</td>
       <td>
         <div class="item-name">${item.name}</div>
         <div class="item-desc">${item.desc}</div>
@@ -801,8 +809,8 @@ function renderCatSelect() {
 
 function renderEmojiPicker() {
   const picker = document.getElementById('emojiPicker');
-  picker.innerHTML = EMOJI_OPTIONS.map(e => 
-    `<div class="emoji-opt" onclick="selectEmoji('${e}')">${e}</div>`
+  picker.innerHTML = EMOJI_OPTIONS.map(e =>
+    `<div class="emoji-opt" data-v="${e}" onclick="selectEmoji('${e}')">${iconHtml(e)}</div>`
   ).join('');
 }
 
@@ -873,7 +881,7 @@ function selectEmoji(e) {
 
 function highlightEmoji(e) {
   document.querySelectorAll('.emoji-opt').forEach(opt => {
-    opt.classList.toggle('selected', opt.textContent.trim() === e);
+    opt.classList.toggle('selected', (opt.dataset.v || opt.textContent.trim()) === e);
   });
 }
 
@@ -1072,7 +1080,7 @@ function renderDrinkTable() {
   document.getElementById('drinkItemCount').textContent = `(${drinkItems.length} drinks)`;
   tbody.innerHTML = drinkItems.map(item => `
     <tr style="${item.soldOut ? 'opacity:0.45;' : ''}">
-      <td class="item-emoji">${item.emoji}</td>
+      <td class="item-emoji">${iconHtml(item.emoji)}</td>
       <td>
         <div class="item-name">${item.name}</div>
       </td>
