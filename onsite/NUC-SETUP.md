@@ -159,6 +159,36 @@ Port 3000 stays closed — only Caddy talks to the API locally.
   bypass the local answers).
 - **Address Reservation**: pin the NUC to `192.168.0.101`.
 
+## Device cheat-sheet (which address to use where)
+
+| Device | Address | Why |
+|---|---|---|
+| Staff phones/tablets | `https://staff.holmdalerodeo.ca` | Trusted cert; camera/NFC need https |
+| TVs (displays) | `http://192.168.0.101/rodeo-icecream-display.html` etc. | Raw IP — immune to TV DNS quirks |
+| Booth kiosks / POS / bar terminals (browser) | `http://192.168.0.101/rodeo-food-kiosk.html?booth=...` etc. | Raw IP — orders always land in the LOCAL database |
+| RodeoBar Android app | built-in (`api.holmdalerodeo.ca`) | Follows normal DNS |
+
+Raw-IP pages call the API same-origin (`/api` proxied by Caddy), so they never
+depend on DNS. Named-domain pages follow whatever DNS the device uses — fine
+for phones, but a browser with "secure DNS"/Private DNS set to a specific
+provider will silently reach the CLOUD instead of the NUC. If two screens ever
+show different orders, that's what's happening.
+
+## ⚠️ The Caddyfile the service actually loads
+
+The RodeoCaddy service loads **`C:\rodeo\rodeo-fresh\scripts\onsite\Caddyfile`**
+(see `nssm get RodeoCaddy AppParameters`) — NOT the copy in this folder. Both
+are kept in their repos; edit the rodeo-fresh one (or change the service's
+AppParameters) and `nssm restart RodeoCaddy` after any change. This bit us
+once: edits to this repo's copy were silently ignored.
+
+## Stripe on the NUC
+
+Card payments from the kiosk require `STRIPE_SECRET_KEY` in
+`C:\rodeo\rodeo-fresh\.env` (copy from Railway → rodeo-fresh → Variables),
+then `nssm restart RodeoAPI`. Stripe always needs internet — wristband/cash
+flows work offline, card does not.
+
 ## 9. Verify (from a phone on the venue Wi‑Fi)
 
 1. Toggle Wi‑Fi off/on (picks up the new DNS).
