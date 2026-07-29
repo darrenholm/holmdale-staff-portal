@@ -894,8 +894,9 @@ function saveItem() {
   const emoji = document.getElementById('fEmoji').value.trim() || '🍽️';
   const popular = document.getElementById('fPopular').checked;
 
-  // Flavour entries (cat 'flavours') are picker options, not sellable items — price is 0
-  if (isNaN(price) && cat === 'flavours') price = 0;
+  // Flavour entries (cat 'flavours') are picker options, not sellable items — price is 0.
+  // Topping entries (cat 'toppings') default to free when no price is given.
+  if (isNaN(price) && (cat === 'flavours' || cat === 'toppings')) price = 0;
 
   if (!name) { alert('Please enter an item name.'); return; }
   if (isNaN(price) || price < 0) { alert('Please enter a valid price.'); return; }

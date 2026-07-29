@@ -552,14 +552,14 @@
     gap: 10px;
     padding-bottom: 70px;
   }
-  #screen-customize, #screen-flavor {
+  #screen-customize, #screen-flavor, #screen-topping {
     position: absolute; inset: 0;
     background: rgba(0,0,0,0.7);
     display: flex; align-items: center; justify-content: center;
     z-index: 100;
   }
-  #screen-customize.active, #screen-flavor.active { transform: none; }
-  #screen-customize .customize-popup, #screen-flavor .customize-popup {
+  #screen-customize.active, #screen-flavor.active, #screen-topping.active { transform: none; }
+  #screen-customize .customize-popup, #screen-flavor .customize-popup, #screen-topping .customize-popup {
     background: var(--charcoal);
     border: 1px solid var(--smoke);
     border-radius: 16px;
@@ -569,29 +569,29 @@
     overflow: hidden;
     box-shadow: 0 20px 60px rgba(0,0,0,0.6);
   }
-  #screen-customize .customize-popup-header, #screen-flavor .customize-popup-header {
+  #screen-customize .customize-popup-header, #screen-flavor .customize-popup-header, #screen-topping .customize-popup-header {
     display: flex; align-items: center; gap: 10px;
     padding: 12px 14px;
     background: var(--charcoal-mid);
     border-bottom: 1px solid var(--smoke);
   }
-  #screen-customize .customize-popup-header .back-btn, #screen-flavor .customize-popup-header .back-btn {
+  #screen-customize .customize-popup-header .back-btn, #screen-flavor .customize-popup-header .back-btn, #screen-topping .customize-popup-header .back-btn {
     width: 32px; height: 32px; border-radius: 8px;
     background: var(--smoke); color: var(--cream);
     display: flex; align-items: center; justify-content: center;
     font-size: 18px; cursor: pointer;
   }
-  #screen-customize .customize-popup-header .popup-title, #screen-flavor .customize-popup-header .popup-title {
+  #screen-customize .customize-popup-header .popup-title, #screen-flavor .customize-popup-header .popup-title, #screen-topping .customize-popup-header .popup-title {
     font-family: 'Bebas Neue', sans-serif;
     font-size: 20px; color: var(--cream); letter-spacing: 1px;
   }
-  #screen-customize .customize-popup-body, #screen-flavor .customize-popup-body {
+  #screen-customize .customize-popup-body, #screen-flavor .customize-popup-body, #screen-topping .customize-popup-body {
     padding: 12px;
     overflow-y: auto;
     flex: 1;
     display: flex; flex-direction: column; gap: 10px;
   }
-  #screen-customize .customize-popup-footer, #screen-flavor .customize-popup-footer {
+  #screen-customize .customize-popup-footer, #screen-flavor .customize-popup-footer, #screen-topping .customize-popup-footer {
     padding: 10px 12px;
     border-top: 1px solid var(--smoke);
     background: var(--charcoal-mid);
@@ -626,9 +626,10 @@
     background: var(--success); border-color: var(--success); color: #fff;
   }
   /* Flavour picker rows: bigger + brighter than condiment rows — read at arm's length */
-  #screen-flavor .mod-row { padding: 12px 14px; }
-  #screen-flavor .mod-row .mod-emoji { font-size: 24px; }
-  #screen-flavor .mod-row .mod-name { font-size: 19px; font-weight: 700; color: var(--cream); }
+  #screen-flavor .mod-row, #screen-topping .mod-row { padding: 12px 14px; }
+  #screen-flavor .mod-row .mod-emoji, #screen-topping .mod-row .mod-emoji { font-size: 24px; }
+  #screen-flavor .mod-row .mod-name, #screen-topping .mod-row .mod-name { font-size: 19px; font-weight: 700; color: var(--cream); }
+  #screen-topping .mod-row .mod-price { font-size: 15px; }
   .customize-footer {
     padding: 10px 14px;
     border-top: 1px solid var(--border);
@@ -1074,6 +1075,26 @@
   </div>
 </div>
 
+<!-- ===== TOPPINGS PICKER POPUP ===== -->
+<div class="screen" id="screen-topping">
+  <div class="customize-popup">
+    <div class="customize-popup-header">
+      <div class="back-btn" onclick="cancelToppings()">←</div>
+      <div class="popup-title">Add Toppings?</div>
+    </div>
+    <div class="customize-popup-body">
+      <div class="customize-item-header" id="toppingHeader"></div>
+      <div class="customize-section">
+        <div class="customize-section-title">Toppings</div>
+        <div class="customize-options" id="toppingOptions"></div>
+      </div>
+    </div>
+    <div class="customize-popup-footer">
+      <button class="pay-btn" onclick="confirmToppings()">Add to Order</button>
+    </div>
+  </div>
+</div>
+
 <!-- Toast -->
 <div class="toast" id="toast">Item added!</div>
 
@@ -1156,8 +1177,14 @@ async function loadMenuFromAPI() {
         .filter(item => item.cat === FLAVOR_CAT)
         .map(item => ({ name: item.name, emoji: item.emoji || '🍦' }));
 
+      // Items in the 'toppings' category are add-ons offered after the flavour
+      // choice (sprinkles etc.). Price is charged per topping; $0 = free.
+      TOPPINGS = activeItems
+        .filter(item => item.cat === TOPPING_CAT)
+        .map(item => ({ name: item.name, emoji: item.emoji || '🍬', price: Math.round(item.price * 100) }));
+
       // Convert API format (price in dollars) to kiosk format (price in cents)
-      MENU = activeItems.filter(item => item.cat !== FLAVOR_CAT).map(item => ({
+      MENU = activeItems.filter(item => item.cat !== FLAVOR_CAT && item.cat !== TOPPING_CAT).map(item => ({
         id: item.id,
         name: item.name,
         desc: item.desc,
@@ -1168,7 +1195,7 @@ async function loadMenuFromAPI() {
       }));
 
       if (data.categories && data.categories.length > 0) {
-        CATEGORIES = [{ key: 'all', label: 'All' }, ...data.categories.filter(c => c.key !== FLAVOR_CAT)];
+        CATEGORIES = [{ key: 'all', label: 'All' }, ...data.categories.filter(c => c.key !== FLAVOR_CAT && c.key !== TOPPING_CAT)];
       }
       if (data.taxRate != null) TAX_RATE = parseFloat(data.taxRate) || 0;
       if (data.taxLabel) TAX_LABEL = data.taxLabel;
@@ -1260,6 +1287,14 @@ const FLAVOR_PICK_CATS = ['scoops'];
 let FLAVORS = [];            // [{ name, emoji }] — refreshed with the menu
 let flavorItemId = null;     // item awaiting a flavour choice
 let flavorScreenList = [];   // FLAVORS snapshot while the picker is open
+
+// Toppings picker: shown after the flavour choice when the 'toppings'
+// category has items. Managed in Food Admin like flavours; price per topping.
+const TOPPING_CAT = 'toppings';
+let TOPPINGS = [];           // [{ name, emoji, price }] — refreshed with the menu
+let toppingItem = null;      // { itemId, flavor } awaiting topping choices
+let toppingScreenList = [];  // TOPPINGS snapshot while the picker is open
+let toppingChecked = [];     // parallel bools for toppingScreenList
 
 // Dynamic category tab rendering
 function renderCategoryTabs() {
@@ -1402,21 +1437,85 @@ function chooseFlavor(idx) {
   flavorItemId = null;
   if (!item || !flavor) { goToScreen('menu'); return; }
 
-  const existing = cart.find(c => c.id === item.id && c.flavor === flavor.name);
-  if (existing) {
-    existing.qty++;
-  } else {
-    cart.push({ id: item.id, qty: 1, mods: {}, modCost: 0, flavor: flavor.name });
+  if (TOPPINGS.length > 0) {
+    showToppingScreen(item, flavor.name);
+    return;
   }
-  updateCartUI();
-  showToast(flavor.name + ' — added!');
-  updateMenuBadges();
+  addScoopToCart(item, flavor.name, []);
   goToScreen('menu');
 }
 
 function cancelFlavor() {
   flavorItemId = null;
   goToScreen('menu');
+}
+
+// ===== TOPPINGS PICKER =====
+function showToppingScreen(item, flavorName) {
+  toppingItem = { itemId: item.id, flavor: flavorName };
+  toppingScreenList = TOPPINGS.slice();
+  toppingChecked = toppingScreenList.map(() => false);
+
+  document.getElementById('toppingHeader').innerHTML = `
+    <div class="cih-emoji">${iconHtml(item.emoji)}</div>
+    <div>
+      <div class="cih-name">${item.name} — ${flavorName}</div>
+      <div class="cih-price">$${(item.price / 100).toFixed(2)}</div>
+    </div>
+  `;
+  renderToppingOptions();
+  goToScreen('topping');
+}
+
+function renderToppingOptions() {
+  document.getElementById('toppingOptions').innerHTML = toppingScreenList.map((t, idx) => `
+    <div class="mod-row ${toppingChecked[idx] ? 'checked' : ''}" onclick="toggleTopping(${idx})">
+      <div class="mod-left">
+        <span class="mod-emoji">${t.emoji}</span>
+        <span class="mod-name">${t.name}</span>
+        ${t.price > 0 ? `<span class="mod-price">+$${(t.price / 100).toFixed(2)}</span>` : ''}
+      </div>
+      <div class="mod-check">✓</div>
+    </div>
+  `).join('');
+}
+
+function toggleTopping(idx) {
+  toppingChecked[idx] = !toppingChecked[idx];
+  renderToppingOptions();
+}
+
+function confirmToppings() {
+  const pending = toppingItem;
+  toppingItem = null;
+  const item = pending && MENU.find(i => i.id === pending.itemId);
+  if (!item) { goToScreen('menu'); return; }
+
+  const chosen = toppingScreenList.filter((t, idx) => toppingChecked[idx]);
+  addScoopToCart(item, pending.flavor, chosen);
+  goToScreen('menu');
+}
+
+function cancelToppings() {
+  toppingItem = null;
+  goToScreen('menu');
+}
+
+function addScoopToCart(item, flavorName, toppings) {
+  const toppingNames = toppings.map(t => t.name);
+  const toppingCost = toppings.reduce((s, t) => s + t.price, 0);
+  const key = toppingNames.join('|');
+
+  const existing = cart.find(c => c.id === item.id && c.flavor === flavorName
+    && (c.toppings || []).join('|') === key);
+  if (existing) {
+    existing.qty++;
+  } else {
+    cart.push({ id: item.id, qty: 1, mods: {}, modCost: toppingCost, flavor: flavorName, toppings: toppingNames });
+  }
+  updateCartUI();
+  showToast(flavorName + (toppingNames.length ? ' + ' + toppingNames.length + ' topping' + (toppingNames.length > 1 ? 's' : '') : '') + ' — added!');
+  updateMenuBadges();
 }
 
 function toggleMod(key) {
@@ -1540,6 +1639,7 @@ function renderOrderScreen() {
       const e = EXTRAS.find(m => m.key === k);
       return c ? c.name : e ? e.name : k;
     });
+    if (entry.toppings && entry.toppings.length) modNames.push(...entry.toppings);
     if (entry.flavor) modNames.unshift(entry.flavor);
     const modsStr = modNames.length > 0 ? modNames.join(', ') : '';
     return `
@@ -1919,6 +2019,7 @@ async function sendOrderToKitchen(orderNum, paymentMethod, paymentRef) {
       const e = EXTRAS.find(m => m.key === k);
       return c ? c.name : e ? e.name : k;
     });
+    if (entry.toppings && entry.toppings.length) modNames.push(...entry.toppings);
     if (entry.flavor) modNames.unshift(entry.flavor);
     return {
       name: item.name,
