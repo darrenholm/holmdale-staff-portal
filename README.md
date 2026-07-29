@@ -37,6 +37,12 @@ Source for the API lives in the [`rodeo-fresh`](../rodeo-fresh) repo.
 - First login uses default password `rodeo2026` and forces a password change
 - Forgot-password flow exists in `login.html` but currently broken — depends on `reset-password.html` which was deleted in commit `e46326b` and needs to be recreated
 
+## On-site / offline deployment
+
+The event venue runs the whole stack locally on a Windows NUC (Technitium DNS +
+Caddy + rodeo-fresh API + PostgreSQL) so everything works without internet.
+Setup guide and configs live in [`onsite/`](onsite/NUC-SETUP.md).
+
 ## Deploy
 
 **Where this deploys is currently configured externally** (Vercel/Netlify dashboard, or web host) — there is no deploy config file in this repo. To be added once the deploy target is confirmed.

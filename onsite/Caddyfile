@@ -1,0 +1,41 @@
+# Caddyfile for the on-site NUC (192.168.0.101)
+# Serves the staff portal + API over HTTPS with no internet dependency.
+# Certs are obtained ahead of time (see NUC-SETUP.md step 5) — ACME is
+# disabled so Caddy never tries to reach Let's Encrypt while offline.
+
+{
+	auto_https off
+}
+
+https://staff.holmdalerodeo.ca {
+	tls C:/rodeo/certs/fullchain.pem C:/rodeo/certs/privkey.pem
+	root * C:/rodeo/holmdale-staff-portal/public
+	file_server
+	encode gzip
+}
+
+https://api.holmdalerodeo.ca {
+	tls C:/rodeo/certs/fullchain.pem C:/rodeo/certs/privkey.pem
+	reverse_proxy 127.0.0.1:3000
+}
+
+# Plain-http handling. TV browsers without the Let's Encrypt root cert load
+# the display-only pages (no camera/NFC, so no secure context needed) over
+# http; everything else still bounces to https so phones keep the padlock.
+http://staff.holmdalerodeo.ca {
+	root * C:/rodeo/holmdale-staff-portal/public
+	@tv path /rodeo-kitchen-customer.html /rodeo-kitchen-staff.html /rodeo-icecream-display.html /rodeo-live-dashboard.html /lib/* /*.png /favicon.ico
+	handle @tv {
+		file_server
+	}
+	handle {
+		redir https://{host}{uri} permanent
+	}
+	encode gzip
+}
+
+# The API answers on http too — the TV pages call it with the page's own
+# protocol (see const API_URL in those pages).
+http://api.holmdalerodeo.ca {
+	reverse_proxy 127.0.0.1:3000
+}
