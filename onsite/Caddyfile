@@ -39,3 +39,17 @@ http://staff.holmdalerodeo.ca {
 http://api.holmdalerodeo.ca {
 	reverse_proxy 127.0.0.1:3000
 }
+
+# Browsing by raw IP (http://192.168.0.101/...) — for TVs whose DNS can't be
+# controlled. No DNS involved at all: serves the portal and proxies /api
+# same-origin (the display pages use location.origin when loaded by IP).
+http:// {
+	root * C:/rodeo/holmdale-staff-portal/public
+	handle /api/* {
+		reverse_proxy 127.0.0.1:3000
+	}
+	handle {
+		file_server
+		encode gzip
+	}
+}
