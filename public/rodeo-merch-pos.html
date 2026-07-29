@@ -883,7 +883,9 @@
 
 <script>
 // ===== CONFIG =====
-const API_URL = 'https://api.holmdalerodeo.ca/api';
+const API_URL = /^\d+(\.\d+){3}$/.test(location.hostname)
+  ? location.origin + '/api'  // loaded by raw IP (on-site booth hardware, no DNS): API is proxied same-origin
+  : 'https://api.holmdalerodeo.ca/api';
 const TAX_RATE = 0.13;
 
 // ===== AUTH HELPERS =====
