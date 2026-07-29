@@ -131,6 +131,43 @@
   }
   #qr-reader video { border-radius: 12px; }
 
+  /* Manual code entry (fallback when a customer's QR won't display) */
+  .manual-entry { margin-top: 18px; }
+  .manual-divider {
+    color: var(--txt-dim);
+    font-size: 12px;
+    text-align: center;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 10px;
+  }
+  #manualForm { display: flex; gap: 8px; }
+  #manualCode {
+    flex: 1;
+    min-width: 0;
+    background: var(--surface);
+    border: 2px solid var(--surface);
+    border-radius: 10px;
+    color: inherit;
+    font-family: monospace;
+    font-size: 16px;
+    letter-spacing: 1px;
+    padding: 12px 14px;
+    text-transform: uppercase;
+  }
+  #manualCode:focus { outline: none; border-color: var(--green); }
+  #manualForm button {
+    background: var(--green);
+    border: none;
+    border-radius: 10px;
+    color: #06130a;
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 18px;
+    letter-spacing: 2px;
+    padding: 0 22px;
+    cursor: pointer;
+  }
+
   /* ── TICKET INFO ── */
   .ticket-info {
     background: var(--surface);
@@ -496,6 +533,13 @@
         <p>Point camera at ticket QR code</p>
       </div>
       <div id="qr-reader"></div>
+      <div class="manual-entry">
+        <div class="manual-divider">— or type the confirmation code —</div>
+        <form id="manualForm" onsubmit="return manualLookup(event)">
+          <input id="manualCode" type="text" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="WW-XXXXXXXX" maxlength="32">
+          <button type="submit">Find</button>
+        </form>
+      </div>
     </div>
   </div>
 
@@ -583,6 +627,23 @@ function startQRScanner() {
 function onQRScanSuccess(decodedText) {
   if (html5QrcodeScanner) html5QrcodeScanner.stop();
   lookupTicket(decodedText);
+}
+
+// Fallback for customers whose email QR won't display (pre-July-16 emails
+// embedded the QR as a data: URI, which many clients strip) — gate staff
+// type the confirmation code printed under the QR instead.
+function manualLookup(e) {
+  e.preventDefault();
+  const input = document.getElementById('manualCode');
+  const code = input.value.trim().toUpperCase();
+  if (!code) return false;
+  if (html5QrcodeScanner) {
+    try { html5QrcodeScanner.stop().catch(() => {}); } catch (_) {}
+  }
+  input.value = '';
+  input.blur();
+  lookupTicket(code);
+  return false;
 }
 
 async function lookupTicket(code) {

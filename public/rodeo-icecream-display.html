@@ -386,6 +386,10 @@
 <script>
 // ===== CONFIG =====
 const API_URL = location.protocol + '//api.holmdalerodeo.ca/api'; // match page protocol: TVs without the Let's Encrypt root load these displays over plain http
+// Icons can be an emoji or an image URL (e.g. the wings icon)
+function iconHtml(v) {
+  return v && String(v).startsWith('http') ? `<img src="${v}" style="height:1.1em;width:auto;vertical-align:-0.15em" alt="">` : (v || '');
+}
 const BOOTH = new URLSearchParams(location.search).get('booth') || 'icecream';
 const POLL_INTERVAL = 5000;
 const URGENT_MINUTES = 8;
@@ -509,7 +513,7 @@ function renderCard(order, status) {
       </div>
       <ul class="order-items">
         ${items.map(item => `
-          <li><span class="item-qty">${item.qty || 1}×</span><span class="item-name">${item.emoji || ''} ${item.name}</span></li>
+          <li><span class="item-qty">${item.qty || 1}×</span><span class="item-name">${iconHtml(item.emoji)} ${item.name}</span></li>
           ${item.notes ? `<li style="padding:0 0 4px 40px;"><span class="item-notes">⚠ ${item.notes}</span></li>` : ''}
         `).join('')}
       </ul>
@@ -677,7 +681,7 @@ function openEdit(id) {
 function renderEdit() {
   document.getElementById('editBody').innerHTML = editItems.map((it, i) => `
     <div class="edit-row" style="flex-wrap:wrap;">
-      <span class="edit-name">${it.emoji || ''} ${it.name}</span>
+      <span class="edit-name">${iconHtml(it.emoji)} ${it.name}</span>
       <span class="edit-qty">
         <button onclick="editQty(${i}, -1)">−</button>
         <span class="qty-val">${it.qty}</span>
