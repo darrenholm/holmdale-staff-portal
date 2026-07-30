@@ -164,7 +164,8 @@ simple and hang everything off the PoE switch:
 Internet ──> ER605 WAN
              ER605 LAN ──> ES208GP (PoE+) ──┬─> EAP225-Outdoor  (PoE)
                                             ├─> EAP650 ×3       (PoE+)
-                                            └─> NUC (RodeoOpsServer)
+                                            ├─> NUC (RodeoOpsServer)
+                                            └─> warm backup server
 ```
 
 The venue kit:
@@ -177,6 +178,7 @@ The venue kit:
 | EAP650 | `B8-FB-B3-2A-FC-06` | `192.168.0.5` |
 | EAP650 | `B8-FB-B3-2B-1C-C4` | `192.168.0.6` |
 | NUC (`RodeoOpsServer`) | `0C-CD-B4-58-80-73` | **`192.168.0.101`** |
+| Warm backup server | *(grab from DHCP Client List when it's on)* | `192.168.0.153` |
 
 Set it up in this order — the reservations must land **before** the DNS
 change, because until then some AP may be squatting on `.101` (first boot
@@ -244,6 +246,66 @@ loads off the same switch on event day.
 Quick check per AP: stand near it, connect a phone to the SSID, and
 confirm the phone gets a `192.168.0.x` address with DNS `192.168.0.101`
 (Wi‑Fi details screen), then open `https://staff.holmdalerodeo.ca`.
+
+## Warm backup server (`192.168.0.153`)
+
+Second machine with the same stack as the NUC (steps 1–7 of this guide:
+Postgres, rodeo-fresh API, Caddy, Technitium with the same `staff.`/`api.`
+zones → but pointing at itself only after failover). It idles at `.153`;
+if the NUC dies mid-event, it **takes over `.101`** so nothing else has to
+change — DNS, phones, and every raw-IP TV/kiosk bookmark keep working.
+
+### Keeping it warm
+
+Fresh data on the backup is what makes failover useful. On the **NUC**,
+allow the backup to pull from Postgres (one-time):
+
+1. `C:\Program Files\PostgreSQL\17\data\pg_hba.conf` → add
+   `host all all 192.168.0.153/32 scram-sha-256`, then restart the
+   `postgresql-x64-17` service.
+2. Firewall: `New-NetFirewallRule -DisplayName "Rodeo PG sync" -Direction
+   Inbound -Protocol TCP -LocalPort 5432 -RemoteAddress 192.168.0.153
+   -Action Allow` (scoped to the backup only).
+
+On the **backup**, save the postgres password once in
+`%APPDATA%\postgresql\pgpass.conf` (`192.168.0.101:5432:*:postgres:PASSWORD`),
+put this in `C:\rodeo\sync-from-primary.ps1`:
+
+```powershell
+$stamp = Get-Date -Format yyyyMMdd-HHmm
+& "C:\Program Files\PostgreSQL\17\bin\pg_dump.exe" --no-owner --no-acl -h 192.168.0.101 -U postgres -d rodeo_db -f "C:\rodeo\sync\rodeo-$stamp.sql"
+Get-ChildItem C:\rodeo\sync\rodeo-*.sql | Sort-Object Name -Descending | Select-Object -Skip 24 | Remove-Item
+```
+
+and schedule it every **15 minutes** (Task Scheduler → run whether user is
+logged on or not). Worst-case data loss on failover = one interval.
+
+Also copy `C:\rodeo\certs\*` to the backup whenever the Let's Encrypt cert
+is (re)issued — the backup must serve the same trusted cert.
+
+### Failover runbook (NUC died)
+
+1. **Power off the NUC** (or pull its cable) — two machines on `.101` is
+   worse than none.
+2. On the backup, take over the IP:
+   `Get-NetIPAddress -AddressFamily IPv4` to find the interface, then
+   `New-NetIPAddress -InterfaceAlias "Ethernet" -IPAddress 192.168.0.101 -PrefixLength 24 -DefaultGateway 192.168.0.1`
+   (remove the old `.153` address if it lingers:
+   `Remove-NetIPAddress -IPAddress 192.168.0.153`).
+3. Restore the newest sync dump:
+   ```powershell
+   & "C:\Program Files\PostgreSQL\17\bin\dropdb.exe"   -U postgres --if-exists rodeo_db
+   & "C:\Program Files\PostgreSQL\17\bin\createdb.exe" -U postgres rodeo_db
+   $latest = Get-ChildItem C:\rodeo\sync\rodeo-*.sql | Sort-Object Name | Select-Object -Last 1
+   & "C:\Program Files\PostgreSQL\17\bin\psql.exe" -U postgres -d rodeo_db -f $latest.FullName
+   ```
+4. `nssm restart rodeo-api; nssm restart rodeo-caddy` and check Technitium
+   is running.
+5. Verify from a phone: toggle Wi‑Fi, `https://staff.holmdalerodeo.ca`,
+   padlock, log in. TVs/kiosks recover on their own (same raw IP).
+
+After the event, whichever machine finished as `.101` holds the real data —
+`pg_dump` from *that* one before touching anything.
 
 ## Device cheat-sheet (which address to use where)
 
