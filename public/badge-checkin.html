@@ -243,6 +243,9 @@
 const API = 'https://api.holmdalerodeo.ca/api';
 const token = localStorage.getItem('auth_token');
 const authHdr = { 'Authorization':'Bearer '+token, 'Content-Type':'application/json' };
+// Route sponsor-logo blob URLs through the API's serve-through cache so
+// badges print with logos even when the onsite server has no internet.
+function logoSrc(u){ return u && u.includes('.public.blob.vercel-storage.com') ? API+'/badges/logo?src='+encodeURIComponent(u) : u; }
 
 // Sponsorship levels (low → high). A sponsor's pledged $ maps to a level
 // (server-side), which pre-selects the dropdown; the level drives bar colour +
@@ -285,7 +288,7 @@ function updatePreview(){
   el.classList.toggle('staff', state.type==='volunteer');
   const name=document.getElementById('f_name').value;
   const ph = state.photo ? `<img class="ph" src="${state.photo}">` : '<div class="ph"></div>';
-  const lg = state.companyLogo ? `<div class="lg"><img src="${esc(state.companyLogo)}" crossorigin="anonymous"></div>` : '';
+  const lg = state.companyLogo ? `<div class="lg"><img src="${esc(logoSrc(state.companyLogo))}" crossorigin="anonymous"></div>` : '';
   let bar='';
   if(state.type){ const b=barFor(state.type, state.tier); bar=`<div class="bar" style="background:${b.bg};color:${b.fg};">${esc(b.label)}</div>`; }
   el.innerHTML = `<img class="bg" src="badge-art/badge.png" onerror="this.style.display='none'">${ph}<div class="nm">${nameHtml(state.type,name)}</div>${lg}${bar}`;

@@ -128,6 +128,7 @@
 
 <script>
 const API='https://api.holmdalerodeo.ca/api';
+function logoSrc(u){ return u && u.includes('.public.blob.vercel-storage.com') ? API+'/badges/logo?src='+encodeURIComponent(u) : u; }
 const token=localStorage.getItem('auth_token');
 const authHdr={'Authorization':'Bearer '+token,'Content-Type':'application/json'};
 let badges=[], ZONES=[], editId=null;
@@ -150,7 +151,7 @@ function fitName(scope){ const fn=scope&&scope.querySelector('.fn'); if(!fn) ret
 function cardHtml(b){
   const bar=barFor(b.badge_type,b.tier);
   const ph=b.photo_url?`<img class="ph" src="${esc(b.photo_url)}" crossorigin="anonymous">`:'<div class="ph"></div>';
-  const lg=b.company_logo_url?`<div class="lg"><img src="${esc(b.company_logo_url)}" crossorigin="anonymous"></div>`:'';
+  const lg=b.company_logo_url?`<div class="lg"><img src="${esc(logoSrc(b.company_logo_url))}" crossorigin="anonymous"></div>`:'';
   return `<div class="pvcard${b.badge_type==='volunteer'?' staff':''}"><img class="bg" src="badge-art/badge.png" onerror="this.style.display='none'">${ph}<div class="nm">${nameHtml(b.customer_name)}</div>${lg}<div class="bar" style="background:${bar.bg};color:${bar.fg};">${esc(bar.label)}</div></div>`;
 }
 async function printBadgeAdmin(id){

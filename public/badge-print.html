@@ -117,6 +117,8 @@
 const API='https://api.holmdalerodeo.ca/api';
 const token=localStorage.getItem('auth_token');
 const authHdr={'Authorization':'Bearer '+token,'Content-Type':'application/json'};
+// Sponsor logos go through the API's serve-through cache (offline-safe onsite)
+function logoSrc(u){ return u && u.includes('.public.blob.vercel-storage.com') ? API+'/badges/logo?src='+encodeURIComponent(u) : u; }
 const EVENT='Holmdale Pro Rodeo';
 let queue=[], selected=null, ZONES=[];
 
@@ -241,7 +243,7 @@ function renderCard(b){
   // Credit balance & access zones are intentionally NOT printed — they live on
   // the chip/DB so they can change without reprinting the card.
   const photo = b.photo_url ? `<img class="photo" src="${esc(b.photo_url)}" crossorigin="anonymous">` : '<div class="photo"></div>';
-  const logo = b.company_logo_url ? `<div class="splogo"><img src="${esc(b.company_logo_url)}" crossorigin="anonymous"></div>` : '';
+  const logo = b.company_logo_url ? `<div class="splogo"><img src="${esc(logoSrc(b.company_logo_url))}" crossorigin="anonymous"></div>` : '';
   return `
     <div class="card${b.badge_type==='volunteer'?' staff':''}">
       <img class="bg" src="badge-art/badge.png" onerror="this.style.display='none'">
