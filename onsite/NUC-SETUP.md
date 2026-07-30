@@ -190,17 +190,43 @@ every raw-IP bookmark and TV depends on it.
 > controller), the controller **owns the config** — redo these settings
 > there, because standalone-UI edits get overwritten on sync.
 
-### Access points (3× EAP650 + EAP225-Outdoor)
+### Access points — one mesh (3× EAP650 + EAP225-Outdoor)
 
-- They're plain APs — DHCP/DNS for clients comes from the ER605, so the
-  reservations + DNS setting above cover every area of the grounds.
-- Same SSID + password on all four lets phones roam between areas;
-  different SSIDs per area also work — either way it's all one network.
-- Their admin pages live at the reserved IPs (`.3`–`.6`) if one ever needs
-  attention mid-event.
+The four APs form a **single mesh**: one SSID across the whole grounds, and
+only the root AP needs an Ethernet cable. No controller required — the
+**Omada app** (v4.6.9+) manages standalone mesh
+([TP-Link guide](https://support.omadanetworks.com/us/document/13130/)).
 
-Quick check per AP: connect a phone to it and confirm the phone gets a
-`192.168.0.x` address with DNS `192.168.0.101` (Wi‑Fi details screen).
+1. Every AP except the root must be at **factory defaults** when it joins.
+   If one was ever configured through its own web page, reset it first
+   (hold the reset button ~5 s).
+2. Wire the **root AP** to the ES208GP switch and power on the rest nearby.
+3. In the Omada app: menu (☰) → **Standalone Devices → Switch to Mesh
+   Management → Create** → follow the wizard (connect the phone to the root
+   AP's default SSID when asked, pick the scanned APs, set the admin
+   login and the mesh **SSID + password**).
+4. Add any AP it didn't find with the **“+”** button. To re-point an AP at
+   a stronger upstream: tap the AP → **Scan for available uplinks**.
+5. Any AP that *can* be wired, wire it — a cable always beats a wireless
+   hop, and it stays in the same mesh/SSID.
+
+Caveats:
+
+- The EAP225-Outdoor is Wi‑Fi 5 and the EAP650s are Wi‑Fi 6; if the app
+  refuses to mesh it wirelessly to an EAP650, give it a wired uplink — or
+  use the controller fallback below.
+- **Fallback / upgrade path**: the free **Omada Software Controller**
+  installed on the NUC adopts the ER605 *and* all four APs, and does mesh +
+  seamless roaming for every model here. If you go that way, the controller
+  **owns the config** — redo all of section 8's settings inside it, because
+  standalone edits get overwritten on sync.
+- The mesh only replaces per-AP Wi‑Fi setup. The router settings above
+  (reservations + DHCP DNS) are unchanged — mesh APs and their clients
+  still get addresses and DNS from the ER605.
+
+Quick check per AP: stand near it, connect a phone to the mesh SSID, and
+confirm the phone gets a `192.168.0.x` address with DNS `192.168.0.101`
+(Wi‑Fi details screen), then open `https://staff.holmdalerodeo.ca`.
 
 ## Device cheat-sheet (which address to use where)
 
