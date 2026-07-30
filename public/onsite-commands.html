@@ -66,6 +66,20 @@
     </div>
   </div>
 
+  <div class="card">
+    <h2>5 — Update fails with "Not possible to fast-forward"</h2>
+    <p>The repo on this machine has drifted from GitHub (usually a leftover from provisioning or the standby sync). This safely parks any local state on a backup branch — nothing is deleted — then matches GitHub exactly. Run it, then run command #1 again.</p>
+    <div class="cmdrow">
+      <pre id="c6">git -C C:\rodeo\rodeo-fresh branch "backup-$(Get-Date -Format yyyyMMddHHmm)"; git -C C:\rodeo\rodeo-fresh stash; git -C C:\rodeo\rodeo-fresh fetch origin; git -C C:\rodeo\rodeo-fresh reset --hard origin/main</pre>
+      <button onclick="cp('c6',this)">Copy</button>
+    </div>
+    <p style="margin-top:8px;">Same thing for the staff portal folder if it ever gets stuck:</p>
+    <div class="cmdrow">
+      <pre id="c7">git -C C:\rodeo\holmdale-staff-portal branch "backup-$(Get-Date -Format yyyyMMddHHmm)"; git -C C:\rodeo\holmdale-staff-portal stash; git -C C:\rodeo\holmdale-staff-portal fetch origin; git -C C:\rodeo\holmdale-staff-portal reset --hard origin/main</pre>
+      <button onclick="cp('c7',this)">Copy</button>
+    </div>
+  </div>
+
 </div>
 <script>
 function cp(id, btn){
