@@ -199,11 +199,19 @@ change, because until then some AP may be squatting on `.101` (first boot
 after the router swap, the EAP225-Outdoor grabbed `.101` from DHCP and the
 NUC ended up on `.105`):
 
-1. **Network → LAN → Address Reservation** → **Import** →
-   `onsite/er605-address-reservations.csv` (this repo) loads the whole
-   table in one go. If the import complains (the feature is finicky across
-   firmware versions), just add the six rows by hand — the "Network Name"
-   column must match the LAN's name shown on the LAN tab (default `LAN`).
+1. Add the reservations. The CSV import
+   (`onsite/er605-address-reservations.csv`, **Address Reservation →
+   Import**) is unreliable on this firmware — it rejected rows once and
+   hung/timed out another time. The dependable path is manual: **Network →
+   LAN → DHCP Client List** → click the green icon beside each device
+   (pre-fills its MAC) → set the IP from the table → OK. Six entries,
+   ~2 minutes.
+   **Plan B if the router UI keeps sticking:** skip reservations and set
+   static IPs on the machines themselves — on each PC, Windows → adapter →
+   IPv4 properties (IP from the table, mask `255.255.255.0`, gateway
+   `192.168.0.1`); APs via their own admin pages. The PCs holding
+   `.101`/`.153` is what actually matters tonight; AP reservations are
+   nice-to-have and can wait.
 2. Power-cycle the APs (or reboot them from their admin pages) so they
    release their old leases, then on the NUC run
    `ipconfig /release; ipconfig /renew` (or reboot it). Check **Network →
