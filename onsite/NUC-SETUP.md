@@ -155,7 +155,19 @@ Port 3000 stays closed — only Caddy talks to the API locally.
 ## 8. Router (Omada ER605 — replaced the Archer C80)
 
 The ER605 (standalone web UI at `https://192.168.0.1`) puts all the access
-points and everything behind them on one LAN. The venue kit on it:
+points and everything behind them on one LAN.
+
+Physical wiring — the ER605 has one WAN port plus a few LAN ports; keep it
+simple and hang everything off the PoE switch:
+
+```
+Internet ──> ER605 WAN
+             ER605 LAN ──> ES208GP (PoE+) ──┬─> EAP225-Outdoor  (PoE)
+                                            ├─> EAP650 ×3       (PoE+)
+                                            └─> NUC (RodeoOpsServer)
+```
+
+The venue kit:
 
 | Device | MAC | Reserved IP |
 |---|---|---|
