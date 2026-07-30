@@ -152,53 +152,54 @@ New-NetFirewallRule -DisplayName "Rodeo HTTPS" -Direction Inbound -Protocol TCP 
 
 Port 3000 stays closed — only Caddy talks to the API locally.
 
-## 8. Router (Omada — replaced the Archer C80)
+## 8. Router (Omada ER605 — replaced the Archer C80)
 
-The Omada router puts the CPEs and everything behind them on one LAN. Two
-settings carry over from the old router and are still what makes the whole
-offline setup work:
+The ER605 (standalone web UI at `https://192.168.0.1`) puts all the access
+points and everything behind them on one LAN. The venue kit on it:
 
-- **Keep the LAN on `192.168.0.0/24`** (gateway `192.168.0.1`). Omada's
-  default matches the old Archer, so the NUC's `192.168.0.101` and every
-  raw-IP bookmark/TV stays valid. Don't let it "optimize" to `10.x` or
-  `192.168.1.x`.
-- **DHCP DNS = `192.168.0.101` only** (leave the secondary empty — a public
-  fallback like 8.8.8.8 would let devices bypass the local answers).
-  - *Controller-managed* (OC200 / software controller / app in controller
-    mode): **Settings → Wired Networks → LAN → edit the LAN** → DHCP →
-    **DNS Server: Manual** → `192.168.0.101`. The default "Auto" hands out
-    the gateway itself, which forwards to the internet — that silently sends
-    phones to the cloud site instead of the NUC.
-  - *Standalone* (logged into the router's own web UI at `192.168.0.1`):
-    **Network → LAN → DHCP** → Primary DNS = `192.168.0.101`.
-- **Pin the NUC to `192.168.0.101`**:
-  - *Controller-managed*: **Clients → (the NUC) → Config → Use Fixed IP
-    Address** → `192.168.0.101`.
-  - *Standalone*: **Network → LAN → Address Reservation**.
-  - Either way, also make sure the DHCP pool doesn't start below `.101`, or
-    reserve it before anything else grabs it.
+| Device | MAC | Reserved IP |
+|---|---|---|
+| ES208GP switch | `D4-D6-DF-00-37-98` | `192.168.0.2` |
+| EAP225-Outdoor | `50-3D-D1-69-F2-02` | `192.168.0.3` |
+| EAP650 | `B8-FB-B3-2A-E8-D0` | `192.168.0.4` |
+| EAP650 | `B8-FB-B3-2A-FC-06` | `192.168.0.5` |
+| EAP650 | `B8-FB-B3-2B-1C-C4` | `192.168.0.6` |
+| NUC (`RodeoOpsServer`) | `0C-CD-B4-58-80-73` | **`192.168.0.101`** |
 
-If you're using the Omada controller, note that it **owns the config** —
-changes made in a device's standalone UI get overwritten on the next sync,
-so make all changes in the controller.
+Set it up in this order — the reservations must land **before** the DNS
+change, because until then some AP may be squatting on `.101` (first boot
+after the router swap, the EAP225-Outdoor grabbed `.101` from DHCP and the
+NUC ended up on `.105`):
 
-### CPEs
+1. **Network → LAN → Address Reservation** → add every row of the table
+   above.
+2. Power-cycle the APs (or reboot them from their admin pages) so they
+   release their old leases, then on the NUC run
+   `ipconfig /release; ipconfig /renew` (or reboot it). Check **Network →
+   LAN → DHCP Client List**: the NUC must show `192.168.0.101`.
+3. **DHCP DNS = `192.168.0.101` only**: **Network → LAN → LAN** → edit the
+   LAN entry → Primary DNS = `192.168.0.101`, **Secondary empty** (a public
+   fallback like 8.8.8.8 would let devices bypass the local answers).
+4. Devices pick the new DNS up on lease renewal — toggling Wi‑Fi off/on on
+   a phone forces it.
 
-For every CPE feeding an area of the grounds:
+Also make sure the LAN stays on `192.168.0.0/24` (gateway `192.168.0.1`) —
+every raw-IP bookmark and TV depends on it.
 
-- Run it in **Access Point / bridge mode** — the Omada router is the only
-  router. If a CPE is in "Router"/"AP Router" mode you get double NAT and
-  its clients can't reach the NUC.
-- **DHCP server OFF on every CPE.** A second DHCP server handing out its own
-  DNS is the #1 way devices end up on the cloud site instead of the NUC.
-- Give each CPE a **static management IP** on the LAN outside the DHCP pool
-  (e.g. `192.168.0.2`–`192.168.0.20`) and label it, so you can reach its
-  admin page from the venue.
-- Same SSID + password on all CPEs if you want phones to roam between areas;
-  different SSIDs per area also work — either way they're all one network
-  now, so DNS/DHCP comes from the Omada router for all of them.
+> If the APs are ever adopted into an Omada controller (OC200/software
+> controller), the controller **owns the config** — redo these settings
+> there, because standalone-UI edits get overwritten on sync.
 
-Quick check per CPE: connect a phone to it, and confirm the phone gets a
+### Access points (3× EAP650 + EAP225-Outdoor)
+
+- They're plain APs — DHCP/DNS for clients comes from the ER605, so the
+  reservations + DNS setting above cover every area of the grounds.
+- Same SSID + password on all four lets phones roam between areas;
+  different SSIDs per area also work — either way it's all one network.
+- Their admin pages live at the reserved IPs (`.3`–`.6`) if one ever needs
+  attention mid-event.
+
+Quick check per AP: connect a phone to it and confirm the phone gets a
 `192.168.0.x` address with DNS `192.168.0.101` (Wi‑Fi details screen).
 
 ## Device cheat-sheet (which address to use where)
