@@ -191,8 +191,13 @@ The venue kit:
 | EAP650 | `B8-FB-B3-2A-E8-D0` | `192.168.0.4` |
 | EAP650 | `B8-FB-B3-2A-FC-06` | `192.168.0.5` |
 | EAP650 | `B8-FB-B3-2B-1C-C4` | `192.168.0.6` |
-| NUC (`RodeoOpsServer`) | `0C-CD-B4-58-80-73` | **`192.168.0.101`** |
-| Warm backup server | *(grab from DHCP Client List when it's on)* | `192.168.0.153` |
+| NUC (`RodeoOpsServer`) wired NIC | `84-47-09-84-1F-7B` | **`192.168.0.101`** |
+| Standby PC | *(grab from DHCP Client List when it's on)* | `192.168.0.153` |
+
+> The NUC also has a Wi‑Fi card (`0C-CD-B4-58-80-73`) that can leave a
+> stale second `RodeoOpsServer` lease in the client list — reserve the
+> **wired** MAC above (confirm with `ipconfig /all` → "Ethernet adapter"),
+> and keep the NUC's Wi‑Fi disconnected.
 
 Set it up in this order — the reservations must land **before** the DNS
 change, because until then some AP may be squatting on `.101` (first boot
@@ -222,7 +227,12 @@ NUC ended up on `.105`):
    zones, so devices fail over to it by themselves if the primary dies).
    **Never a public DNS here** — 8.8.8.8 as secondary would let devices
    bypass the local answers and silently hit the cloud site.
-4. Devices pick the new DNS up on lease renewal — toggling Wi‑Fi off/on on
+4. **Disable IPv6 on the LAN**: **Network → IPV6 → LAN → off**. With IPv6
+   up, the router advertises Starlink's IPv6 DNS (seen as
+   `fddd:...::1` on clients) and phones/Windows **prefer it over the IPv4
+   DNS** — silently bypassing the `.101` override and landing on the cloud
+   site. The venue LAN is IPv4-only by design.
+5. Devices pick the new DNS up on lease renewal — toggling Wi‑Fi off/on on
    a phone forces it.
 
 Also make sure the LAN stays on `192.168.0.0/24` (gateway `192.168.0.1`) —
