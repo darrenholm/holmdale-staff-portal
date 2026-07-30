@@ -208,9 +208,12 @@ NUC ended up on `.105`):
    release their old leases, then on the NUC run
    `ipconfig /release; ipconfig /renew` (or reboot it). Check **Network →
    LAN → DHCP Client List**: the NUC must show `192.168.0.101`.
-3. **DHCP DNS = `192.168.0.101` only**: **Network → LAN → LAN** → edit the
-   LAN entry → Primary DNS = `192.168.0.101`, **Secondary empty** (a public
-   fallback like 8.8.8.8 would let devices bypass the local answers).
+3. **DHCP DNS**: **Network → LAN → LAN** → edit the LAN entry →
+   Primary DNS = `192.168.0.101` (primary PC), Secondary DNS =
+   `192.168.0.153` (**the standby PC's Technitium** — it serves the same
+   zones, so devices fail over to it by themselves if the primary dies).
+   **Never a public DNS here** — 8.8.8.8 as secondary would let devices
+   bypass the local answers and silently hit the cloud site.
 4. Devices pick the new DNS up on lease renewal — toggling Wi‑Fi off/on on
    a phone forces it.
 
@@ -261,65 +264,36 @@ Quick check per AP: stand near it, connect a phone to the SSID, and
 confirm the phone gets a `192.168.0.x` address with DNS `192.168.0.101`
 (Wi‑Fi details screen), then open `https://staff.holmdalerodeo.ca`.
 
-## Warm backup server (`192.168.0.153`)
+## Standby PC (`192.168.0.153`) and data flows
 
-Second machine with the same stack as the NUC (steps 1–7 of this guide:
-Postgres, rodeo-fresh API, Caddy, Technitium with the same `staff.`/`api.`
-zones → but pointing at itself only after failover). It idles at `.153`;
-if the NUC dies mid-event, it **takes over `.101`** so nothing else has to
-change — DNS, phones, and every raw-IP TV/kiosk bookmark keep working.
+> ⚠️ **The authoritative runbook for the two-PC setup, cutover, failover,
+> and all sync scripts is `rodeo-fresh/scripts/onsite/README.md`** — same
+> repo whose Caddyfile the services load. This section is only the summary
+> and the network-side requirements. Don't duplicate procedures here.
 
-### Keeping it warm
+The standby PC runs the identical stack (provisioned via
+`setup-standby.ps1` after copying `C:\rodeo` over) and stays **2 minutes
+behind the primary** (`sync-to-standby.ps1`, scheduled on the primary).
+Meanwhile online ticket sales keep landing in the cloud and are pulled
+down to the local DB **every 2 minutes** by `sync-ticket-orders.js`
+(`RodeoTicketSync` task) — so gate check-in sees online buyers ~2 min
+after purchase while Starlink is up.
 
-Fresh data on the backup is what makes failover useful. On the **NUC**,
-allow the backup to pull from Postgres (one-time):
-
-1. `C:\Program Files\PostgreSQL\17\data\pg_hba.conf` → add
-   `host all all 192.168.0.153/32 scram-sha-256`, then restart the
-   `postgresql-x64-17` service.
-2. Firewall: `New-NetFirewallRule -DisplayName "Rodeo PG sync" -Direction
-   Inbound -Protocol TCP -LocalPort 5432 -RemoteAddress 192.168.0.153
-   -Action Allow` (scoped to the backup only).
-
-On the **backup**, save the postgres password once in
-`%APPDATA%\postgresql\pgpass.conf` (`192.168.0.101:5432:*:postgres:PASSWORD`),
-put this in `C:\rodeo\sync-from-primary.ps1`:
-
-```powershell
-$stamp = Get-Date -Format yyyyMMdd-HHmm
-& "C:\Program Files\PostgreSQL\17\bin\pg_dump.exe" --no-owner --no-acl -h 192.168.0.101 -U postgres -d rodeo_db -f "C:\rodeo\sync\rodeo-$stamp.sql"
-Get-ChildItem C:\rodeo\sync\rodeo-*.sql | Sort-Object Name -Descending | Select-Object -Skip 24 | Remove-Item
+```
+cloud (online sales) --2 min ticket pull--> primary .101 --2 min push--> standby .153
+                                                    \--15 min dumps--> C:\rodeo\backups
 ```
 
-and schedule it every **15 minutes** (Task Scheduler → run whether user is
-logged on or not). Worst-case data loss on failover = one interval.
+Failover (primary dies) is **DNS-based, not IP takeover**: both PCs run
+Technitium with the same zones (A records → `.101`, TTL 30 s); the router
+hands out both as DNS servers. Promote the standby by editing **its**
+A records to `.153` and enabling its `RodeoTicketSync`/`RodeoBackup`
+tasks — full steps in the rodeo-fresh runbook. Data loss ≤ 2 minutes.
 
-Also copy `C:\rodeo\certs\*` to the backup whenever the Let's Encrypt cert
-is (re)issued — the backup must serve the same trusted cert.
-
-### Failover runbook (NUC died)
-
-1. **Power off the NUC** (or pull its cable) — two machines on `.101` is
-   worse than none.
-2. On the backup, take over the IP:
-   `Get-NetIPAddress -AddressFamily IPv4` to find the interface, then
-   `New-NetIPAddress -InterfaceAlias "Ethernet" -IPAddress 192.168.0.101 -PrefixLength 24 -DefaultGateway 192.168.0.1`
-   (remove the old `.153` address if it lingers:
-   `Remove-NetIPAddress -IPAddress 192.168.0.153`).
-3. Restore the newest sync dump:
-   ```powershell
-   & "C:\Program Files\PostgreSQL\17\bin\dropdb.exe"   -U postgres --if-exists rodeo_db
-   & "C:\Program Files\PostgreSQL\17\bin\createdb.exe" -U postgres rodeo_db
-   $latest = Get-ChildItem C:\rodeo\sync\rodeo-*.sql | Sort-Object Name | Select-Object -Last 1
-   & "C:\Program Files\PostgreSQL\17\bin\psql.exe" -U postgres -d rodeo_db -f $latest.FullName
-   ```
-4. `nssm restart rodeo-api; nssm restart rodeo-caddy` and check Technitium
-   is running.
-5. Verify from a phone: toggle Wi‑Fi, `https://staff.holmdalerodeo.ca`,
-   padlock, log in. TVs/kiosks recover on their own (same raw IP).
-
-After the event, whichever machine finished as `.101` holds the real data —
-`pg_dump` from *that* one before touching anything.
+**Raw-IP caveat:** TVs/kiosks bookmarked to `http://192.168.0.101/...`
+don't follow DNS — after a failover to the standby they must be re-pointed
+to `http://192.168.0.153/...` by hand (or their pages reloaded via the
+named domain). Keep that on the failover checklist.
 
 ## Device cheat-sheet (which address to use where)
 
