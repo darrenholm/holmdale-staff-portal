@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Onsite Server — Command Cheat Sheet</title>
+<style>
+  :root { --bg:#0c0a09; --surface:#1c1917; --border:#44403c; --text:#e7e5e4; --dim:#a8a29e; --green:#22c55e; --yellow:#eab308; }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { font-family:'Segoe UI',Arial,sans-serif; background:var(--bg); color:var(--text); min-height:100vh; padding:24px; }
+  .wrap { max-width:900px; margin:0 auto; }
+  h1 { font-size:26px; margin-bottom:4px; }
+  .sub { color:var(--dim); margin-bottom:24px; font-size:14px; }
+  .card { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:18px; margin-bottom:16px; }
+  .card h2 { font-size:17px; margin-bottom:4px; }
+  .card p { color:var(--dim); font-size:13px; margin-bottom:10px; }
+  .cmdrow { display:flex; gap:8px; align-items:stretch; margin-bottom:8px; }
+  pre { flex:1; background:#000; border:1px solid var(--border); border-radius:8px; padding:12px; font-family:Consolas,monospace; font-size:13px; overflow-x:auto; white-space:pre-wrap; word-break:break-all; color:#a5f3a5; }
+  button { background:var(--green); color:#052e12; border:none; border-radius:8px; padding:0 18px; font-weight:700; font-size:14px; cursor:pointer; min-width:84px; }
+  button.copied { background:var(--yellow); }
+  .warn { color:var(--yellow); font-size:13px; margin-top:6px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>🖥️ Onsite Server — Command Cheat Sheet</h1>
+  <div class="sub">Open this page on the Mini PC / standby, click Copy, paste into PowerShell (right-click the Start button → Terminal / PowerShell).</div>
+
+  <div class="card">
+    <h2>1 — Update code (do this to get the latest fixes)</h2>
+    <p>Pulls latest backend + staff portal from GitHub, installs deps, runs migrations, pre-warms the sponsor-logo cache for offline badge printing, restarts the API. Run on the PRIMARY and the STANDBY.</p>
+    <div class="cmdrow">
+      <pre id="c1">powershell -NoProfile -ExecutionPolicy Bypass -File C:\rodeo\rodeo-fresh\scripts\onsite\update-code.ps1</pre>
+      <button onclick="cp('c1',this)">Copy</button>
+    </div>
+    <div class="warn">⚠️ Restarts the RodeoAPI service — terminals see a few seconds of errors. Avoid mid-event unless it's an urgent fix.</div>
+  </div>
+
+  <div class="card">
+    <h2>2 — Pre-warm the sponsor logo cache only</h2>
+    <p>Downloads every sponsor logo to local disk so badges print with logos when the grounds have no internet. Safe any time; skips what's already cached.</p>
+    <div class="cmdrow">
+      <pre id="c2">node C:\rodeo\rodeo-fresh\scripts\onsite\cache-logos.js</pre>
+      <button onclick="cp('c2',this)">Copy</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>3 — Check the API is healthy</h2>
+    <div class="cmdrow">
+      <pre id="c3">Invoke-RestMethod http://localhost:3000/health</pre>
+      <button onclick="cp('c3',this)">Copy</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>4 — Restart the API service</h2>
+    <div class="cmdrow">
+      <pre id="c4">Restart-Service RodeoAPI</pre>
+      <button onclick="cp('c4',this)">Copy</button>
+    </div>
+    <p style="margin-top:8px;">If it won't start, check the service log:</p>
+    <div class="cmdrow">
+      <pre id="c5">nssm status RodeoAPI</pre>
+      <button onclick="cp('c5',this)">Copy</button>
+    </div>
+  </div>
+
+</div>
+<script>
+function cp(id, btn){
+  const t = document.getElementById(id).textContent.trim();
+  (navigator.clipboard ? navigator.clipboard.writeText(t) : Promise.reject()).then(()=>{
+    btn.textContent='✓ Copied'; btn.classList.add('copied');
+    setTimeout(()=>{ btn.textContent='Copy'; btn.classList.remove('copied'); }, 1500);
+  }).catch(()=>{
+    // clipboard API needs https or localhost — fall back to a prompt box
+    window.prompt('Copy the command (Ctrl+C, Enter):', t);
+  });
+}
+</script>
+</body>
+</html>
