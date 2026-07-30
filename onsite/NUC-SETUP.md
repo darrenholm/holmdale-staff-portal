@@ -161,12 +161,26 @@ Physical wiring — the ER605 has one WAN port plus a few LAN ports; keep it
 simple and hang everything off the PoE switch:
 
 ```
-Internet ──> ER605 WAN
+Starlink ──> ER605 WAN
              ER605 LAN ──> ES208GP (PoE+) ──┬─> EAP225-Outdoor  (PoE)
                                             ├─> EAP650 ×3       (PoE+)
                                             ├─> NUC (RodeoOpsServer)
                                             └─> warm backup server
 ```
+
+Starlink notes:
+
+- ER605 WAN connection type = **Dynamic IP** (Starlink hands out DHCP; no
+  PPPoE). With the standard Starlink router you need its **Ethernet
+  adapter**; enabling **Bypass mode** in the Starlink app avoids double
+  NAT. Not strictly required — everything here is outbound-only — but it
+  removes one layer of weirdness.
+- Starlink is **CGNAT**: nothing on the internet can reach into the venue.
+  That's fine — cards (Stripe/Moneris), emails, Railway dumps, and Let's
+  Encrypt (DNS validation) are all outbound.
+- Good internet does **not** change the local-first design. Starlink blips
+  (obstructions, weather, power) are exactly when the gate line is longest —
+  the NUC keeps everything but card payments running through them.
 
 The venue kit:
 
