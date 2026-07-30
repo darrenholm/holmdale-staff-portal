@@ -152,12 +152,54 @@ New-NetFirewallRule -DisplayName "Rodeo HTTPS" -Direction Inbound -Protocol TCP 
 
 Port 3000 stays closed — only Caddy talks to the API locally.
 
-## 8. Router (Archer C80)
+## 8. Router (Omada — replaced the Archer C80)
 
-- **Advanced → Network → DHCP Server** → Primary DNS = `192.168.0.101`
-  (leave Secondary empty — a public fallback like 8.8.8.8 would let devices
-  bypass the local answers).
-- **Address Reservation**: pin the NUC to `192.168.0.101`.
+The Omada router puts the CPEs and everything behind them on one LAN. Two
+settings carry over from the old router and are still what makes the whole
+offline setup work:
+
+- **Keep the LAN on `192.168.0.0/24`** (gateway `192.168.0.1`). Omada's
+  default matches the old Archer, so the NUC's `192.168.0.101` and every
+  raw-IP bookmark/TV stays valid. Don't let it "optimize" to `10.x` or
+  `192.168.1.x`.
+- **DHCP DNS = `192.168.0.101` only** (leave the secondary empty — a public
+  fallback like 8.8.8.8 would let devices bypass the local answers).
+  - *Controller-managed* (OC200 / software controller / app in controller
+    mode): **Settings → Wired Networks → LAN → edit the LAN** → DHCP →
+    **DNS Server: Manual** → `192.168.0.101`. The default "Auto" hands out
+    the gateway itself, which forwards to the internet — that silently sends
+    phones to the cloud site instead of the NUC.
+  - *Standalone* (logged into the router's own web UI at `192.168.0.1`):
+    **Network → LAN → DHCP** → Primary DNS = `192.168.0.101`.
+- **Pin the NUC to `192.168.0.101`**:
+  - *Controller-managed*: **Clients → (the NUC) → Config → Use Fixed IP
+    Address** → `192.168.0.101`.
+  - *Standalone*: **Network → LAN → Address Reservation**.
+  - Either way, also make sure the DHCP pool doesn't start below `.101`, or
+    reserve it before anything else grabs it.
+
+If you're using the Omada controller, note that it **owns the config** —
+changes made in a device's standalone UI get overwritten on the next sync,
+so make all changes in the controller.
+
+### CPEs
+
+For every CPE feeding an area of the grounds:
+
+- Run it in **Access Point / bridge mode** — the Omada router is the only
+  router. If a CPE is in "Router"/"AP Router" mode you get double NAT and
+  its clients can't reach the NUC.
+- **DHCP server OFF on every CPE.** A second DHCP server handing out its own
+  DNS is the #1 way devices end up on the cloud site instead of the NUC.
+- Give each CPE a **static management IP** on the LAN outside the DHCP pool
+  (e.g. `192.168.0.2`–`192.168.0.20`) and label it, so you can reach its
+  admin page from the venue.
+- Same SSID + password on all CPEs if you want phones to roam between areas;
+  different SSIDs per area also work — either way they're all one network
+  now, so DNS/DHCP comes from the Omada router for all of them.
+
+Quick check per CPE: connect a phone to it, and confirm the phone gets a
+`192.168.0.x` address with DNS `192.168.0.101` (Wi‑Fi details screen).
 
 ## Device cheat-sheet (which address to use where)
 
