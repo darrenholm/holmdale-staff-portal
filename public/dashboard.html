@@ -262,13 +262,12 @@ function renderAll() {
       <div class="event-stat"><span class="label">Confirmed Orders</span><span class="value">${s.count}</span></div>
       <div class="event-stat"><span class="label">Adults</span><span class="value">${s.adults}</span></div>
       <div class="event-stat"><span class="label">Children</span><span class="value">${s.children}</span></div>
-      <div class="event-stat"><span class="label">Family Packs</span><span class="value">${s.families}</span></div>
       <div class="event-stat"><span class="label">Total People</span><span class="value">${s.people}</span></div>
       <div class="event-stat"><span class="label">Est. Ticket Revenue</span><span class="value green">${fmt$(s.revenue)}</span></div>
     </div>`;
   });
   html += '</div>';
-  html += '<div class="note">⚠️ Revenue estimated at $30 adult / $10 child / $70 family + 13% HST (Moneris totals not stored in DB)</div>';
+  html += '<div class="note">⚠️ Revenue estimated at $30 adult / $10 child + 13% HST (Moneris totals not stored in DB). Family passes are counted as their adult + child tickets.</div>';
 
   // ── ALL-TIME TOTALS ──────────────────────────────────────
   html += '<div class="section-title">📊 All-Time Totals</div>';
