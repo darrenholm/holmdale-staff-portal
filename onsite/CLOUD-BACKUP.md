@@ -33,8 +33,8 @@ Every ~5 min you should see:
 ```
 14:05:11  mirror OK    tickets=1042  wristbands=318
 ```
-Adjust the cadence with `-IntervalMinutes 3` (the failover data-loss window is
-whatever this interval is). Once happy, install as a service:
+Adjust the cadence with `-IntervalSeconds 90` (the failover data-loss window is
+whatever this interval is; default 300 = 5 min, minimum 30). Once happy, install as a service:
 ```powershell
 nssm install RodeoCloudBackup powershell -ExecutionPolicy Bypass -File C:\rodeo\holmdale-staff-portal\onsite\cloud-backup.ps1
 nssm set RodeoCloudBackup AppEnvironmentExtra PROD_URL=postgresql://postgres:PASSWORD@mainline.proxy.rlwy.net:31899/railway PGPASSWORD=<LOCAL postgres password>

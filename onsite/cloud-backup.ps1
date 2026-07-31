@@ -3,7 +3,7 @@
 
   The event runs LIVE on the cloud (Railway). This script keeps the local NUC
   database as a continuously-refreshed BACKUP copy, so if the internet fails you
-  can fail over to the local site with data that is at most $IntervalMinutes old.
+  can fail over to the local site with data that is at most $IntervalSeconds old.
 
   Normal operation: NOTHING writes to the local DB -- it is a read-only mirror.
   Each cycle fully replaces the local contents with a fresh copy of the cloud.
@@ -20,7 +20,7 @@
     setx PROD_URL   "postgresql://postgres:PASSWORD@mainline.proxy.rlwy.net:31899/railway"
     setx PGPASSWORD "<LOCAL postgres password>"
 #>
-param([int]$IntervalMinutes = 5)
+param([int]$IntervalSeconds = 300)
 
 $PGDUMP = "C:\Program Files\PostgreSQL\17\bin\pg_dump.exe"
 $PSQL   = "C:\Program Files\PostgreSQL\17\bin\psql.exe"
@@ -31,8 +31,8 @@ if (-not (Test-Path $PGDUMP)) { Write-Error "pg_dump not found at $PGDUMP"; exit
 if (-not $CLOUD)              { Write-Error "PROD_URL not set (cloud connection string). See prep above."; exit 1 }
 if (-not $env:PGPASSWORD)     { Write-Error "PGPASSWORD not set (LOCAL postgres password). See prep above."; exit 1 }
 
-$seconds = [Math]::Max(60, $IntervalMinutes * 60)
-Write-Host "Cloud -> local mirror running every $IntervalMinutes min.  Ctrl-C to stop."
+$seconds = [Math]::Max(30, $IntervalSeconds)
+Write-Host "Cloud -> local mirror running every $seconds s.  Ctrl-C to stop."
 Write-Host "The local DB is a BACKUP MIRROR. Do not enter live data on it while the cloud is up."
 while ($true) {
   $t = Get-Date -Format 'HH:mm:ss'
