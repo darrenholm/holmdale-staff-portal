@@ -562,6 +562,16 @@
     <button type="button" id="wristbandManualBtn" onclick="enableManualWristbandEntry()"
             style="background:none;border:none;color:var(--gold-light);font-size:13px;font-weight:600;cursor:pointer;margin-bottom:10px;text-decoration:underline;padding:6px;">⌨️ No scanner? Enter code manually</button>
     <div id="wristbandScanStatus" style="text-align:center;font-size:13px;min-height:18px;margin-bottom:12px;color:var(--text-dim);"></div>
+    <div id="wristbandRegisterSection" style="display:none;margin-bottom:12px;padding:12px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;">
+      <input type="text" id="wristbandRegName" autocomplete="off" placeholder="Customer name (optional)"
+             style="width:100%;padding:10px 12px;font-size:15px;background:var(--surface);border:1px solid var(--border);border-radius:8px;color:var(--text);margin-bottom:10px;">
+      <label style="display:flex;align-items:center;gap:8px;font-size:14px;color:var(--text);cursor:pointer;margin-bottom:4px;">
+        <input type="checkbox" id="wristbandRegAge" style="width:18px;height:18px;accent-color:var(--gold);">
+        Photo ID checked — customer is 19+
+      </label>
+      <div style="font-size:12px;color:var(--text-dim);margin-bottom:10px;">Credits can only be loaded on 19+ verified wristbands. Leave unchecked to register only — the customer can verify at Gate 2 later.</div>
+      <button class="btn-confirm" id="wristbandRegisterBtn" onclick="registerWristbandAndLoad()" style="width:100%;">Register &amp; Load Credits</button>
+    </div>
     <div class="cash-actions">
       <button class="btn-cancel" onclick="closeWristbandScanModal()">Skip / Cancel</button>
       <button class="btn-confirm" id="wristbandConfirmBtn" onclick="submitWristbandLoad()" disabled>Load Credits</button>
@@ -1205,6 +1215,8 @@ async function recordSale(method, orderId, total) {
 let pendingCreditLoad = 0;
 function openWristbandScanModal(amount) {
   pendingCreditLoad = amount;
+  wristbandJustRegistered = false;
+  hideWristbandRegister();
   document.getElementById('wristbandAmountDisplay').textContent = '$' + amount.toFixed(2);
   const input = document.getElementById('wristbandUidInput');
   input.value = '';
@@ -1223,6 +1235,7 @@ function openWristbandScanModal(amount) {
 function closeWristbandScanModal() {
   document.getElementById('wristbandScanModal').classList.remove('open');
   pendingCreditLoad = 0;
+  hideWristbandRegister();
 }
 // Fallback for phones with no hardware scanner: re-enable the on-screen keyboard.
 // Must run synchronously inside the tap handler or iOS won't show the keyboard.
@@ -1263,6 +1276,9 @@ document.addEventListener('DOMContentLoaded', () => {
   input.addEventListener('input', () => {
     const cleaned = input.value.replace(/[^a-fA-F0-9]/g, '');
     document.getElementById('wristbandConfirmBtn').disabled = cleaned.length < 6;
+    // A different band was scanned/typed — any prior registration no longer applies.
+    wristbandJustRegistered = false;
+    hideWristbandRegister();
   });
   input.addEventListener('keydown', (e) => {
     if (e.key === 'Enter') {
@@ -1299,7 +1315,10 @@ async function submitWristbandLoad() {
       status.style.color = '#ef4444';
       if (r.status === 401) status.textContent = '⚠️ Session expired. Log in again.';
       else if (r.status === 403) status.textContent = '⚠️ Age not verified — visit Gate 2 first.';
-      else if (r.status === 404) status.textContent = '⚠️ Wristband not registered. Link it at Gate 1.';
+      else if (r.status === 404) {
+        if (wristbandJustRegistered) status.textContent = '⚠️ Still not found after registering. Re-scan the wristband.';
+        else showWristbandRegister();
+      }
       else status.textContent = '⚠️ ' + (data.error || 'Failed to load credits');
       document.getElementById('wristbandConfirmBtn').disabled = false;
       return;
@@ -1312,6 +1331,91 @@ async function submitWristbandLoad() {
     status.style.color = '#ef4444';
     status.textContent = '⚠️ Network error: ' + e.message;
     document.getElementById('wristbandConfirmBtn').disabled = false;
+  } finally {
+    wristbandSubmitting = false;
+  }
+}
+
+// ===== ON-THE-SPOT WRISTBAND REGISTRATION =====
+// Walk-up customers (bought a band at the counter, never went through Gate 1)
+// used to dead-end here: add-credits 404s on unknown bands, and the only
+// registration path the API has is /wristbands/link, which needs a ticket
+// order. So: create a $0 zero-quantity walk-up order (adds nothing to
+// revenue/attendance stats), link the band to it, optionally set the 19+
+// flag if staff checked ID (same call Gate 2 staff make), then retry the load.
+let wristbandJustRegistered = false;
+
+function showWristbandRegister() {
+  const status = document.getElementById('wristbandScanStatus');
+  status.style.color = 'var(--gold-light)';
+  status.textContent = 'Wristband not registered — register it below.';
+  document.getElementById('wristbandRegName').value = document.getElementById('customerName').value.trim();
+  document.getElementById('wristbandRegAge').checked = false;
+  document.getElementById('wristbandRegisterBtn').disabled = false;
+  document.getElementById('wristbandRegisterSection').style.display = 'block';
+}
+
+function hideWristbandRegister() {
+  const section = document.getElementById('wristbandRegisterSection');
+  if (section) section.style.display = 'none';
+}
+
+async function registerWristbandAndLoad() {
+  if (wristbandSubmitting) return;
+  const uid = (document.getElementById('wristbandUidInput').value || '').trim();
+  if (!uid) return;
+  const status = document.getElementById('wristbandScanStatus');
+  const btn = document.getElementById('wristbandRegisterBtn');
+  const token = localStorage.getItem('auth_token') || '';
+  if (!token) {
+    status.style.color = '#ef4444';
+    status.textContent = '⚠️ Not logged in. Open this page from the staff portal.';
+    return;
+  }
+  wristbandSubmitting = true;
+  btn.disabled = true;
+  status.style.color = 'var(--text-dim)';
+  status.textContent = 'Registering…';
+  try {
+    const name = document.getElementById('wristbandRegName').value.trim() || 'Walk-in';
+    const orderRes = await fetch(API_URL + '/ticket-orders', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        event_id: 'current', customer_name: name, customer_email: '',
+        ticket_type: 'walkup', quantity_adult: 0, quantity_child: 0, total_price: 0
+      })
+    });
+    const order = await orderRes.json().catch(() => ({}));
+    if (!orderRes.ok || !order.id) throw new Error(order.error || 'Could not create walk-up record');
+
+    const linkRes = await fetch(API_URL + '/wristbands/link', {
+      method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+      body: JSON.stringify({ rfid_uid: uid, ticket_order_id: order.id, ticket_type: 'adult' })
+    });
+    const linkData = await linkRes.json().catch(() => ({}));
+    // "already registered" means another terminal (or Gate 1) beat us to it —
+    // fine either way, the retry below will find the band.
+    if (!linkRes.ok && linkData.error !== 'This wristband is already registered') {
+      throw new Error(linkData.error || 'Could not register wristband');
+    }
+
+    if (document.getElementById('wristbandRegAge').checked) {
+      const ageRes = await fetch(API_URL + '/wristbands/approve-age', {
+        method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+        body: JSON.stringify({ rfid_uid: uid })
+      });
+      if (!ageRes.ok) console.warn('[Counter] approve-age failed:', ageRes.status);
+    }
+
+    hideWristbandRegister();
+    wristbandJustRegistered = true;
+    wristbandSubmitting = false;
+    await submitWristbandLoad();
+    return;
+  } catch (e) {
+    status.style.color = '#ef4444';
+    status.textContent = '⚠️ ' + e.message;
+    btn.disabled = false;
   } finally {
     wristbandSubmitting = false;
   }
