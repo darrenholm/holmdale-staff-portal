@@ -449,7 +449,7 @@
       <div class="t-row grand"><span>Total</span><span class="tv" id="totalVal">$0.00</span></div>
     </div>
     <div class="pay-btns" id="payBtns" style="display:none;">
-      <button class="pay-btn card" onclick="payCard()">💳 Card — Moneris</button>
+      <button class="pay-btn card" onclick="payCard()">💳 Tap / Card — Stripe</button>
       <button class="pay-btn cash" onclick="document.activeElement.blur(); openCashModal()">💵 Cash</button>
     </div>
   </div>
@@ -458,9 +458,12 @@
 <!-- PROCESSING OVERLAY -->
 <div class="overlay" id="processingOverlay">
   <div class="icon">💳</div>
-  <div class="title">WAITING FOR PAYMENT</div>
-  <div class="sub">Customer should tap or insert card</div>
-  <button class="cancel-btn" onclick="cancelPayment()">Cancel</button>
+  <div class="title" id="processingTitle">WAITING FOR PAYMENT</div>
+  <div class="sub" id="processingSub">Tap card on Stripe terminal — or use Simulate Capture below</div>
+  <div style="display:flex;gap:10px;margin-top:8px;">
+    <button class="cancel-btn" onclick="cancelPayment()">Cancel</button>
+    <button class="cancel-btn" id="btnSimulateCapture" disabled onclick="capturePayment()" style="background:var(--green-dim);color:var(--green-light);border-color:var(--green);">Simulate Capture</button>
+  </div>
 </div>
 
 <!-- SUCCESS OVERLAY -->
@@ -912,29 +915,101 @@ function calcTotals() {
   return { subtotal, tax, total: subtotal + tax };
 }
 
+// Card payments run on Stripe Terminal (WisePad). The web page creates the
+// PaymentIntent; on the Android terminal the native wrapper replaces
+// capturePayment() with the real Stripe Terminal SDK collect + confirm flow
+// against the paired WisePad reader. This web build keeps the
+// Simulate Capture button so the flow can be exercised without a reader.
+let pendingPaymentIntentId = null;
+let pendingOrderId = null;
+
+function authHeaders(extra) {
+  const h = Object.assign({ 'Accept': 'application/json' }, extra || {});
+  const t = localStorage.getItem('auth_token');
+  if (t) h['Authorization'] = 'Bearer ' + t;
+  return h;
+}
+
+function redirectToLogin() {
+  localStorage.removeItem('auth_token');
+  window.location.href = 'login.html?expired=1';
+}
+
 async function payCard() {
   const { total } = calcTotals();
   if (total <= 0) { confirmFreeOrder(); return; }
   const amountCents = Math.round(total * 100);
+
+  document.getElementById('processingTitle').textContent = 'CREATING PAYMENT';
+  document.getElementById('processingSub').textContent = 'Starting Stripe payment...';
+  document.getElementById('btnSimulateCapture').disabled = true;
   document.getElementById('processingOverlay').classList.add('open');
+
   try {
-    const orderId = 'COUNTER_' + Date.now();
-    const resp = await fetch(API_URL + '/moneris/terminal-purchase', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ totalAmount: amountCents.toString(), ecr_no: '77', order_id: orderId })
+    const resp = await fetch(API_URL + '/stripe/create-payment-intent', {
+      method: 'POST', headers: authHeaders({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify({ amount: amountCents, metadata: { source: 'ticket_counter' } })
     });
-    const result = await resp.json();
-    if (result.receipt && (result.receipt.ResponseCode < 50 || result.receipt.response_code === '000')) {
-      const receiptCart = [...cart]; const receiptTotals = calcTotals(); const customerName = document.getElementById('customerName').value.trim();
-      await recordSale('card', orderId, total); showSuccess(total, 'Card', receiptCart, receiptTotals, customerName);
-    } else { throw new Error(result.receipt?.Message || result.error || 'Declined'); }
+    if (resp.status === 401 || resp.status === 403) { redirectToLogin(); return; }
+    if (!resp.ok) {
+      const errText = await resp.text().catch(() => '');
+      throw new Error('Could not start payment (HTTP ' + resp.status + '). ' + errText);
+    }
+    const data = await resp.json();
+    pendingPaymentIntentId = data.payment_intent_id;
+    pendingOrderId = 'COUNTER_' + Date.now();
+
+    document.getElementById('processingTitle').textContent = 'WAITING FOR PAYMENT';
+    document.getElementById('processingSub').textContent = 'Tap card on Stripe terminal — or use Simulate Capture below';
+    document.getElementById('btnSimulateCapture').disabled = false;
   } catch (err) {
     document.getElementById('processingOverlay').classList.remove('open');
+    pendingPaymentIntentId = null;
+    pendingOrderId = null;
     alert('Payment failed: ' + err.message);
   }
 }
 
-function cancelPayment() { document.getElementById('processingOverlay').classList.remove('open'); }
+async function capturePayment() {
+  if (!pendingPaymentIntentId || !pendingOrderId) { alert('No active payment to capture.'); return; }
+  const orderId = pendingOrderId;
+
+  document.getElementById('btnSimulateCapture').disabled = true;
+  document.getElementById('processingTitle').textContent = 'CAPTURING PAYMENT';
+  document.getElementById('processingSub').textContent = 'Finalizing transaction...';
+
+  try {
+    const resp = await fetch(API_URL + '/stripe/capture-payment', {
+      method: 'POST', headers: authHeaders({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify({ payment_intent_id: pendingPaymentIntentId })
+    });
+    if (resp.status === 401 || resp.status === 403) { redirectToLogin(); return; }
+    if (!resp.ok) {
+      const errText = await resp.text().catch(() => '');
+      throw new Error('Capture failed (HTTP ' + resp.status + '). ' + errText);
+    }
+    pendingPaymentIntentId = null;
+    pendingOrderId = null;
+
+    const receiptCart = [...cart]; const receiptTotals = calcTotals(); const customerName = document.getElementById('customerName').value.trim();
+    const { total } = receiptTotals;
+    await recordSale('card', orderId, total);
+    showSuccess(total, 'Card', receiptCart, receiptTotals, customerName);
+  } catch (err) {
+    document.getElementById('processingOverlay').classList.remove('open');
+    pendingPaymentIntentId = null;
+    pendingOrderId = null;
+    alert('Payment failed: ' + err.message);
+  }
+}
+
+function cancelPayment() {
+  // Any pending PaymentIntent is left for the backend to expire.
+  pendingPaymentIntentId = null;
+  pendingOrderId = null;
+  document.getElementById('btnSimulateCapture').disabled = true;
+  document.getElementById('processingOverlay').classList.remove('open');
+}
 
 // ===== CASH MODAL — custom keypad, no system keyboard =====
 let cashEntry = '';
