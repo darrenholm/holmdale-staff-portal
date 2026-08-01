@@ -107,6 +107,15 @@
             display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 800;
         }
         .no-drinks { grid-column: 1/-1; text-align: center; padding: 30px; color: #555; font-size: 15px; }
+        .thanks-overlay {
+            position: fixed; inset: 0; z-index: 1000;
+            background: linear-gradient(160deg, #00B74A 0%, #007a32 100%);
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            text-align: center; padding: 24px; cursor: pointer;
+        }
+        .thanks-overlay .thanks-icon { font-size: 72px; margin-bottom: 16px; }
+        .thanks-overlay h2 { color: #fff; font-size: 34px; font-weight: 800; line-height: 1.2; margin-bottom: 10px; }
+        .thanks-overlay p { color: rgba(255,255,255,0.85); font-size: 18px; font-weight: 600; }
         .hidden { display: none !important; }
     </style>
 </head>
@@ -202,6 +211,13 @@
                 <div class="drink-grid" id="staffDrinkGrid"></div>
             </div>
         </div>
+    </div>
+
+    <!-- THANK YOU SPLASH (shown after DONE when drinks were served) -->
+    <div id="thanksOverlay" class="thanks-overlay hidden" onclick="hideThanks()">
+        <div class="thanks-icon">🍻</div>
+        <h2 id="thanksTitle">Thank you!</h2>
+        <p>Enjoy the rodeo! 🤠</p>
     </div>
 
     <script>
@@ -403,6 +419,7 @@
         }
 
         function displayCustomer(band) {
+            hideThanks();
             document.getElementById('customerNameDisplay').textContent = band.customer_name || 'Customer';
             document.getElementById('wristbandDisplay').textContent = 'Wristband: ' + band.rfid_uid;
             document.getElementById('ageStatus').innerHTML = band.alcohol_approved
@@ -447,6 +464,7 @@
         }
 
         function displayStaff(staff) {
+            hideThanks();
             document.getElementById('staffNameDisplay').textContent = staff.name || 'Staff';
             const roles = Array.isArray(staff.roles) ? staff.roles.join(', ') : (staff.roles||'Staff');
             document.getElementById('staffRoleDisplay').textContent = roles.toUpperCase();
@@ -607,6 +625,8 @@
         }
 
         function reset() {
+            const servedThisVisit = recentTransactions.length + recentStaffTransactions.length;
+            const firstName = ((currentBand && currentBand.customer_name) || (currentStaff && currentStaff.name) || '').trim().split(/\s+/)[0];
             currentBand=null; currentStaff=null; recentTransactions=[]; recentStaffTransactions=[]; isProcessing=false;
             document.getElementById('scanCard').classList.remove('hidden');
             document.getElementById('customerCard').classList.add('hidden');
@@ -616,6 +636,20 @@
             clearMessage();
             if (currentMode==='nfc') startNFC();
             else document.getElementById('customerName').focus();
+            // Scanning is already re-armed underneath, so the splash never blocks the next customer
+            if (servedThisVisit > 0) showThanks(firstName);
+        }
+
+        let thanksTimer = null;
+        function showThanks(firstName) {
+            document.getElementById('thanksTitle').textContent = firstName ? `Thank you, ${firstName}!` : 'Thank you!';
+            document.getElementById('thanksOverlay').classList.remove('hidden');
+            if (thanksTimer) clearTimeout(thanksTimer);
+            thanksTimer = setTimeout(hideThanks, 3000);
+        }
+        function hideThanks() {
+            if (thanksTimer) { clearTimeout(thanksTimer); thanksTimer = null; }
+            document.getElementById('thanksOverlay').classList.add('hidden');
         }
 
         let messageTimer = null;
