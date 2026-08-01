@@ -1,9 +1,9 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>VIP / Volunteer Check-In — Holmdale Pro Rodeo</title>
+<title>VIP / Volunteer Check-In â€” Holmdale Pro Rodeo</title>
 <script>
 (function(){
   const token = localStorage.getItem('auth_token');
@@ -116,14 +116,14 @@
   .done .sub{color:var(--dim);margin-top:10px;font-size:14px;}
   .done .perks{margin:16px 0;font-size:14px;color:#cde;line-height:1.7;}
 
-  /* live badge preview — mirrors the portrait CR80 print card */
+  /* live badge preview â€” mirrors the portrait CR80 print card */
   .pvcard{position:relative;width:2.125in;height:3.375in;border-radius:.1in;overflow:hidden;background:#0f7a36;color:#fff;font-family:Arial,sans-serif;box-shadow:0 6px 20px rgba(0,0,0,.5);}
   .pvcard .bg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:0;}
   .pvcard .ph{position:absolute;left:8.5%;top:10.5%;width:38%;height:31%;border-radius:.06in;object-fit:cover;background:#2a2a2a;z-index:2;}
   .pvcard .nm{position:absolute;left:0;top:44%;width:100%;padding:0 6%;text-align:center;font-size:17pt;font-weight:bold;line-height:1.05;color:#0a3d1c;z-index:2;text-shadow:-1px -1px 0 #fff,1px -1px 0 #fff,-1px 1px 0 #fff,1px 1px 0 #fff,0 0 3px #fff;}
   .pvcard .nm .fn{display:block;font-size:40pt;line-height:.9;white-space:nowrap;}
   .pvcard .nm .ln{display:block;font-size:18pt;line-height:.9;margin-top:.05in;}
-  .pvcard.staff .nm{top:48.6%;}   /* staff: no logo plate — name sits a bit higher */
+  .pvcard.staff .nm{top:48.6%;}   /* staff: no logo plate â€” name sits a bit higher */
   .pvcard .lg{position:absolute;left:14%;top:71%;width:72%;height:12%;background:#fff;border-radius:.05in;display:flex;align-items:center;justify-content:center;overflow:hidden;padding:.05in;z-index:2;}
   .pvcard .lg img{max-width:100%;max-height:100%;object-fit:contain;}
   .pvcard .bar{position:absolute;left:0;bottom:0;width:100%;height:14.8%;display:flex;align-items:center;justify-content:center;font-size:19pt;font-weight:bold;letter-spacing:.5px;z-index:3;}
@@ -133,8 +133,8 @@
 <script src="html2canvas.min.js"></script>
 
 <div class="header">
-  <h1>🎟️ VIP / Volunteer Check-In</h1>
-  <a href="index.html">← Back to Portal</a>
+  <h1>ðŸŽŸï¸ VIP / Volunteer Check-In</h1>
+  <a href="index.html">â† Back to Portal</a>
 </div>
 
 <div class="wrap">
@@ -143,15 +143,15 @@
     <div class="card">
       <h2><span class="step">1</span> Badge Type</h2>
       <div class="types" id="types">
-        <div class="type-pill" data-type="sponsor" onclick="setType('sponsor')"><span class="ic">🤝</span>Sponsor</div>
-        <div class="type-pill" data-type="volunteer" onclick="setType('volunteer')"><span class="ic">🧑‍🌾</span>Volunteer</div>
+        <div class="type-pill" data-type="sponsor" onclick="setType('sponsor')"><span class="ic">ðŸ¤</span>Sponsor</div>
+        <div class="type-pill" data-type="volunteer" onclick="setType('volunteer')"><span class="ic">ðŸ§‘â€ðŸŒ¾</span>Volunteer</div>
       </div>
       <div class="tiers" id="tiers"></div>
     </div>
 
     <div class="card">
       <h2><span class="step">2</span> Who Is This?</h2>
-      <input type="text" id="search" placeholder="🔎 Search company / sponsor / staff…" oninput="onSearch()" autocomplete="off">
+      <input type="text" id="search" placeholder="ðŸ”Ž Search company / sponsor / staffâ€¦" oninput="onSearch()" autocomplete="off">
       <div id="searchResults"></div>
       <div id="contactChip"></div>
       <div id="sponsorGuests"></div>
@@ -168,7 +168,7 @@
     <div class="card">
       <h2><span class="step">3</span> Perks</h2>
       <div class="toggle-row">
-        <div><div class="lbl">Unlimited food &amp; drink</div><div class="sub">Top sponsors / VIP — never runs out</div></div>
+        <div><div class="lbl">Unlimited food &amp; drink</div><div class="sub">Top sponsors / VIP â€” never runs out</div></div>
         <label class="switch"><input type="checkbox" id="t_unlimited" onchange="onUnlimited()"><span class="slider"></span></label>
       </div>
       <div class="toggle-row">
@@ -183,14 +183,14 @@
 
     <div class="card">
       <h2><span class="step">4</span> Area Access</h2>
-      <div class="zones" id="zones"><div class="sub" style="color:#888;font-size:13px;">Loading zones…</div></div>
+      <div class="zones" id="zones"><div class="sub" style="color:#888;font-size:13px;">Loading zonesâ€¦</div></div>
     </div>
   </div>
 
   <!-- RIGHT: preview + photo + card + save -->
   <div class="col">
     <div class="card">
-      <h2>👁️ Live Preview</h2>
+      <h2>ðŸ‘ï¸ Live Preview</h2>
       <div style="display:flex;justify-content:center;"><div class="pvcard" id="cardPreview"></div></div>
     </div>
 
@@ -199,11 +199,11 @@
       <div class="cam-stage" id="camStage">
         <video id="video" autoplay playsinline muted></video>
         <img id="photoPreview" style="display:none;">
-        <div class="placeholder" id="camPlaceholder" style="display:none;">Camera unavailable — check webcam permission</div>
+        <div class="placeholder" id="camPlaceholder" style="display:none;">Camera unavailable â€” check webcam permission</div>
       </div>
       <div class="cam-btns">
-        <button class="btn btn-green" id="captureBtn" onclick="capturePhoto()">📸 Capture</button>
-        <button class="btn btn-gray" id="retakeBtn" onclick="retakePhoto()" style="display:none;">↺ Retake</button>
+        <button class="btn btn-green" id="captureBtn" onclick="capturePhoto()">ðŸ“¸ Capture</button>
+        <button class="btn btn-gray" id="retakeBtn" onclick="retakePhoto()" style="display:none;">â†º Retake</button>
       </div>
     </div>
 
@@ -212,15 +212,15 @@
       <div class="uid-box">
         <input type="text" id="uidInput" placeholder="Tap / scan card, or type UID" autocomplete="off"
                onkeydown="if(event.key==='Enter'){event.preventDefault();lockUid();}" oninput="onUidInput()">
-        <button class="btn btn-gray" id="nfcBtn" onclick="startNfc()" style="display:none;">📶 Tap</button>
+        <button class="btn btn-gray" id="nfcBtn" onclick="startNfc()" style="display:none;">ðŸ“¶ Tap</button>
       </div>
       <div class="uid-state off" id="uidState">No card linked yet</div>
-      <div class="sub" style="font-size:12px;color:#666;margin-top:6px;">USB reader types here automatically. On Android, use 📶 Tap.</div>
+      <div class="sub" style="font-size:12px;color:#666;margin-top:6px;">USB reader types here automatically. On Android, use ðŸ“¶ Tap.</div>
     </div>
 
     <div class="card save-card">
       <div class="summary" id="summary"></div>
-      <button class="btn btn-green btn-block" id="saveBtn" onclick="save()">✓ Save &amp; Send to Printer</button>
+      <button class="btn btn-green btn-block" id="saveBtn" onclick="save()">âœ“ Save &amp; Send to Printer</button>
     </div>
   </div>
 </div>
@@ -229,13 +229,13 @@
 
 <div class="ovl" id="ovl">
   <div class="done">
-    <div class="big">✅</div>
+    <div class="big">âœ…</div>
     <h2>Checked In!</h2>
     <div class="nm" id="doneName"></div>
     <div class="perks" id="donePerks"></div>
     <div class="sub" id="printStatus" style="margin-bottom:6px;"></div>
     <div class="sub"><b style="color:var(--green-lt)">Next guest in <span id="cd">5</span>s</b></div>
-    <button class="btn btn-green btn-block" style="margin-top:14px;" onclick="resetForm()">Next Guest →</button>
+    <button class="btn btn-green btn-block" style="margin-top:14px;" onclick="resetForm()">Next Guest â†’</button>
   </div>
 </div>
 
@@ -247,7 +247,7 @@ const authHdr = { 'Authorization':'Bearer '+token, 'Content-Type':'application/j
 // badges print with logos even when the onsite server has no internet.
 function logoSrc(u){ return u && u.includes('.public.blob.vercel-storage.com') ? API+'/badges/logo?src='+encodeURIComponent(u) : u; }
 
-// Sponsorship levels (low → high). A sponsor's pledged $ maps to a level
+// Sponsorship levels (low â†’ high). A sponsor's pledged $ maps to a level
 // (server-side), which pre-selects the dropdown; the level drives bar colour +
 // perks. Volunteers don't use these.
 const LEVELS = [
@@ -262,8 +262,8 @@ const LEVELS = [
 let state = { type:null, tier:null, uid:'', photo:null, zones:[], companyLogo:null, sponsorGuestId:null, sponsorLevel:'' };
 let ZONES = [];
 
-// ── Live badge preview (mirrors badge-print.html) ──
-// All paid sponsor tiers read "Sponsor" — the bar COLOUR encodes the tier.
+// â”€â”€ Live badge preview (mirrors badge-print.html) â”€â”€
+// All paid sponsor tiers read "Sponsor" â€” the bar COLOUR encodes the tier.
 const TIER_BAR = {
   bronze:   { bg:'#A85A1E', fg:'#ffffff', label:'Sponsor' },
   silver:   { bg:'#717C8C', fg:'#ffffff', label:'Sponsor' },
@@ -307,7 +307,7 @@ function fitName(scope){
 
 function toast(msg, err){ const t=document.getElementById('toast'); t.textContent=msg; t.className='toast'+(err?' err':''); t.style.display='block'; setTimeout(()=>t.style.display='none', err?4000:2200); }
 
-// ── Zones ──
+// â”€â”€ Zones â”€â”€
 async function loadZones(){
   try{
     const r = await fetch(API+'/badges/zones',{headers:authHdr});
@@ -333,14 +333,14 @@ function toggleZone(key, on){
   renderZones(); updateSummary();
 }
 
-// ── Type / sponsorship level ──
+// â”€â”€ Type / sponsorship level â”€â”€
 function setType(type){
   state.type = type;
   document.querySelectorAll('.type-pill').forEach(p=>p.classList.toggle('sel', p.dataset.type===type));
   const tw = document.getElementById('tiers');
   if(type==='sponsor'){
     document.getElementById('titleRow').style.display = '';
-    const opts = LEVELS.map(L=>`<option value="${L.key}">${esc(L.display)} — $${L.amount.toLocaleString()}</option>`).join('');
+    const opts = LEVELS.map(L=>`<option value="${L.key}">${esc(L.display)} â€” $${L.amount.toLocaleString()}</option>`).join('');
     tw.innerHTML = `<label class="fl" style="margin:0 0 4px;">Sponsorship Level</label>
       <select id="levelSelect" onchange="applyLevel(this.value)" style="width:100%;background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:10px 12px;color:#fff;font-size:15px;">${opts}</select>`;
     const def = state.sponsorLevel || 'bronze';
@@ -350,7 +350,7 @@ function setType(type){
     document.getElementById('titleRow').style.display = 'none';
     document.getElementById('f_title').value = '';
     document.getElementById('f_company').value = ''; state.companyLogo = null;
-    tw.innerHTML = '<span style="color:var(--dim);font-size:13px;">Staff badge — no sponsorship level</span>';
+    tw.innerHTML = '<span style="color:var(--dim);font-size:13px;">Staff badge â€” no sponsorship level</span>';
     state.tier = 'Volunteer';
     document.getElementById('t_unlimited').checked = false;
     document.getElementById('f_credit').value = 25;
@@ -380,7 +380,7 @@ function onUnlimited(){
 }
 document.getElementById('f_credit').addEventListener('input', updateSummary);
 
-// ── Search existing ──
+// â”€â”€ Search existing â”€â”€
 let searchTimer=null;
 function onSearch(){
   clearTimeout(searchTimer);
@@ -392,11 +392,11 @@ function onSearch(){
       const r = await fetch(API+'/badges/lookup?q='+encodeURIComponent(q),{headers:authHdr});
       const d = await r.json();
       const items = [...(d.sponsors||[]), ...(d.staff||[])];
-      if(!items.length){ box.innerHTML='<div class="search-results"><div class="sr-item"><span class="meta">No matches — just type the name above</span></div></div>'; return; }
+      if(!items.length){ box.innerHTML='<div class="search-results"><div class="sr-item"><span class="meta">No matches â€” just type the name above</span></div></div>'; return; }
       box.innerHTML = '<div class="search-results">'+items.map(it=>`
         <div class="sr-item" onclick='pick(${JSON.stringify(it).replace(/'/g,"&#39;")})'>
           <div class="who">${esc(it.name)}<span class="tag ${it.source==='sponsor'?'sp':'st'}">${it.source}</span></div>
-          <div class="meta">${esc([it.company,it.email,it.city].filter(Boolean).join(' · '))}</div>
+          <div class="meta">${esc([it.company,it.email,it.city].filter(Boolean).join(' Â· '))}</div>
         </div>`).join('')+'</div>';
     }catch(e){ box.innerHTML=''; }
   }, 250);
@@ -413,7 +413,7 @@ function pick(it){
     document.getElementById('f_name').value='';
     document.getElementById('f_email').value='';
     if(it.company) document.getElementById('f_company').value = it.company;
-    state.companyLogo = it.company_logo_url || null;  // sponsor's primary logo → shown on the card
+    state.companyLogo = it.company_logo_url || null;  // sponsor's primary logo â†’ shown on the card
     state.sponsorLevel = it.sponsorship_level || '';  // derived from their pledged $ (server)
     setType('sponsor');
     // If a suite is assigned to this sponsor, auto-check it.
@@ -456,7 +456,7 @@ function pickContact(p){
   updateSummary();
 }
 
-// ── Pre-registered sponsor guests ──
+// â”€â”€ Pre-registered sponsor guests â”€â”€
 async function loadSponsorGuests(sponsorId){
   const box = document.getElementById('sponsorGuests');
   box.innerHTML = '';
@@ -473,7 +473,7 @@ async function loadSponsorGuests(sponsorId){
       '<div class="search-results">'+guests.map(g=>`
         <div class="sr-item" onclick='pickGuest(${JSON.stringify({g, company, logo, level}).replace(/'/g,"&#39;")})'>
           <div class="who">${esc(g.name)}<span class="tag sp">guest</span></div>
-          <div class="meta">${esc([g.title, (g.access_zones||[]).map(zoneLabel).join(', ')].filter(Boolean).join(' · ')) || 'no extras'}</div>
+          <div class="meta">${esc([g.title, (g.access_zones||[]).map(zoneLabel).join(', ')].filter(Boolean).join(' Â· ')) || 'no extras'}</div>
         </div>`).join('')+'</div>';
   }catch(e){ /* non-fatal */ }
 }
@@ -497,7 +497,7 @@ function pickGuest(payload){
   updateSummary();
 }
 
-// ── Photo ──
+// â”€â”€ Photo â”€â”€
 let stream=null;
 async function startCamera(){
   try{
@@ -539,7 +539,7 @@ function retakePhoto(){
   updateSummary();
 }
 
-// ── Card UID ──
+// â”€â”€ Card UID â”€â”€
 function onUidInput(){
   const v = document.getElementById('uidInput').value.trim();
   if(v.replace(/[^a-fA-F0-9]/g,'').length>=6){ /* enough to be a UID */ }
@@ -548,9 +548,9 @@ function onUidInput(){
 function lockUid(){
   const raw = document.getElementById('uidInput').value.trim();
   const hex = raw.replace(/[^a-fA-F0-9]/g,'').toUpperCase();
-  if(hex.length<6){ setUidState(false,'UID looks too short — rescan'); return; }
+  if(hex.length<6){ setUidState(false,'UID looks too short â€” rescan'); return; }
   state.uid = raw;
-  setUidState(true,'✓ Card linked: '+hex);
+  setUidState(true,'âœ“ Card linked: '+hex);
   updateSummary();
 }
 function setUidState(ok,msg){
@@ -561,7 +561,7 @@ async function startNfc(){
   if(!('NDEFReader' in window)){ toast('Web NFC only works on Android Chrome', true); return; }
   try{
     const ndef=new NDEFReader(); await ndef.scan();
-    setUidState(false,'📶 Tap the card now…');
+    setUidState(false,'ðŸ“¶ Tap the card nowâ€¦');
     ndef.onreading = e=>{
       const uid = (e.serialNumber||'').replace(/:/g,'').toUpperCase();
       document.getElementById('uidInput').value = uid;
@@ -570,7 +570,7 @@ async function startNfc(){
   }catch(e){ toast('NFC error: '+e.message, true); }
 }
 
-// ── Summary + save ──
+// â”€â”€ Summary + save â”€â”€
 function currentCredit(){ return document.getElementById('t_unlimited').checked ? null : (parseFloat(document.getElementById('f_credit').value)||0); }
 function updateSummary(){
   const name=document.getElementById('f_name').value.trim();
@@ -579,20 +579,20 @@ function updateSummary(){
   const zoneLabels = state.zones.map(k=>(ZONES.find(z=>z.key===k)||{}).label||k);
   const perk = unl ? 'Unlimited food &amp; drink' : ('$'+(credit||0)+' bar/food credit');
   document.getElementById('summary').innerHTML =
-    `<b>${esc(name)||'—'}</b> · ${state.type?(state.type.toUpperCase()):'no type'}${state.tier?(' / '+esc(state.tier)):''}<br>`+
-    `${perk} · ${state.photo?'📸 photo ✓':'no photo'} · ${state.uid?'💳 card ✓':'no card'}<br>`+
+    `<b>${esc(name)||'â€”'}</b> Â· ${state.type?(state.type.toUpperCase()):'no type'}${state.tier?(' / '+esc(state.tier)):''}<br>`+
+    `${perk} Â· ${state.photo?'ðŸ“¸ photo âœ“':'no photo'} Â· ${state.uid?'ðŸ’³ card âœ“':'no card'}<br>`+
     `Access: ${zoneLabels.length?esc(zoneLabels.join(', ')):'general only'}`;
   updatePreview();
   // Force a badge-type choice before saving (no accidental default).
   document.getElementById('saveBtn').disabled = !state.type;
 }
 document.getElementById('f_name').addEventListener('input',updateSummary);
-// Typing a custom company name means it's no longer the picked sponsor — drop the auto logo.
+// Typing a custom company name means it's no longer the picked sponsor â€” drop the auto logo.
 document.getElementById('f_company').addEventListener('input',()=>{ state.companyLogo=null; updateSummary(); });
 
 // One-click print: rasterize the live preview card (exact CR80 @ 300 DPI) and
 // send it to the local Seaory bridge. Falls back to leaving it queued if the
-// bridge is down — the badge is already saved either way.
+// bridge is down â€” the badge is already saved either way.
 const BRIDGE = localStorage.getItem('print_bridge_url') || 'http://127.0.0.1:7777';
 async function printBadge(badgeId){
   const card=document.getElementById('cardPreview');  // this element IS the .pvcard
@@ -600,7 +600,7 @@ async function printBadge(badgeId){
   let png;
   try{
     // Wait for any still-loading images (so a cross-origin logo isn't dropped),
-    // but never block on an already-finished/failed image — resolve those
+    // but never block on an already-finished/failed image â€” resolve those
     // immediately, with a timeout safety net so printing can't hang.
     await Promise.all([...card.querySelectorAll('img')].map(img =>
       img.complete ? null : new Promise(res => { img.onload = img.onerror = res; setTimeout(res, 2500); })));
@@ -618,11 +618,11 @@ async function printBadge(badgeId){
 }
 async function printAfterSave(badgeId){
   const ps=document.getElementById('printStatus');
-  if(ps) ps.innerHTML='🖨️ Sending to the S25…';
+  if(ps) ps.innerHTML='ðŸ–¨ï¸ Sending to the S25â€¦';
   const pr=await printBadge(badgeId);
   if(ps) ps.innerHTML = pr.ok
-    ? '🖨️ Printing on the S25 ✓'
-    : '⚠️ Saved — couldn\'t reach the printer ('+esc(pr.reason)+'). Check the print-bridge is running, then reprint from Badge Admin.';
+    ? 'ðŸ–¨ï¸ Printing on the S25 âœ“'
+    : 'âš ï¸ Saved â€” couldn\'t reach the printer ('+esc(pr.reason)+'). Check the print-bridge is running, then reprint from Badge Admin.';
 }
 
 async function save(){
@@ -630,7 +630,9 @@ async function save(){
   if(!state.type){ toast('Pick a badge type', true); return; }
   if(!name){ toast('Enter a name', true); return; }
   if(!state.uid){ toast('Tap / scan the NFC card first', true); return; }
-  const btn=document.getElementById('saveBtn'); btn.disabled=true; btn.textContent='Saving…';
+  try{ const chk=await fetch(API+'/wristbands/rfid/'+encodeURIComponent(state.uid),{headers:authHdr}); if(chk.ok){ const ex=await chk.json(); if(ex && ex.customer_name){ const who=ex.customer_name+(ex.company?' ('+ex.company+')':''); if(!confirm('This card is already assigned to:\n\n'+who+'\n\nContinue and reassign it?')) return; } } }catch(e){ }
+  if(!confirm('Insert a blank card into the S25, then press OK to print.')) return;
+  const btn=document.getElementById('saveBtn'); btn.disabled=true; btn.textContent='Savingâ€¦';
   try{
     const body={
       rfid_uid: state.uid,
@@ -649,13 +651,13 @@ async function save(){
     const r=await fetch(API+'/badges',{method:'POST',headers:authHdr,body:JSON.stringify(body)});
     const d=await r.json();
     if(r.status===401){ location.href='login.html?expired=1'; return; }
-    if(!r.ok){ toast(d.error||'Save failed', true); btn.disabled=false; btn.textContent='✓ Save & Send to Printer'; return; }
+    if(!r.ok){ toast(d.error||'Save failed', true); btn.disabled=false; btn.textContent='âœ“ Save & Send to Printer'; return; }
     showDone(d.badge);
     printAfterSave(d.badge.id);
   }catch(e){
     toast('Network error: '+e.message, true);
   }finally{
-    btn.disabled=false; btn.textContent='✓ Save & Send to Printer';
+    btn.disabled=false; btn.textContent='âœ“ Save & Send to Printer';
   }
 }
 
@@ -664,8 +666,8 @@ function showDone(badge){
   document.getElementById('doneName').textContent = badge.customer_name;
   const zoneLabels = (badge.access_zones||[]).map(k=>(ZONES.find(z=>z.key===k)||{}).label||k);
   document.getElementById('donePerks').innerHTML =
-    (badge.unlimited?'⭐ <b>Unlimited</b> food &amp; drink':'💵 <b>$'+badge.credits+'</b> bar/food credit')+'<br>'+
-    '🔓 '+(zoneLabels.length?zoneLabels.join(', '):'General access');
+    (badge.unlimited?'â­ <b>Unlimited</b> food &amp; drink':'ðŸ’µ <b>$'+badge.credits+'</b> bar/food credit')+'<br>'+
+    'ðŸ”“ '+(zoneLabels.length?zoneLabels.join(', '):'General access');
   document.getElementById('ovl').classList.add('open');
   let n=5; document.getElementById('cd').textContent=n;
   cdTimer=setInterval(()=>{ n--; document.getElementById('cd').textContent=n; if(n<=0) resetForm(); },1000);
@@ -691,8 +693,8 @@ function esc(s){ return (s==null?'':String(s)).replace(/[&<>"']/g,c=>({'&':'&amp
 // init
 (async function(){
   await loadZones();
-  // No default type — staff must pick Sponsor or Volunteer first.
-  document.getElementById('tiers').innerHTML='<span style="color:var(--dim);font-size:13px;">← Pick a badge type to choose a tier</span>';
+  // No default type â€” staff must pick Sponsor or Volunteer first.
+  document.getElementById('tiers').innerHTML='<span style="color:var(--dim);font-size:13px;">â† Pick a badge type to choose a tier</span>';
   startCamera();
   if('NDEFReader' in window) document.getElementById('nfcBtn').style.display='';
   document.getElementById('uidInput').focus();
@@ -701,3 +703,4 @@ function esc(s){ return (s==null?'':String(s)).replace(/[&<>"']/g,c=>({'&':'&amp
 </script>
 </body>
 </html>
+
