@@ -413,6 +413,12 @@
   </div>
 </div>
 
+<!-- PAID-BUT-NOT-LOADED BANNER: credit loads that were paid for but failed to apply -->
+<div id="pendingLoadsBanner" style="display:none;background:#7f1d1d;color:#fecaca;padding:10px 16px;font-size:14px;font-weight:600;align-items:center;gap:12px;justify-content:center;flex-wrap:wrap;">
+  <span id="pendingLoadsText"></span>
+  <button onclick="retryPendingLoads()" style="background:#fecaca;color:#7f1d1d;border:none;border-radius:8px;padding:6px 14px;font-size:13px;font-weight:800;cursor:pointer;">↻ Retry now</button>
+</div>
+
 <!-- MAIN -->
 <div class="main">
   <div class="left-panel">
@@ -442,6 +448,10 @@
     </div>
     <div class="cart-items" id="cartItems">
       <div class="cart-empty"><div class="emoji">👈</div><p>Tap items to add</p></div>
+    </div>
+    <div id="wristbandAttachedRow" style="display:none;align-items:center;gap:8px;padding:8px 12px;margin:0 10px 4px;background:rgba(34,197,94,0.1);border:1px solid var(--green);border-radius:8px;font-size:13px;">
+      <span style="flex:1;color:var(--green-light);font-weight:600;" id="wristbandAttachedText"></span>
+      <button onclick="clearAttachedWristband()" style="background:none;border:none;color:var(--text-dim);font-size:14px;cursor:pointer;padding:2px 6px;">✕</button>
     </div>
     <div class="cart-totals" id="cartTotals" style="display:none;">
       <div class="t-row"><span>Subtotal</span><span id="subVal">$0.00</span></div>
@@ -546,16 +556,16 @@
   </div>
 </div>
 
-<!-- WRISTBAND SCAN MODAL (post-payment, for loading credits) -->
+<!-- WRISTBAND SCAN MODAL (pre-payment: verify the band is registered before charging) -->
 <div class="cash-modal" id="wristbandScanModal" style="z-index:700;">
   <div class="cash-box">
     <div class="cash-header">
       <div class="cash-tendered-block" style="width:100%;">
-        <div class="lbl">Scan Wristband</div>
+        <div class="lbl">Verify Wristband</div>
         <div class="cash-tendered-display has-value" id="wristbandAmountDisplay">$0.00</div>
       </div>
     </div>
-    <div id="wristbandScanHint" style="text-align:center;color:var(--text-dim);font-size:13px;margin-bottom:12px;">Tap or scan the wristband to load this amount as credits.</div>
+    <div id="wristbandScanHint" style="text-align:center;color:var(--text-dim);font-size:13px;margin-bottom:12px;">Scan the wristband to check it's registered before taking payment.</div>
     <input type="text" id="wristbandUidInput" autocomplete="off" inputmode="none"
            style="width:100%;padding:14px;font-size:18px;font-family:monospace;background:var(--surface2);border:2px solid var(--border);border-radius:10px;color:var(--text);margin-bottom:6px;text-align:center;letter-spacing:2px;"
            placeholder="Waiting for scan…">
@@ -563,8 +573,8 @@
             style="background:none;border:none;color:var(--gold-light);font-size:13px;font-weight:600;cursor:pointer;margin-bottom:10px;text-decoration:underline;padding:6px;">⌨️ No scanner? Enter code manually</button>
     <div id="wristbandScanStatus" style="text-align:center;font-size:13px;min-height:18px;margin-bottom:12px;color:var(--text-dim);"></div>
     <div class="cash-actions">
-      <button class="btn-cancel" onclick="closeWristbandScanModal()">Skip / Cancel</button>
-      <button class="btn-confirm" id="wristbandConfirmBtn" onclick="submitWristbandLoad()" disabled>Load Credits</button>
+      <button class="btn-cancel" onclick="closeWristbandScanModal()">Cancel</button>
+      <button class="btn-confirm" id="wristbandConfirmBtn" onclick="verifyWristband()" disabled>Verify</button>
     </div>
   </div>
 </div>
@@ -896,12 +906,13 @@ function toggleCartPanel() {
 function changeQty(idx, delta) {
   cart[idx].qty += delta;
   if (cart[idx].qty <= 0) cart.splice(idx, 1);
+  if (cartCreditTotal() === 0) clearAttachedWristband();
   renderCart();
 }
 
 function clearCart() {
   if (cart.length > 0 && !confirm('Clear order?')) return;
-  cart = []; renderCart();
+  cart = []; clearAttachedWristband(); renderCart();
 }
 
 function calcTotals() {
@@ -938,6 +949,9 @@ function redirectToLogin() {
 async function payCard() {
   const { total } = calcTotals();
   if (total <= 0) { confirmFreeOrder(); return; }
+  // A wristband credit sale must have a verified, registered band BEFORE money moves —
+  // otherwise the charge can succeed and the load then bounce with "not registered".
+  if (needsWristbandVerify()) { openWristbandScanModal('card'); return; }
   const amountCents = Math.round(total * 100);
 
   document.getElementById('processingTitle').textContent = 'CREATING PAYMENT';
@@ -945,10 +959,18 @@ async function payCard() {
   document.getElementById('btnSimulateCapture').disabled = true;
   document.getElementById('processingOverlay').classList.add('open');
 
+  const orderId = 'COUNTER_' + Date.now();
+  const creditTotal = cartCreditTotal();
+  const metadata = { source: 'ticket_counter', order_id: orderId };
+  if (creditTotal > 0 && validatedWristband) {
+    metadata.rfid_uid = validatedWristband.rfid_uid;
+    metadata.credit_amount = Math.round(creditTotal * 100);
+  }
+
   try {
     const resp = await fetch(API_URL + '/stripe/create-payment-intent', {
       method: 'POST', headers: authHeaders({ 'Content-Type': 'application/json' }),
-      body: JSON.stringify({ amount: amountCents, metadata: { source: 'ticket_counter' } })
+      body: JSON.stringify({ amount: amountCents, metadata })
     });
     if (resp.status === 401 || resp.status === 403) { redirectToLogin(); return; }
     if (!resp.ok) {
@@ -957,7 +979,7 @@ async function payCard() {
     }
     const data = await resp.json();
     pendingPaymentIntentId = data.payment_intent_id;
-    pendingOrderId = 'COUNTER_' + Date.now();
+    pendingOrderId = orderId;
 
     document.getElementById('processingTitle').textContent = 'WAITING FOR PAYMENT';
     document.getElementById('processingSub').textContent = 'Tap card on Stripe terminal — or use Simulate Capture below';
@@ -1017,6 +1039,7 @@ let cashEntry = '';
 function openCashModal() {
   const { total } = calcTotals();
   if (total <= 0) { confirmFreeOrder(); return; }
+  if (needsWristbandVerify()) { openWristbandScanModal('cash'); return; }
 
   cashEntry = '';
   document.getElementById('cashDue').textContent = '$' + total.toFixed(2);
@@ -1190,11 +1213,13 @@ async function recordSale(method, orderId, total) {
       });
     } catch (e) { console.warn('[Counter] Merch sale record failed:', e.message); }
   }
-  // Wristband credit load — sum credit items and open scan modal
+  // Wristband credit load — the band was verified before payment, so apply the
+  // load to it now. applyCreditLoad never drops a paid load silently: on failure
+  // it queues the load locally and shows the retry banner.
   const creditItems = cart.filter(c => c.type === 'credit');
   if (creditItems.length > 0) {
     const creditTotal = creditItems.reduce((s, i) => s + i.unitPrice * i.qty, 0);
-    openWristbandScanModal(creditTotal);
+    await applyCreditLoad(creditTotal, orderId, method);
   }
   dayTotal += total; dayCount++;
   document.getElementById('todayTotal').textContent = '$' + dayTotal.toFixed(0);
@@ -1202,10 +1227,23 @@ async function recordSale(method, orderId, total) {
 }
 
 // ===== WRISTBAND CREDIT LOAD =====
-let pendingCreditLoad = 0;
-function openWristbandScanModal(amount) {
-  pendingCreditLoad = amount;
-  document.getElementById('wristbandAmountDisplay').textContent = '$' + amount.toFixed(2);
+// The band is verified as registered BEFORE payment (validatedWristband), then the
+// paid amount is loaded to it in recordSale(). A paid load that still fails to apply
+// is queued in localStorage and surfaced in the banner — never dropped silently.
+let validatedWristband = null;   // { rfid_uid, customer_name, credits }
+let pendingPayMethod = null;     // 'card' | 'cash' — payment path to resume after verification
+
+function cartCreditTotal() {
+  return cart.filter(c => c.type === 'credit').reduce((s, i) => s + i.unitPrice * i.qty, 0);
+}
+
+function needsWristbandVerify() {
+  return cartCreditTotal() > 0 && !validatedWristband;
+}
+
+function openWristbandScanModal(payMethod) {
+  pendingPayMethod = payMethod || null;
+  document.getElementById('wristbandAmountDisplay').textContent = '$' + cartCreditTotal().toFixed(2);
   const input = document.getElementById('wristbandUidInput');
   input.value = '';
   input.setAttribute('inputmode', 'none');
@@ -1222,7 +1260,25 @@ function openWristbandScanModal(amount) {
 }
 function closeWristbandScanModal() {
   document.getElementById('wristbandScanModal').classList.remove('open');
-  pendingCreditLoad = 0;
+  pendingPayMethod = null;
+}
+
+function renderAttachedWristband() {
+  const row = document.getElementById('wristbandAttachedRow');
+  if (validatedWristband) {
+    const b = validatedWristband;
+    document.getElementById('wristbandAttachedText').textContent =
+      '🪪 ' + (b.customer_name || 'Guest') + ' · …' + String(b.rfid_uid).slice(-6) +
+      ' · balance $' + (Number(b.credits) || 0).toFixed(2);
+    row.style.display = 'flex';
+  } else {
+    row.style.display = 'none';
+  }
+}
+
+function clearAttachedWristband() {
+  validatedWristband = null;
+  renderAttachedWristband();
 }
 // Fallback for phones with no hardware scanner: re-enable the on-screen keyboard.
 // Must run synchronously inside the tap handler or iOS won't show the keyboard.
@@ -1250,7 +1306,7 @@ async function startNFC() {
       const input = document.getElementById('wristbandUidInput');
       input.value = uid;
       input.dispatchEvent(new Event('input'));
-      submitWristbandLoad();
+      verifyWristband();
     });
   } catch (e) {
     console.warn('[NFC] scan unavailable:', e.message);
@@ -1267,19 +1323,22 @@ document.addEventListener('DOMContentLoaded', () => {
   input.addEventListener('keydown', (e) => {
     if (e.key === 'Enter') {
       e.preventDefault();
-      submitWristbandLoad();
+      verifyWristband();
     }
   });
+  renderPendingLoadsBanner();
 });
+
+// Pre-payment check: look the band up, and only proceed to payment if it's registered.
 let wristbandSubmitting = false;
-async function submitWristbandLoad() {
+async function verifyWristband() {
   if (wristbandSubmitting) return;
   const uid = (document.getElementById('wristbandUidInput').value || '').trim();
-  if (!uid || pendingCreditLoad <= 0) return;
+  if (!uid) return;
   wristbandSubmitting = true;
   const status = document.getElementById('wristbandScanStatus');
   status.style.color = 'var(--text-dim)';
-  status.textContent = 'Loading…';
+  status.textContent = 'Checking…';
   document.getElementById('wristbandConfirmBtn').disabled = true;
   try {
     const token = localStorage.getItem('auth_token') || '';
@@ -1289,31 +1348,107 @@ async function submitWristbandLoad() {
       document.getElementById('wristbandConfirmBtn').disabled = false;
       return;
     }
-    const r = await fetch(API_URL + '/wristbands/add-credits', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
-      body: JSON.stringify({ rfid_uid: uid, amount: pendingCreditLoad })
+    const r = await fetch(API_URL + '/wristbands/rfid/' + encodeURIComponent(uid), {
+      headers: { 'Accept': 'application/json', 'Authorization': 'Bearer ' + token }
     });
-    const data = await r.json().catch(() => ({}));
     if (!r.ok) {
       status.style.color = '#ef4444';
       if (r.status === 401) status.textContent = '⚠️ Session expired. Log in again.';
-      else if (r.status === 403) status.textContent = '⚠️ Age not verified — visit Gate 2 first.';
-      else if (r.status === 404) status.textContent = '⚠️ Wristband not registered. Link it at Gate 1.';
-      else status.textContent = '⚠️ ' + (data.error || 'Failed to load credits');
+      else if (r.status === 404) status.textContent = '⚠️ Wristband not registered — link it at Gate 1 before taking payment.';
+      else status.textContent = '⚠️ Lookup failed (HTTP ' + r.status + '). Try again.';
       document.getElementById('wristbandConfirmBtn').disabled = false;
       return;
     }
+    const band = await r.json();
+    validatedWristband = {
+      rfid_uid: band.rfid_uid || uid,
+      customer_name: band.customer_name || '',
+      credits: band.credits,
+    };
+    renderAttachedWristband();
     status.style.color = '#22c55e';
-    status.textContent = '✓ Loaded. New balance: $' + (Number(data.new_balance) || 0).toFixed(2);
-    pendingCreditLoad = 0; // block repeat NFC reads from double-loading while the modal lingers
-    setTimeout(() => closeWristbandScanModal(), 1500);
+    status.textContent = '✓ ' + (band.customer_name || 'Guest') + ' — balance $' + (Number(band.credits) || 0).toFixed(2);
+    const resume = pendingPayMethod;
+    setTimeout(() => {
+      closeWristbandScanModal();
+      if (resume === 'card') payCard();
+      else if (resume === 'cash') openCashModal();
+    }, 900);
   } catch (e) {
     status.style.color = '#ef4444';
     status.textContent = '⚠️ Network error: ' + e.message;
     document.getElementById('wristbandConfirmBtn').disabled = false;
   } finally {
     wristbandSubmitting = false;
+  }
+}
+
+// Post-payment: load the paid amount onto the verified band. Failures queue for retry.
+async function applyCreditLoad(amount, orderId, method) {
+  const uid = validatedWristband ? validatedWristband.rfid_uid : '';
+  try {
+    if (!uid) throw new Error('no verified wristband');
+    const r = await fetch(API_URL + '/wristbands/add-credits', {
+      method: 'POST',
+      headers: authHeaders({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify({ rfid_uid: uid, amount, payment_ref: orderId, payment_method: method, source: 'ticket_counter' })
+    });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    clearAttachedWristband();
+  } catch (e) {
+    console.warn('[Counter] Credit load failed after payment:', e.message);
+    queuePendingLoad({ rfid_uid: uid, amount, order_id: orderId, method, at: new Date().toISOString() });
+    clearAttachedWristband();
+    alert('⚠️ Payment was taken but $' + amount.toFixed(2) + ' could NOT be loaded to the wristband (' + e.message + ').\n\nThe load has been saved — use the red "Retry now" banner at the top to apply it.');
+  }
+}
+
+// ===== PAID-BUT-NOT-LOADED QUEUE (localStorage) =====
+const PENDING_LOADS_KEY = 'counter_pending_credit_loads';
+
+function getPendingLoads() {
+  try { return JSON.parse(localStorage.getItem(PENDING_LOADS_KEY)) || []; } catch { return []; }
+}
+
+function savePendingLoads(list) {
+  localStorage.setItem(PENDING_LOADS_KEY, JSON.stringify(list));
+  renderPendingLoadsBanner();
+}
+
+function queuePendingLoad(load) {
+  const list = getPendingLoads();
+  list.push(load);
+  savePendingLoads(list);
+}
+
+function renderPendingLoadsBanner() {
+  const banner = document.getElementById('pendingLoadsBanner');
+  const list = getPendingLoads();
+  if (list.length === 0) { banner.style.display = 'none'; return; }
+  const sum = list.reduce((s, l) => s + (Number(l.amount) || 0), 0);
+  document.getElementById('pendingLoadsText').textContent =
+    '⚠️ ' + list.length + ' paid credit load' + (list.length === 1 ? '' : 's') +
+    ' ($' + sum.toFixed(2) + ') not yet applied to a wristband.';
+  banner.style.display = 'flex';
+}
+
+async function retryPendingLoads() {
+  const list = getPendingLoads();
+  const remaining = [];
+  for (const l of list) {
+    if (!l.rfid_uid) { remaining.push(l); continue; } // needs manual resolution — keep visible
+    try {
+      const r = await fetch(API_URL + '/wristbands/add-credits', {
+        method: 'POST',
+        headers: authHeaders({ 'Content-Type': 'application/json' }),
+        body: JSON.stringify({ rfid_uid: l.rfid_uid, amount: l.amount, payment_ref: l.order_id, payment_method: l.method, source: 'ticket_counter' })
+      });
+      if (!r.ok) remaining.push(l);
+    } catch { remaining.push(l); }
+  }
+  savePendingLoads(remaining);
+  if (remaining.length > 0) {
+    alert(remaining.length + ' load(s) still could not be applied. If a wristband is unregistered, link it at Gate 1 and retry.');
   }
 }
 
