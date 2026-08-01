@@ -107,6 +107,30 @@
             display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 800;
         }
         .no-drinks { grid-column: 1/-1; text-align: center; padding: 30px; color: #555; font-size: 15px; }
+        .thankyou-overlay {
+            position: fixed; inset: 0; z-index: 1000; background: #111;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            padding: 24px; text-align: center; gap: 12px;
+        }
+        .thankyou-emoji { font-size: 72px; line-height: 1; }
+        .thankyou-overlay h2 { color: #00B74A; font-size: 40px; font-weight: 800; }
+        .thankyou-sub { color: #aaa; font-size: 18px; }
+        .thankyou-summary {
+            background: #242424; border: 2px solid #00B74A; border-radius: 14px;
+            padding: 16px 20px; width: 100%; max-width: 420px; text-align: left;
+        }
+        .thankyou-summary.staff-summary { border-color: #3b82f6; }
+        .thankyou-summary h4 { color: #fff; font-size: 17px; font-weight: 800; margin-bottom: 10px; }
+        .summary-row { display: flex; justify-content: space-between; gap: 12px; padding: 6px 0; color: #ddd; font-size: 16px; border-bottom: 1px solid #2f2f2f; }
+        .summary-row:last-child { border-bottom: none; }
+        .summary-row.summary-total { color: #fff; font-weight: 800; border-top: 2px solid #444; margin-top: 4px; padding-top: 10px; }
+        .summary-none { color: #888; font-size: 15px; padding: 6px 0; }
+        .thankyou-confirm {
+            margin-top: 8px; width: 100%; max-width: 420px; min-height: 64px;
+            background: #FFD700; color: #000; border: none; border-radius: 12px;
+            padding: 18px; font-size: 16px; font-weight: 800; cursor: pointer;
+        }
+        .thankyou-confirm:active { opacity: 0.8; }
         .hidden { display: none !important; }
     </style>
 </head>
@@ -156,7 +180,7 @@
                         <div class="customer-meta" id="wristbandDisplay"></div>
                         <span id="ageStatus"></span>
                     </div>
-                    <button class="done-btn" onclick="reset()">✓<br>DONE</button>
+                    <button class="done-btn" onclick="showThankYou()">✓<br>DONE</button>
                 </div>
                 <div class="balance-row regular">
                     <div>
@@ -184,7 +208,7 @@
                         <div class="customer-meta" id="staffRoleDisplay"></div>
                         <span class="age-badge staff-badge">⭐ STAFF</span>
                     </div>
-                    <button class="done-btn" onclick="reset()">✓<br>DONE</button>
+                    <button class="done-btn" onclick="showThankYou()">✓<br>DONE</button>
                 </div>
                 <div class="balance-row staff-bal">
                     <div>
@@ -202,6 +226,17 @@
                 <div class="drink-grid" id="staffDrinkGrid"></div>
             </div>
         </div>
+    </div>
+
+    <!-- THANK YOU HOLD SCREEN — shown when DONE is pressed. Keeps the order
+         summary on screen until the BARTENDER confirms, so a customer tapping
+         DONE can't wipe the order before the bartender has seen it. -->
+    <div id="thankyouOverlay" class="thankyou-overlay hidden">
+        <div class="thankyou-emoji">🤠</div>
+        <h2>THANK YOU!</h2>
+        <p class="thankyou-sub">Enjoy the rodeo!</p>
+        <div class="thankyou-summary" id="thankyouSummary"></div>
+        <button class="thankyou-confirm" onclick="confirmThankYou()">✓ BARTENDER: NEXT CUSTOMER</button>
     </div>
 
     <script>
@@ -604,6 +639,54 @@
                     await loadDrinks(); displayStaff(currentStaff);
                 } else { showMessage('❌ Cancel failed: '+(d.error||'Unknown error'),'error'); }
             } catch(e) { showMessage('❌ Error cancelling staff drink','error'); }
+        }
+
+        // DONE now goes through a hold screen: the order summary stays up until
+        // the bartender taps NEXT CUSTOMER, so a customer pressing DONE can't
+        // clear the order before the bartender has seen it.
+        let thankyouShownAt = 0;
+        function showThankYou() {
+            const isStaff = !!currentStaff;
+            const trans = isStaff ? recentStaffTransactions : recentTransactions;
+            const name = isStaff
+                ? (currentStaff.name || 'Staff')
+                : ((currentBand && currentBand.customer_name) || 'Customer');
+
+            const byDrink = {};
+            trans.forEach(t => {
+                if (!byDrink[t.drink]) byDrink[t.drink] = { n: 0, cents: 0 };
+                byDrink[t.drink].n++;
+                byDrink[t.drink].cents += creditsToCents(t.price);
+            });
+            let rows = Object.keys(byDrink).map(drink => {
+                const d = byDrink[drink];
+                const amount = isStaff ? 'FREE' : formatDollars(d.cents);
+                return `<div class="summary-row"><span>${d.n}× ${drink}</span><span>${amount}</span></div>`;
+            }).join('');
+            if (!rows) rows = '<div class="summary-none">No drinks served on this scan</div>';
+
+            const totalCents = Object.values(byDrink).reduce((s, d) => s + d.cents, 0);
+            if (trans.length && !isStaff) {
+                rows += `<div class="summary-row summary-total"><span>Total</span><span>${formatDollars(totalCents)}</span></div>`;
+            }
+            const remainingCents = isStaff
+                ? staffRemainingCents(currentStaff)
+                : creditsToCents(currentBand && currentBand.credits);
+            rows += `<div class="summary-row"><span>Credits remaining</span><span>${formatDollars(remainingCents)}</span></div>`;
+
+            const summary = document.getElementById('thankyouSummary');
+            summary.innerHTML = `<h4>${name}</h4>` + rows;
+            summary.classList.toggle('staff-summary', isStaff);
+            document.getElementById('thankyouOverlay').classList.remove('hidden');
+            thankyouShownAt = Date.now();
+        }
+
+        function confirmThankYou() {
+            // Ignore taps in the first moments — catches a customer's stray
+            // double-tap carrying over from the DONE button.
+            if (Date.now() - thankyouShownAt < 800) return;
+            document.getElementById('thankyouOverlay').classList.add('hidden');
+            reset();
         }
 
         function reset() {
