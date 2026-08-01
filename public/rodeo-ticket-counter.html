@@ -1316,7 +1316,8 @@ async function submitWristbandLoad() {
       if (r.status === 401) status.textContent = '⚠️ Session expired. Log in again.';
       else if (r.status === 403) status.textContent = '⚠️ Age not verified — visit Gate 2 first.';
       else if (r.status === 404) {
-        if (wristbandJustRegistered) status.textContent = '⚠️ Still not found after registering. Re-scan the wristband.';
+        if (!WALKUP_REGISTRATION_ENABLED) status.textContent = '⚠️ Wristband not registered. Link it at Gate 1.';
+        else if (wristbandJustRegistered) status.textContent = '⚠️ Still not found after registering. Re-scan the wristband.';
         else showWristbandRegister();
       }
       else status.textContent = '⚠️ ' + (data.error || 'Failed to load credits');
@@ -1343,6 +1344,12 @@ async function submitWristbandLoad() {
 // order. So: create a $0 zero-quantity walk-up order (adds nothing to
 // revenue/attendance stats), link the band to it, optionally set the 19+
 // flag if staff checked ID (same call Gate 2 staff make), then retry the load.
+//
+// ⚠️ SUSPENDED for now due to front gate problems — flip to true to offer
+// on-the-spot registration again. While false, an unregistered band shows
+// the old "Link it at Gate 1" message instead of the register form.
+const WALKUP_REGISTRATION_ENABLED = false;
+
 let wristbandJustRegistered = false;
 
 function showWristbandRegister() {
@@ -1361,7 +1368,7 @@ function hideWristbandRegister() {
 }
 
 async function registerWristbandAndLoad() {
-  if (wristbandSubmitting) return;
+  if (!WALKUP_REGISTRATION_ENABLED || wristbandSubmitting) return;
   const uid = (document.getElementById('wristbandUidInput').value || '').trim();
   if (!uid) return;
   const status = document.getElementById('wristbandScanStatus');
