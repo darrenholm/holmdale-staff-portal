@@ -61,6 +61,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 const API = 'https://api.holmdalerodeo.ca/api';
 let token = '';
 let allOrders = [], allWristbands = [], kitchenOrders = [], merchSales = [];
+let kitchenStats = {}, merchStats = {};
 let currentDate = new Date();
 
 const EVENTS = {
@@ -102,11 +103,13 @@ async function fetchJson(url, headers, fallback) {
 async function loadData() {
   try {
     const headers = { 'Authorization': 'Bearer ' + token };
-    const [orders, wristbands, kitchen, merch] = await Promise.all([
+    const [orders, wristbands, kitchen, merch, kstats, mstats] = await Promise.all([
       fetchJson(API + '/ticket-orders',  headers, []),
       fetchJson(API + '/wristbands',     headers, []),
       fetchJson(API + '/kitchen/orders?booth=all', headers, { orders: [] }),
-      fetchJson(API + '/merch/sales',    headers, { sales: [] })
+      fetchJson(API + '/merch/sales',    headers, { sales: [] }),
+      fetchJson(API + '/kitchen/stats',  headers, {}),
+      fetchJson(API + '/merch/stats',    headers, {})
     ]);
 
     // Defensive: ensure arrays even if API shape changes
@@ -114,6 +117,8 @@ async function loadData() {
     allWristbands = Array.isArray(wristbands) ? wristbands : (wristbands.wristbands || []);
     kitchenOrders = kitchen.orders || [];
     merchSales    = merch.sales || [];
+    kitchenStats  = kstats || {};
+    merchStats    = mstats || {};
     return true;
   } catch (err) {
     if (err.message === 'auth') return false; // already redirecting
@@ -234,17 +239,29 @@ function renderAll() {
   // Daily bar: scan wristband credits_spent changes by date — use approximate from transactions
   const dailyDrinksServed = 0; // bar_transactions not exposed via API yet
 
-  // Food revenue
-  const foodRevenue = kitchenOrders.reduce((t, o) => t + (parseFloat(o.total_price || o.total || 0)), 0);
-  const dailyFoodRevenue = kitchenOrders
-    .filter(o => (o.created_at || o.created_date || '').slice(0, 10) === dateStr)
-    .reduce((t, o) => t + (parseFloat(o.total_price || o.total || 0)), 0);
+  // Food revenue — from /kitchen/stats (all-time + per-day). /kitchen/orders
+  // only lists the live 8-hour display window, so summing it undercounts.
+  // Fall back to the old sums if the API doesn't have the stats fields yet.
+  const foodByDay = kitchenStats.revenue_by_day || null;
+  const foodRevenue = kitchenStats.all_time_revenue != null
+    ? parseFloat(kitchenStats.all_time_revenue) || 0
+    : kitchenOrders.reduce((t, o) => t + (parseFloat(o.total_price || o.total || 0)), 0);
+  const dailyFoodRevenue = foodByDay
+    ? parseFloat((foodByDay.find(d => d.day === dateStr) || {}).revenue || 0)
+    : kitchenOrders
+        .filter(o => (o.created_at || o.created_date || '').slice(0, 10) === dateStr)
+        .reduce((t, o) => t + (parseFloat(o.total_price || o.total || 0)), 0);
 
-  // Merch revenue
-  const merchRevenue = merchSales.reduce((t, s) => t + (parseFloat(s.total_price || s.total || 0)), 0);
-  const dailyMerchRevenue = merchSales
-    .filter(s => (s.created_at || s.created_date || '').slice(0, 10) === dateStr)
-    .reduce((t, s) => t + (parseFloat(s.total_price || s.total || 0)), 0);
+  // Merch revenue — same deal via /merch/stats.
+  const merchByDay = merchStats.revenue_by_day || null;
+  const merchRevenue = merchStats.all_time_revenue != null
+    ? parseFloat(merchStats.all_time_revenue) || 0
+    : merchSales.reduce((t, s) => t + (parseFloat(s.total_price || s.total || 0)), 0);
+  const dailyMerchRevenue = merchByDay
+    ? parseFloat((merchByDay.find(d => d.day === dateStr) || {}).revenue || 0)
+    : merchSales
+        .filter(s => (s.created_at || s.created_date || '').slice(0, 10) === dateStr)
+        .reduce((t, s) => t + (parseFloat(s.total_price || s.total || 0)), 0);
 
   // Total all-time revenue
   const totalRevenue = allTime.revenue + barRevenue + foodRevenue + merchRevenue;
