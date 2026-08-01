@@ -1096,6 +1096,25 @@ async function recordSale(method, orderId, total) {
       }
     } catch (e) { console.warn('[Counter] Ticket order failed:', e.message); }
   }
+  // Merch — record to /merch/sales (also decrements product stock server-side).
+  // Without this, merch rung through the counter is charged but never recorded.
+  const merchItems = cart.filter(c => c.type === 'merch');
+  if (merchItems.length > 0) {
+    try {
+      const merchSubtotal = merchItems.reduce((s, i) => s + i.unitPrice * i.qty, 0);
+      await fetch(API_URL + '/merch/sales', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          orderId,
+          items: merchItems.map(i => ({ productId: i.productId, name: i.name, variant: i.detail, price: i.unitPrice, qty: i.qty })),
+          subtotal: merchSubtotal.toFixed(2),
+          tax: (merchSubtotal * HST).toFixed(2),
+          total: (merchSubtotal * (1 + HST)).toFixed(2),
+          paymentMethod: method
+        })
+      });
+    } catch (e) { console.warn('[Counter] Merch sale record failed:', e.message); }
+  }
   // Wristband credit load — sum credit items and open scan modal
   const creditItems = cart.filter(c => c.type === 'credit');
   if (creditItems.length > 0) {
