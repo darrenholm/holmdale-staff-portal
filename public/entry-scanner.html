@@ -593,7 +593,7 @@
 
 <script>
 const API = 'https://api.holmdalerodeo.ca/api';
-const DEV_MODE = true; // ⚠️ SET TO false BEFORE RODEO — allows duplicate wristbands for testing
+const DEV_MODE = false; // ⚠️ Keep false during the event. true = testing only: registers bands under fake _TEST UIDs (real taps then fail everywhere) and treats duplicates as success.
 let token = '';
 let ticket = null;
 let bands = [];
