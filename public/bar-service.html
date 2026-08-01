@@ -108,6 +108,12 @@
         }
         .no-drinks { grid-column: 1/-1; text-align: center; padding: 30px; color: #555; font-size: 15px; }
         .done-btn.thanks { background: #00B74A; color: #fff; }
+        .back-btn {
+            background: #1a1a1a; color: #fcd34d; border: 2px solid #f59e0b; border-radius: 12px;
+            padding: 14px 12px; font-size: 13px; font-weight: 800;
+            cursor: pointer; white-space: nowrap; flex-shrink: 0; min-height: 70px;
+        }
+        .back-btn:active { opacity: 0.8; }
         .hidden { display: none !important; }
     </style>
 </head>
@@ -157,6 +163,7 @@
                         <div class="customer-meta" id="wristbandDisplay"></div>
                         <span id="ageStatus"></span>
                     </div>
+                    <button class="back-btn hidden" id="backBtnCustomer" onclick="resetDoneButtons()">↩<br>EDIT ORDER</button>
                     <button class="done-btn" id="doneBtnCustomer" onclick="doneTapped(this)">✓<br>DONE</button>
                 </div>
                 <div class="balance-row regular">
@@ -185,6 +192,7 @@
                         <div class="customer-meta" id="staffRoleDisplay"></div>
                         <span class="age-badge staff-badge">⭐ STAFF</span>
                     </div>
+                    <button class="back-btn hidden" id="backBtnStaff" onclick="resetDoneButtons()">↩<br>EDIT ORDER</button>
                     <button class="done-btn" id="doneBtnStaff" onclick="doneTapped(this)">✓<br>DONE</button>
                 </div>
                 <div class="balance-row staff-bal">
@@ -617,6 +625,8 @@
             btn.dataset.stage = 'thanks';
             btn.classList.add('thanks');
             btn.innerHTML = '🙏<br>THANK YOU';
+            // Offer a way back in case the order is wrong or needs editing
+            document.getElementById(btn.id === 'doneBtnStaff' ? 'backBtnStaff' : 'backBtnCustomer').classList.remove('hidden');
         }
 
         function resetDoneButtons() {
@@ -626,6 +636,8 @@
                 btn.classList.remove('thanks');
                 btn.innerHTML = '✓<br>DONE';
             });
+            document.getElementById('backBtnCustomer').classList.add('hidden');
+            document.getElementById('backBtnStaff').classList.add('hidden');
         }
 
         function reset() {
