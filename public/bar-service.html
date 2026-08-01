@@ -107,6 +107,13 @@
             display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 800;
         }
         .no-drinks { grid-column: 1/-1; text-align: center; padding: 30px; color: #555; font-size: 15px; }
+        .done-btn.thanks { background: #00B74A; color: #fff; }
+        .back-btn {
+            background: #1a1a1a; color: #fcd34d; border: 2px solid #f59e0b; border-radius: 12px;
+            padding: 14px 12px; font-size: 13px; font-weight: 800;
+            cursor: pointer; white-space: nowrap; flex-shrink: 0; min-height: 70px;
+        }
+        .back-btn:active { opacity: 0.8; }
         .hidden { display: none !important; }
     </style>
 </head>
@@ -156,7 +163,8 @@
                         <div class="customer-meta" id="wristbandDisplay"></div>
                         <span id="ageStatus"></span>
                     </div>
-                    <button class="done-btn" onclick="reset()">✓<br>DONE</button>
+                    <button class="back-btn hidden" id="backBtnCustomer" onclick="resetDoneButtons()">↩<br>EDIT ORDER</button>
+                    <button class="done-btn" id="doneBtnCustomer" onclick="doneTapped(this)">✓<br>DONE</button>
                 </div>
                 <div class="balance-row regular">
                     <div>
@@ -184,7 +192,8 @@
                         <div class="customer-meta" id="staffRoleDisplay"></div>
                         <span class="age-badge staff-badge">⭐ STAFF</span>
                     </div>
-                    <button class="done-btn" onclick="reset()">✓<br>DONE</button>
+                    <button class="back-btn hidden" id="backBtnStaff" onclick="resetDoneButtons()">↩<br>EDIT ORDER</button>
+                    <button class="done-btn" id="doneBtnStaff" onclick="doneTapped(this)">✓<br>DONE</button>
                 </div>
                 <div class="balance-row staff-bal">
                     <div>
@@ -403,6 +412,7 @@
         }
 
         function displayCustomer(band) {
+            resetDoneButtons();
             document.getElementById('customerNameDisplay').textContent = band.customer_name || 'Customer';
             document.getElementById('wristbandDisplay').textContent = 'Wristband: ' + band.rfid_uid;
             document.getElementById('ageStatus').innerHTML = band.alcohol_approved
@@ -447,6 +457,7 @@
         }
 
         function displayStaff(staff) {
+            resetDoneButtons();
             document.getElementById('staffNameDisplay').textContent = staff.name || 'Staff';
             const roles = Array.isArray(staff.roles) ? staff.roles.join(', ') : (staff.roles||'Staff');
             document.getElementById('staffRoleDisplay').textContent = roles.toUpperCase();
@@ -606,8 +617,32 @@
             } catch(e) { showMessage('❌ Error cancelling staff drink','error'); }
         }
 
+        // Two-stage done: the customer's tap flips the button to THANK YOU and
+        // keeps the order on screen; only the bartender's follow-up tap clears
+        // it and re-arms the NFC scanner.
+        function doneTapped(btn) {
+            if (btn.dataset.stage === 'thanks') { reset(); return; }
+            btn.dataset.stage = 'thanks';
+            btn.classList.add('thanks');
+            btn.innerHTML = '🙏<br>THANK YOU';
+            // Offer a way back in case the order is wrong or needs editing
+            document.getElementById(btn.id === 'doneBtnStaff' ? 'backBtnStaff' : 'backBtnCustomer').classList.remove('hidden');
+        }
+
+        function resetDoneButtons() {
+            ['doneBtnCustomer', 'doneBtnStaff'].forEach(id => {
+                const btn = document.getElementById(id);
+                delete btn.dataset.stage;
+                btn.classList.remove('thanks');
+                btn.innerHTML = '✓<br>DONE';
+            });
+            document.getElementById('backBtnCustomer').classList.add('hidden');
+            document.getElementById('backBtnStaff').classList.add('hidden');
+        }
+
         function reset() {
             currentBand=null; currentStaff=null; recentTransactions=[]; recentStaffTransactions=[]; isProcessing=false;
+            resetDoneButtons();
             document.getElementById('scanCard').classList.remove('hidden');
             document.getElementById('customerCard').classList.add('hidden');
             document.getElementById('staffCard').classList.add('hidden');
