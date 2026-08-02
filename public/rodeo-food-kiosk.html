@@ -1131,10 +1131,12 @@ function redirectToLogin() {
   window.location.href = 'login.html?expired=1';
 }
 
+// Strip separators only — keep the scanned byte ORDER. The server normalizes
+// UIDs itself (drops a USB wedge reader's trailing checksum byte, then sorts);
+// sorting here first moves the checksum byte out of last place, so the server
+// strips a real UID byte and the tag is never found again.
 function normalizeUid(uid) {
-  const cleaned = (uid || '').replace(/[^a-fA-F0-9]/g, '').toUpperCase();
-  const bytes = cleaned.match(/.{2}/g);
-  return bytes ? bytes.sort().join('') : cleaned;
+  return (uid || '').replace(/[^a-fA-F0-9]/g, '').toUpperCase();
 }
 
 // Fallback menu in case API is unreachable
