@@ -1,0 +1,706 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="color-scheme" content="light dark">
+<meta name="robots" content="noindex, nofollow">
+<title>2026 Sales Report — Holmdale Pro Rodeo</title>
+<script>
+(function(){
+  const token = localStorage.getItem('auth_token');
+  if (!token) { window.location.href='login.html'; return; }
+  try { const p=JSON.parse(atob(token.split('.')[1])); if(p.exp&&p.exp<Math.floor(Date.now()/1000)) window.location.href='login.html?expired=1'; }
+  catch(e){ window.location.href='login.html'; }
+})();
+</script>
+<style>
+  :root {
+    color-scheme: light;
+    --page:#f4f3ec; --surface:#fffdf8; --ink:#16180f; --ink-2:#4d5043; --muted:#83866f;
+    --hair:#dcdacb; --hair-soft:#e8e6da; --grid:#e4e2d5; --axis:#c6c4b3;
+    --s-food:#c8791a; --s-drink:#00846f; --s-merch:#4a3aa7;
+    --flag:#8a5a10; --flag-bg:#f6efe0;
+    --measure:68ch; --wide:1080px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:where(:not([data-theme="light"])) {
+      color-scheme: dark;
+      --page:#0e0f0a; --surface:#1c1d16; --ink:#f7f6ee; --ink-2:#b9bcaa; --muted:#8b8e79;
+      --hair:#2e3025; --hair-soft:#24261c; --grid:#2a2c21; --axis:#3c3f31;
+      --s-food:#bf8228; --s-drink:#2fa892; --s-merch:#9085e9;
+      --flag:#d8b25c; --flag-bg:#242318;
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --page:#0e0f0a; --surface:#1c1d16; --ink:#f7f6ee; --ink-2:#b9bcaa; --muted:#8b8e79;
+    --hair:#2e3025; --hair-soft:#24261c; --grid:#2a2c21; --axis:#3c3f31;
+    --s-food:#bf8228; --s-drink:#2fa892; --s-merch:#9085e9;
+    --flag:#d8b25c; --flag-bg:#242318;
+  }
+  :root[data-theme="light"] {
+    color-scheme: light;
+    --page:#f4f3ec; --surface:#fffdf8; --ink:#16180f; --ink-2:#4d5043; --muted:#83866f;
+    --hair:#dcdacb; --hair-soft:#e8e6da; --grid:#e4e2d5; --axis:#c6c4b3;
+    --s-food:#c8791a; --s-drink:#00846f; --s-merch:#4a3aa7;
+    --flag:#8a5a10; --flag-bg:#f6efe0;
+  }
+  *,*::before,*::after{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{
+    margin:0; background:var(--page); color:var(--ink);
+    font-family:system-ui,-apple-system,"Segoe UI",sans-serif;
+    font-size:16px; line-height:1.55; -webkit-font-smoothing:antialiased;
+  }
+  img,svg{max-width:100%}
+  button{font:inherit;color:inherit}
+  .num{font-family:ui-monospace,"Cascadia Mono","SF Mono",Consolas,monospace;font-variant-numeric:tabular-nums}
+
+  .portalbar{
+    background:#1a1a1a;border-bottom:1px solid #333;padding:13px 24px;
+    display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;
+    font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+  }
+  .portalbar h1{font-size:18px;color:#00B74A;margin:0;font-weight:700}
+  .portalbar .right{display:flex;align-items:center;gap:16px}
+  .portalbar a{color:#888;text-decoration:none;font-size:14px}
+  .portalbar a:hover{color:#fff}
+  .portalbar a:focus-visible{outline:2px solid #00B74A;outline-offset:3px}
+  .themebtn,.printbtn{
+    background:transparent;border:1px solid #333;color:#888;padding:6px 11px;cursor:pointer;
+    font-size:11px;letter-spacing:.1em;text-transform:uppercase;font-weight:650;
+  }
+  .themebtn:hover,.printbtn:hover{color:#fff;border-color:#555}
+  .themebtn:focus-visible,.printbtn:focus-visible{outline:2px solid #00B74A;outline-offset:2px}
+
+  .wrap{max-width:var(--wide);margin:0 auto;padding:34px 24px 96px}
+  .prose{max-width:var(--measure)}
+
+  .eyebrow{font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--muted);font-weight:650;margin:0 0 18px}
+  h2.title{font-size:clamp(30px,5.2vw,50px);line-height:1.04;letter-spacing:-.025em;font-weight:800;margin:0 0 16px;text-wrap:balance;max-width:16ch}
+  .dek{font-size:18px;color:var(--ink-2);margin:0 0 26px;max-width:56ch}
+  .runline{display:flex;flex-wrap:wrap;gap:6px 22px;font-size:12.5px;color:var(--muted);padding-bottom:22px}
+  .runline b{color:var(--ink-2);font-weight:600}
+  .subjectrule{display:flex;height:3px;margin-bottom:44px}
+  .subjectrule i{display:block;height:100%}
+
+  .stats{display:grid;gap:1px;background:var(--hair);border:1px solid var(--hair);margin-bottom:12px;grid-template-columns:repeat(4,1fr)}
+  @media (max-width:760px){.stats{grid-template-columns:repeat(2,1fr)}}
+  @media (max-width:420px){.stats{grid-template-columns:1fr}}
+  .stat{background:var(--surface);padding:18px 18px 16px}
+  .stat .k{font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);font-weight:650;display:flex;align-items:center;gap:7px}
+  .swatch{width:9px;height:9px;border-radius:2px;flex:none;display:inline-block}
+  .stat .v{font-size:clamp(24px,3.4vw,33px);font-weight:750;letter-spacing:-.02em;margin:9px 0 3px}
+  .stat .s{font-size:12.5px;color:var(--ink-2)}
+  .statnote{font-size:12px;color:var(--muted);margin:0 0 52px}
+
+  section{margin:0 0 52px}
+  .sechead{border-top:2px solid var(--ink);padding-top:12px;margin-bottom:22px}
+  .sechead .lab{font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);font-weight:650}
+  h3{font-size:clamp(21px,2.6vw,27px);font-weight:750;letter-spacing:-.018em;margin:5px 0 0;text-wrap:balance}
+  h4{font-size:15px;font-weight:700;margin:30px 0 10px}
+  p{margin:0 0 14px}
+  .prose p{color:var(--ink-2)}
+  .prose strong{color:var(--ink);font-weight:650}
+
+  .flag{border:1px solid var(--hair);border-left:3px solid var(--flag);background:var(--flag-bg);padding:15px 18px;margin:22px 0;font-size:14.5px;color:var(--ink-2);max-width:var(--measure)}
+  .flag b{color:var(--ink);font-weight:650}
+  .flag .ttl{font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--flag);font-weight:700;display:block;margin-bottom:6px}
+
+  .tablewrap{overflow-x:auto;border:1px solid var(--hair);background:var(--surface)}
+  table{border-collapse:collapse;width:100%;font-size:13.5px;min-width:460px}
+  caption{text-align:left;font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);font-weight:650;padding:12px 14px 10px;border-bottom:1px solid var(--hair)}
+  th,td{padding:8px 14px;text-align:left;border-bottom:1px solid var(--hair-soft)}
+  thead th{font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);font-weight:650;border-bottom:1px solid var(--hair);white-space:nowrap}
+  td.n,th.n{text-align:right;font-family:ui-monospace,"Cascadia Mono",Consolas,monospace;font-variant-numeric:tabular-nums}
+  tbody tr:last-child td{border-bottom:0}
+  tfoot td{border-top:1px solid var(--hair);border-bottom:0;font-weight:700;color:var(--ink)}
+  .dim{color:var(--muted)}
+  .cat{font-size:11px;color:var(--muted)}
+
+  figure{margin:0 0 8px}
+  .figwrap{border:1px solid var(--hair);background:var(--surface);padding:16px 16px 10px;overflow-x:auto}
+  figcaption{font-size:12.5px;color:var(--muted);margin-top:10px;max-width:var(--measure)}
+  svg{display:block;width:100%;height:auto;overflow:visible}
+  .legend{display:flex;flex-wrap:wrap;gap:8px 20px;margin:0 0 14px;font-size:12.5px;color:var(--ink-2)}
+  .legend span{display:inline-flex;align-items:center;gap:7px}
+  text{font-family:system-ui,-apple-system,"Segoe UI",sans-serif}
+  .tick{font-size:11px;fill:var(--muted);font-variant-numeric:tabular-nums}
+  .dlabel{font-size:11.5px;fill:var(--ink-2);font-variant-numeric:tabular-nums}
+  .daylab{font-size:11px;fill:var(--ink-2);font-weight:650;letter-spacing:.06em}
+  .hit{fill:transparent;cursor:crosshair}
+  .hit:focus-visible{fill:color-mix(in srgb,var(--ink) 7%,transparent);outline:none}
+  .bar:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+
+  #tip{position:fixed;z-index:40;pointer-events:none;opacity:0;transition:opacity .09s ease;background:var(--surface);border:1px solid var(--hair);box-shadow:0 6px 22px rgba(0,0,0,.14);padding:9px 11px;font-size:12.5px;min-width:140px;color:var(--ink)}
+  #tip .th{font-weight:700;margin-bottom:5px;font-size:12px}
+  #tip .row{display:flex;align-items:center;gap:8px;justify-content:space-between}
+  #tip .row .lhs{display:inline-flex;align-items:center;gap:6px;color:var(--ink-2)}
+  #tip .row .rhs{font-family:ui-monospace,Consolas,monospace;font-variant-numeric:tabular-nums;font-weight:650}
+  @media (prefers-reduced-motion:reduce){#tip{transition:none}}
+
+  ul.notes{max-width:var(--measure);padding-left:0;list-style:none;margin:0}
+  ul.notes li{border-top:1px solid var(--hair-soft);padding:13px 0;font-size:14.5px;color:var(--ink-2)}
+  ul.notes li:first-child{border-top:0}
+  ul.notes b{color:var(--ink);font-weight:650;display:block;margin-bottom:3px}
+  footer{border-top:1px solid var(--hair);padding-top:18px;font-size:12.5px;color:var(--muted);max-width:var(--measure)}
+  code{font-family:ui-monospace,Consolas,monospace;font-size:.92em;background:var(--hair-soft);padding:1px 5px;border:1px solid var(--hair)}
+
+  #status{padding:60px 24px;text-align:center;color:var(--muted);font-size:15px}
+  #status .err{color:var(--flag);font-weight:650}
+
+  @media print{
+    .portalbar{display:none} .wrap{padding-top:0} body{background:#fff} section{break-inside:avoid}
+  }
+</style>
+</head>
+<body>
+
+<div class="portalbar">
+  <h1>2026 Sales Report</h1>
+  <div class="right">
+    <button class="printbtn" type="button" id="printbtn">Print</button>
+    <button class="themebtn" type="button" id="themebtn">Dark</button>
+    <a href="index.html">&larr; Staff Portal</a>
+  </div>
+</div>
+
+<div id="status">Loading sales figures&hellip;</div>
+
+<div class="wrap" id="report" hidden>
+
+  <p class="eyebrow">Holmdale Pro Rodeo &middot; 2026</p>
+  <h2 class="title">What sold over the weekend</h2>
+  <p class="dek">Every menu item, drink and piece of merchandise rung through the grounds, from the Friday gates to the last call on Sunday night.</p>
+  <div class="runline">
+    <span id="r-window"></span>
+    <span>Source: <b>live database</b></span>
+    <span id="r-generated"></span>
+  </div>
+  <div class="subjectrule" id="r-rule" aria-hidden="true"></div>
+
+  <div class="stats" id="r-stats"></div>
+  <p class="statnote" id="r-statnote"></p>
+
+  <section>
+    <div class="sechead"><span class="lab">01 &mdash; The split</span><h3 id="r-h-split"></h3></div>
+    <div class="prose"><p id="r-p-split"></p></div>
+    <div class="flag" id="r-flag-ticket" hidden>
+      <span class="ttl">Worth knowing before you quote these numbers</span>
+      <span id="r-flag-ticket-text"></span>
+    </div>
+    <div class="tablewrap">
+      <table>
+        <caption>Revenue by category, with double-counting removed</caption>
+        <thead><tr><th>Category</th><th>Where it was rung</th><th class="n">Units</th><th class="n">Revenue</th><th class="n">Share</th></tr></thead>
+        <tbody id="tb-split"></tbody>
+        <tfoot id="tf-split"></tfoot>
+      </table>
+    </div>
+  </section>
+
+  <section>
+    <div class="sechead"><span class="lab">02 &mdash; Trading pattern</span><h3>When the money came in</h3></div>
+    <div class="prose"><p id="r-p-hourly"></p></div>
+    <div class="legend" id="lg-hourly"></div>
+    <figure>
+      <div class="figwrap"><svg id="ch-hourly" role="img" aria-label="Hourly revenue for counter, bar and merch"></svg></div>
+      <figcaption id="cap-hourly"></figcaption>
+    </figure>
+  </section>
+
+  <section>
+    <div class="sechead"><span class="lab">03 &mdash; By day</span><h3 id="r-h-day"></h3></div>
+    <div class="prose"><p id="r-p-day"></p></div>
+    <div class="legend" id="lg-day"></div>
+    <figure>
+      <div class="figwrap"><svg id="ch-day" role="img" aria-label="Revenue by day, stacked by category"></svg></div>
+      <figcaption>Pre-tax revenue by day. &ldquo;Drink&rdquo; combines bar taps and counter tickets.</figcaption>
+    </figure>
+    <div class="tablewrap" style="margin-top:16px">
+      <table>
+        <caption>Daily detail</caption>
+        <thead><tr><th>Day</th><th class="n">Food</th><th class="n">Bar drinks</th><th class="n">Drink tickets</th><th class="n">Merch</th><th class="n">Total</th></tr></thead>
+        <tbody id="tb-day"></tbody>
+        <tfoot id="tf-day"></tfoot>
+      </table>
+    </div>
+  </section>
+
+  <section>
+    <div class="sechead"><span class="lab">04 &mdash; Food</span><h3 id="r-h-food"></h3></div>
+    <div class="prose"><p id="r-p-food"></p></div>
+    <figure>
+      <div class="figwrap"><svg id="ch-food" role="img" aria-label="Food items by revenue"></svg></div>
+      <figcaption>Food revenue by menu item, all booths. Drink-category items are shown in section 05.</figcaption>
+    </figure>
+    <div class="tablewrap" style="margin-top:16px">
+      <table>
+        <caption>Every food item sold</caption>
+        <thead><tr><th>Item</th><th>Category</th><th>Booth</th><th class="n">Qty</th><th class="n">Revenue</th></tr></thead>
+        <tbody id="tb-food"></tbody>
+        <tfoot id="tf-food"></tfoot>
+      </table>
+    </div>
+  </section>
+
+  <section>
+    <div class="sechead"><span class="lab">05 &mdash; Drink</span><h3 id="r-h-drink"></h3></div>
+    <div class="prose"><p id="r-p-drink"></p><p id="r-p-refund"></p></div>
+    <figure>
+      <div class="figwrap"><svg id="ch-drink" role="img" aria-label="Bar drinks by net revenue"></svg></div>
+      <figcaption>Net revenue per drink at the bar, after refunds. Counter drink tickets are not included here.</figcaption>
+    </figure>
+    <div class="tablewrap" style="margin-top:16px">
+      <table>
+        <caption>Bar drinks &mdash; wristband taps</caption>
+        <thead><tr><th>Drink</th><th class="n">Served</th><th class="n">Refunded</th><th class="n">Net units</th><th class="n">Net revenue</th></tr></thead>
+        <tbody id="tb-drink"></tbody>
+        <tfoot id="tf-drink"></tfoot>
+      </table>
+    </div>
+    <h4>Sold over the food counter</h4>
+    <div class="tablewrap">
+      <table>
+        <caption>Drink-category items rung at the till</caption>
+        <thead><tr><th>Item</th><th class="n">Qty</th><th class="n">Revenue</th></tr></thead>
+        <tbody id="tb-cdrink"></tbody>
+        <tfoot id="tf-cdrink"></tfoot>
+      </table>
+    </div>
+  </section>
+
+  <section>
+    <div class="sechead"><span class="lab">06 &mdash; Merch</span><h3 id="r-h-merch"></h3></div>
+    <div class="prose"><p id="r-p-merch"></p></div>
+    <figure>
+      <div class="figwrap"><svg id="ch-merch" role="img" aria-label="Merchandise by revenue"></svg></div>
+      <figcaption>Merch revenue by product, variants combined.</figcaption>
+    </figure>
+    <div class="tablewrap" style="margin-top:16px">
+      <table>
+        <caption>Merch by product and size</caption>
+        <thead><tr><th>Product</th><th>Size</th><th class="n">Qty</th><th class="n">Revenue</th></tr></thead>
+        <tbody id="tb-merch"></tbody>
+        <tfoot id="tf-merch"></tfoot>
+      </table>
+    </div>
+    <h4>How merch was paid for</h4>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>Method</th><th class="n">Sales</th><th class="n">Total incl. tax</th></tr></thead>
+        <tbody id="tb-merchpay"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section>
+    <div class="sechead"><span class="lab">07 &mdash; Wristband credit</span><h3 id="r-h-credit"></h3></div>
+    <div class="prose"><p id="r-p-credit"></p></div>
+    <div class="tablewrap">
+      <table>
+        <caption>Wristband transaction types</caption>
+        <thead><tr><th>Type</th><th>What it is</th><th class="n">Count</th><th class="n">Amount</th></tr></thead>
+        <tbody id="tb-flow"></tbody>
+      </table>
+    </div>
+    <div class="flag" id="r-flag-merch" hidden><span class="ttl">Small discrepancy</span><span id="r-flag-merch-text"></span></div>
+  </section>
+
+  <section>
+    <div class="sechead"><span class="lab">08 &mdash; Notes</span><h3>How these numbers were put together</h3></div>
+    <ul class="notes">
+      <li><b>Drink tickets are counted as drink, not food</b>Counter line items are classified by their menu category. The $7 &ldquo;Ticket&rdquo; item lives in the kitchen system but the menu files it under Drinks, so it is reported as drink.</li>
+      <li><b>Wristband spending is not added twice</b>Food and merch bought with wristband credit appear once, in their own category. The wristband figures in section 07 are the payment method, not extra revenue.</li>
+      <li><b>Refunds are netted off</b>Drink counts and revenue are shown after refunded transactions.</li>
+      <li><b>Only paid counter orders count</b>Kitchen orders still awaiting payment are excluded.</li>
+      <li><b>Staff attribution is not available</b>Bar transactions record the logged-in account rather than who served, and the merch stand records no staff at all. If each server signs in on their own account, per-staff reporting becomes possible.</li>
+      <li><b>Figures are live</b>This page reads the database each time it loads, so it keeps matching the books as late corrections land.</li>
+    </ul>
+  </section>
+
+  <footer>
+    <p>Admin only. Also available as a command-line report on the ops PC: <code>node C:\rodeo\reports\sales-report.js --csv</code></p>
+  </footer>
+</div>
+
+<div id="tip" role="status" aria-live="polite"></div>
+
+<script>
+const API = 'https://api.holmdalerodeo.ca/api';
+const SVGNS = 'http://www.w3.org/2000/svg';
+const el = (n,a={}) => { const e=document.createElementNS(SVGNS,n); for(const k in a) e.setAttribute(k,a[k]); return e; };
+const money0 = n => '$' + Math.round(Number(n)||0).toLocaleString('en-CA');
+const money2 = n => '$' + (Number(n)||0).toLocaleString('en-CA',{minimumFractionDigits:2,maximumFractionDigits:2});
+const num = n => (Number(n)||0).toLocaleString('en-CA');
+const esc = s => String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const pct = (a,b) => b ? (a/b*100).toFixed(1)+'%' : '\u2014';
+const DAYNAME = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+const MONTH = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+function dayLabel(iso){ const d=new Date(iso+'T12:00:00'); return DAYNAME[d.getDay()]+' '+d.getDate()+' '+MONTH[d.getMonth()]; }
+
+const tip = document.getElementById('tip');
+function showTip(evt,title,rows){
+  tip.innerHTML = '<div class="th">'+esc(title)+'</div>' + rows.map(r =>
+    '<div class="row"><span class="lhs">' + (r.c?'<i style="width:9px;height:9px;border-radius:2px;display:inline-block;background:'+r.c+'"></i>':'') +
+    esc(r.k)+'</span><span class="rhs">'+esc(r.v)+'</span></div>').join('');
+  tip.style.opacity=1;
+  const pad=14,w=tip.offsetWidth,h=tip.offsetHeight;
+  let x=evt.clientX+pad,y=evt.clientY+pad;
+  if(x+w>innerWidth-8) x=evt.clientX-w-pad;
+  if(y+h>innerHeight-8) y=evt.clientY-h-pad;
+  tip.style.left=Math.max(8,x)+'px'; tip.style.top=Math.max(8,y)+'px';
+}
+const hideTip = () => { tip.style.opacity=0; };
+addEventListener('scroll',hideTip,{passive:true});
+
+const C = { food:'var(--s-food)', drink:'var(--s-drink)', merch:'var(--s-merch)' };
+function legend(node,items){
+  node.innerHTML = items.map(i=>'<span><i style="width:10px;height:10px;border-radius:2px;background:'+i.css+';display:inline-block"></i>'+esc(i.name)+'</span>').join('');
+}
+// Axis top that divides into 4 round ticks: step is 1/2/2.5/5 x a power of ten.
+function niceMax(v){
+  if(v<=0) return 4;
+  const raw=v/4;
+  const mag=Math.pow(10,Math.floor(Math.log10(raw)));
+  const n=raw/mag;
+  const ladder=[1,1.5,2,2.5,3,4,5,6,8,10];
+  const step=(ladder.find(s=>n<=s)||10)*mag;
+  return step*4;
+}
+function tickText(v){
+  if(v===0) return '0';
+  if(v>=1000){ const k=v/1000; return '$'+(k%1?k.toFixed(1):k)+'k'; }
+  return '$'+v;
+}
+
+function lineChart(svg,rows,max){
+  svg.innerHTML='';
+  const W=1000,H=330,M={t:14,r:16,b:34,l:60};
+  svg.setAttribute('viewBox','0 0 '+W+' '+H);
+  const iw=W-M.l-M.r, ih=H-M.t-M.b;
+  const x=i=>M.l+(rows.length<2?0:(i/(rows.length-1))*iw);
+  const y=v=>M.t+ih-(v/max)*ih;
+  for(let k=0;k<=4;k++){
+    const v=max/4*k;
+    svg.appendChild(el('line',{x1:M.l,x2:M.l+iw,y1:y(v),y2:y(v),stroke:'var(--grid)','stroke-width':1}));
+    const t=el('text',{x:M.l-10,y:y(v)+4,class:'tick','text-anchor':'end'});
+    t.textContent = tickText(v); svg.appendChild(t);
+  }
+  const seen={};
+  rows.forEach((r,i)=>{
+    const day=r.slot.slice(0,10);
+    if(r.slot.slice(11,13)==='00' && i>0)
+      svg.appendChild(el('line',{x1:x(i),x2:x(i),y1:M.t,y2:M.t+ih,stroke:'var(--axis)','stroke-width':1,'stroke-dasharray':'2 3'}));
+    if(!seen[day]) seen[day]=[i,i]; else seen[day][1]=i;
+  });
+  Object.keys(seen).sort().forEach(day=>{
+    const p=seen[day];
+    const t=el('text',{x:(x(p[0])+x(p[1]))/2,y:M.t+ih+22,class:'daylab','text-anchor':'middle'});
+    t.textContent=dayLabel(day); svg.appendChild(t);
+  });
+  svg.appendChild(el('line',{x1:M.l,x2:M.l+iw,y1:y(0),y2:y(0),stroke:'var(--axis)','stroke-width':1}));
+
+  const keys=[{k:'merch',css:C.merch},{k:'counter',css:C.food},{k:'bar',css:C.drink}];
+  keys.forEach(s=>{
+    const pts=rows.map((r,i)=>x(i)+','+y(Math.max(0,r[s.k]))).join(' ');
+    const a=el('path',{d:'M '+x(0)+','+y(0)+' L '+pts.split(' ').join(' L ')+' L '+x(rows.length-1)+','+y(0)+' Z','fill-opacity':'.10'});
+    a.style.fill=s.css; svg.appendChild(a);
+    const p=el('polyline',{points:pts,fill:'none','stroke-width':2,'stroke-linejoin':'round','stroke-linecap':'round'});
+    p.style.stroke=s.css; svg.appendChild(p);
+  });
+  const focus=el('line',{y1:M.t,y2:M.t+ih,stroke:'var(--ink)','stroke-width':1,opacity:0}); svg.appendChild(focus);
+  const dots=keys.map(s=>{ const c=el('circle',{r:4,opacity:0,stroke:'var(--surface)','stroke-width':2}); c.style.fill=s.css; svg.appendChild(c); return c; });
+  const step=rows.length<2?iw:iw/(rows.length-1);
+  rows.forEach((r,i)=>{
+    const hit=el('rect',{x:x(i)-step/2,y:M.t,width:step,height:ih,class:'hit',tabindex:'0',role:'img'});
+    const label=dayLabel(r.slot.slice(0,10))+' \u00b7 '+r.slot.slice(11,13)+':00';
+    hit.setAttribute('aria-label',label+' \u2014 counter '+money0(r.counter)+', bar '+money0(r.bar)+', merch '+money0(r.merch));
+    const show=e=>{
+      focus.setAttribute('x1',x(i)); focus.setAttribute('x2',x(i)); focus.setAttribute('opacity','.35');
+      keys.forEach((s,j)=>{ dots[j].setAttribute('cx',x(i)); dots[j].setAttribute('cy',y(Math.max(0,r[s.k]))); dots[j].setAttribute('opacity',1); });
+      const box=svg.getBoundingClientRect();
+      showTip(e.clientX?e:{clientX:box.left+(x(i)/W)*box.width,clientY:box.top+box.height/2}, label, [
+        {k:'Counter',v:money0(r.counter),c:C.food},{k:'Bar',v:money0(r.bar),c:C.drink},{k:'Merch',v:money0(r.merch),c:C.merch}]);
+    };
+    const hide=()=>{ focus.setAttribute('opacity',0); dots.forEach(c=>c.setAttribute('opacity',0)); hideTip(); };
+    hit.addEventListener('mousemove',show); hit.addEventListener('mouseleave',hide);
+    hit.addEventListener('focus',show); hit.addEventListener('blur',hide);
+    svg.appendChild(hit);
+  });
+}
+
+function stackedDays(svg,rows){
+  svg.innerHTML='';
+  const W=1000,H=260,M={t:12,r:16,b:40,l:60};
+  svg.setAttribute('viewBox','0 0 '+W+' '+H);
+  const iw=W-M.l-M.r, ih=H-M.t-M.b;
+  rows.forEach(r=>{ r.drink=r.drinkBar+r.drinkTicket; r.total=r.food+r.drink+r.merch; });
+  const max=niceMax(Math.max.apply(null,rows.map(r=>r.total))*1.02);
+  const y=v=>M.t+ih-(v/max)*ih;
+  for(let k=0;k<=4;k++){
+    const v=max/4*k;
+    svg.appendChild(el('line',{x1:M.l,x2:M.l+iw,y1:y(v),y2:y(v),stroke:'var(--grid)','stroke-width':1}));
+    const t=el('text',{x:M.l-10,y:y(v)+4,class:'tick','text-anchor':'end'});
+    t.textContent=tickText(v); svg.appendChild(t);
+  }
+  svg.appendChild(el('line',{x1:M.l,x2:M.l+iw,y1:y(0),y2:y(0),stroke:'var(--axis)','stroke-width':1}));
+  const bw=Math.min(96,(iw/rows.length)*0.52);
+  rows.forEach((r,i)=>{
+    const cx=M.l+(iw/rows.length)*(i+0.5);
+    let acc=0;
+    [['merch',C.merch,'Merch'],['food',C.food,'Food'],['drink',C.drink,'Drink']].forEach(function(s){
+      const v=r[s[0]]; if(v<=0) return;
+      const h=(v/max)*ih;
+      const rect=el('rect',{x:cx-bw/2,y:y(acc+v),width:bw,height:Math.max(1,h-2),rx:2,class:'bar',tabindex:'0'});
+      rect.style.fill=s[1];
+      rect.setAttribute('aria-label',dayLabel(r.date)+' '+s[2]+' '+money0(v));
+      const show=e=>showTip(e,dayLabel(r.date),[
+        {k:'Food',v:money0(r.food),c:C.food},{k:'Drink',v:money0(r.drink),c:C.drink},
+        {k:'Merch',v:money0(r.merch),c:C.merch},{k:'Total',v:money0(r.total)}]);
+      rect.addEventListener('mousemove',show); rect.addEventListener('mouseleave',hideTip);
+      rect.addEventListener('focus',()=>{const b=rect.getBoundingClientRect();show({clientX:b.right,clientY:b.top});});
+      rect.addEventListener('blur',hideTip);
+      svg.appendChild(rect); acc+=v;
+    });
+    const tot=el('text',{x:cx,y:y(r.total)-9,class:'dlabel','text-anchor':'middle','font-weight':'700'});
+    tot.textContent=money0(r.total); svg.appendChild(tot);
+    const lab=el('text',{x:cx,y:M.t+ih+24,class:'daylab','text-anchor':'middle'});
+    lab.textContent=dayLabel(r.date); svg.appendChild(lab);
+  });
+}
+
+function hBars(svg,rows,css,opts){
+  svg.innerHTML='';
+  const rowH=26,M={t:6,r:92,b:22,l:opts.labelW};
+  const W=1000,H=M.t+rows.length*rowH+M.b;
+  svg.setAttribute('viewBox','0 0 '+W+' '+H);
+  const iw=W-M.l-M.r;
+  const max=Math.max(Math.max.apply(null,rows.map(r=>r.v)),1);
+  rows.forEach((r,i)=>{
+    const yTop=M.t+i*rowH, w=Math.max(2,(r.v/max)*iw);
+    const lab=el('text',{x:M.l-12,y:yTop+rowH/2+4,class:'dlabel','text-anchor':'end'});
+    lab.textContent = r.k.length>opts.trunc ? r.k.slice(0,opts.trunc-1)+'\u2026' : r.k;
+    svg.appendChild(lab);
+    const bar=el('rect',{x:M.l,y:yTop+4,width:w,height:rowH-10,rx:4,class:'bar',tabindex:'0'});
+    bar.style.fill=css;
+    bar.setAttribute('aria-label',r.k+' \u2014 '+opts.aria(r));
+    const show=e=>showTip(e,r.k,opts.tip(r));
+    bar.addEventListener('mousemove',show); bar.addEventListener('mouseleave',hideTip);
+    bar.addEventListener('focus',()=>{const b=bar.getBoundingClientRect();show({clientX:b.right,clientY:b.top});});
+    bar.addEventListener('blur',hideTip);
+    svg.appendChild(bar);
+    const val=el('text',{x:M.l+w+10,y:yTop+rowH/2+4,class:'dlabel'});
+    val.textContent=money0(r.v); svg.appendChild(val);
+  });
+}
+
+function stat(k,v,s,c){
+  return '<div class="stat"><div class="k">'+(c?'<i class="swatch" style="background:'+c+'"></i>':'')+esc(k)+
+    '</div><div class="v num">'+esc(v)+'</div><div class="s">'+s+'</div></div>';
+}
+function row(cells,from){
+  const f = (from==null) ? 2 : from;
+  return '<tr>'+cells.map((c,i)=>'<td'+(i>=f?' class="n"':'')+'>'+c+'</td>').join('')+'</tr>';
+}
+
+function render(d){
+  const t=d.totals;
+  const drinkTotal=t.drinkBarNet+t.drinkTicket;
+  const pre=t.combinedPreTax;
+  const firstDay=d.byDay.length?d.byDay[0].date:d.window.start;
+  const lastDay=d.byDay.length?d.byDay[d.byDay.length-1].date:d.window.end;
+
+  document.getElementById('r-window').innerHTML='<b>'+esc(dayLabel(firstDay))+' \u2013 '+esc(dayLabel(lastDay))+'</b>';
+  document.getElementById('r-generated').innerHTML='Read from the database <b>'+
+    new Date(d.generated_at).toLocaleString('en-CA',{hour:'2-digit',minute:'2-digit',day:'numeric',month:'short'})+'</b>';
+
+  document.getElementById('r-rule').innerHTML =
+    '<i style="background:var(--s-food);flex:'+Math.max(t.foodItems,1)+'"></i>'+
+    '<i style="background:var(--s-drink);flex:'+Math.max(drinkTotal,1)+'"></i>'+
+    '<i style="background:var(--s-merch);flex:'+Math.max(t.merchSub,1)+'"></i>';
+
+  document.getElementById('r-stats').innerHTML =
+    stat('Total takings',money0(t.combined),num(t.counterOrders)+' counter orders \u00b7 '+num(t.merchSales)+' merch sales')+
+    stat('Food',money0(t.foodItems),num(t.foodUnits)+' items',C.food)+
+    stat('Drink',money0(drinkTotal),num(t.drinksServed-t.drinksRefunded)+' poured + '+num(t.drinkTicketQty)+' at the counter',C.drink)+
+    stat('Merch',money0(t.merchSub),num(t.merchUnits)+' units',C.merch);
+  document.getElementById('r-statnote').textContent =
+    'Figures are pre-tax except \u201cTotal takings\u201d, which adds the '+money2(t.taxCounter+t.taxMerch)+' of tax collected.';
+
+  document.getElementById('r-h-split').textContent =
+    drinkTotal>t.foodItems && t.foodItems ? 'Drink outsold food '+(drinkTotal/t.foodItems).toFixed(1)+' to one' : 'Where the money came from';
+  document.getElementById('r-p-split').innerHTML =
+    'Drink arrives through two separate systems: <strong>wristband taps at the bar</strong> and <strong>drink tickets sold over the food counter</strong>. '+
+    'Counted together they come to <strong>'+money0(drinkTotal)+'</strong> \u2014 '+pct(drinkTotal,pre)+' of everything taken.';
+
+  const ticket=d.counterDrinks.filter(r=>/ticket/i.test(r.item))[0];
+  if(ticket){
+    document.getElementById('r-flag-ticket').hidden=false;
+    document.getElementById('r-flag-ticket-text').innerHTML =
+      'The <b>'+esc(ticket.item)+'</b> item lives in the kitchen system, so a na\u00efve report files its <b>'+money0(ticket.gross)+
+      '</b> under food. It is a drink \u2014 the menu itself files it under the Drinks category. This report classifies every counter line by its real menu category, '+
+      'which is why food here is '+money0(t.foodItems)+' rather than '+money0(t.foodItems+t.drinkTicket)+'.';
+  }
+
+  const sw=c=>'<i class="swatch" style="background:'+c+';margin-right:8px"></i>';
+  document.getElementById('tb-split').innerHTML =
+    row([sw(C.food)+'Food','<span class="dim">Counter \u2014 all booths</span>',num(t.foodUnits),money2(t.foodItems),pct(t.foodItems,pre)])+
+    row([sw(C.drink)+'Drink \u2014 bar','<span class="dim">Wristband taps, net of '+num(t.drinksRefunded)+' refunds</span>',num(t.drinksServed-t.drinksRefunded),money2(t.drinkBarNet),pct(t.drinkBarNet,pre)])+
+    row(['<i class="swatch" style="background:'+C.drink+';margin-right:8px;opacity:.55"></i>Drink \u2014 counter','<span class="dim">Tickets, pop and water at the till</span>',num(t.drinkTicketQty),money2(t.drinkTicket),pct(t.drinkTicket,pre)])+
+    row([sw(C.merch)+'Merch','<span class="dim">Merch stand</span>',num(t.merchUnits),money2(t.merchSub),pct(t.merchSub,pre)])+
+    row(['<span class="dim">Tax collected</span>','<span class="dim">Counter '+money2(t.taxCounter)+' + merch '+money2(t.taxMerch)+'</span>','<span class="dim">\u2014</span>',money2(t.taxCounter+t.taxMerch),'<span class="dim">'+pct(t.taxCounter+t.taxMerch,pre)+'</span>']);
+  document.getElementById('tf-split').innerHTML =
+    row(['Total','',num(t.foodUnits+(t.drinksServed-t.drinksRefunded)+t.drinkTicketQty+t.merchUnits),money2(t.combined),'100%']);
+
+  let h=d.hourly.slice();
+  const live=i=>h[i].counter||h[i].bar||h[i].merch;
+  let a=0,b=h.length-1;
+  while(a<b && !live(a)) a++;
+  while(b>a && !live(b)) b--;
+  h=h.slice(Math.max(0,a-1),Math.min(h.length,b+2));
+  if(h.length){
+    const peak=k=>h.reduce((m,r)=>r[k]>m[k]?r:m,h[0]);
+    const pb=peak('bar'), pc=peak('counter');
+    const hourOf=s=>parseInt(s.slice(11,13),10);
+    const spread=Math.abs(hourOf(pb.slot)-hourOf(pc.slot));
+    document.getElementById('r-p-hourly').innerHTML =
+      'The bar peaked at <strong>'+money0(pb.bar)+'</strong> in the '+esc(pb.slot.slice(11,13))+':00 hour on '+esc(dayLabel(pb.slot.slice(0,10)))+
+      ', while the counter peaked at <strong>'+money0(pc.counter)+'</strong> in the '+esc(pc.slot.slice(11,13))+':00 hour on '+esc(dayLabel(pc.slot.slice(0,10)))+
+      '. '+(spread>=3
+        ? 'The two run on noticeably different clocks, '+Math.round(spread)+' hours apart at their busiest.'
+        : 'Both peak in the same part of the evening, so the bar and the counter compete for the same rush rather than spreading the load.');
+    lineChart(document.getElementById('ch-hourly'),h,
+      niceMax(Math.max(Math.max.apply(null,h.map(r=>Math.max(r.counter,r.bar,r.merch))),1)*1.02));
+  }
+  document.getElementById('cap-hourly').textContent='Revenue per hour. Vertical rules mark midnight. Hours with no trade at either end are trimmed.';
+  legend(document.getElementById('lg-hourly'),[
+    {name:'Counter (food + tickets)',css:C.food},{name:'Bar (wristband)',css:C.drink},{name:'Merch',css:C.merch}]);
+
+  const days=d.byDay.map(r=>({date:r.date,food:r.food,drinkBar:r.drinkBar,drinkTicket:r.drinkTicket,merch:r.merch}));
+  if(days.length){
+    const tot=r=>r.food+r.drinkBar+r.drinkTicket+r.merch;
+    const best=days.reduce((m,r)=>tot(r)>tot(m)?r:m,days[0]);
+    document.getElementById('r-h-day').textContent=dayLabel(best.date)+' was the biggest day';
+    document.getElementById('r-p-day').innerHTML =
+      esc(dayLabel(best.date))+' took <strong>'+money0(tot(best))+'</strong> \u2014 '+pct(tot(best),pre)+' of the weekend.';
+    stackedDays(document.getElementById('ch-day'),days);
+  }
+  legend(document.getElementById('lg-day'),[
+    {name:'Food',css:C.food},{name:'Drink (bar + tickets)',css:C.drink},{name:'Merch',css:C.merch}]);
+  document.getElementById('tb-day').innerHTML = d.byDay.map(r=>row([
+    dayLabel(r.date), r.food?money0(r.food):'\u2014', r.drinkBar?money0(r.drinkBar):'\u2014',
+    r.drinkTicket?money0(r.drinkTicket):'\u2014',
+    r.merch?money0(r.merch):'\u2014', money0(r.food+r.drinkBar+r.drinkTicket+r.merch)],1)).join('');
+  document.getElementById('tf-day').innerHTML =
+    row(['Total',money0(t.foodItems),money0(t.drinkBarNet),money0(t.drinkTicket),money0(t.merchSub),money0(pre)],1);
+
+  const topEarn=d.foodItems[0];
+  const topQty=d.foodItems.slice().sort((x,y)=>y.qty-x.qty)[0];
+  document.getElementById('r-h-food').textContent = topEarn ? topEarn.item+' led the kitchen' : 'Food';
+  document.getElementById('r-p-food').innerHTML = topEarn ?
+    '<strong>'+esc(topEarn.item)+'</strong> was the top earner at <strong>'+money0(topEarn.gross)+'</strong> across '+num(topEarn.qty)+' sold. '+
+    'By volume the busiest line was <strong>'+esc(topQty.item)+'</strong> at '+num(topQty.qty)+'.' : 'No food sales in this window.';
+  hBars(document.getElementById('ch-food'),d.foodItems.map(r=>({k:r.item,cat:r.cat,booth:r.booth,q:r.qty,v:r.gross})),C.food,{
+    labelW:240,trunc:30, aria:r=>r.q+' sold, '+money0(r.v),
+    tip:r=>[{k:'Sold',v:num(r.q)},{k:'Revenue',v:money2(r.v)},{k:'Category',v:r.cat}]});
+  document.getElementById('tb-food').innerHTML = d.foodItems.map(r=>row([
+    esc(r.item),'<span class="cat">'+esc(r.cat)+'</span>','<span class="dim">'+esc(r.booth)+'</span>',num(r.qty),money0(r.gross)],3)).join('');
+  document.getElementById('tf-food').innerHTML = row(['Total','','',num(t.foodUnits),money0(t.foodItems)],3);
+
+  const dr=d.barDrinks.slice().sort((x,y)=>y.net-x.net);
+  const d1=dr[0], d2=dr[1];
+  document.getElementById('r-h-drink').textContent = d1 ? d1.item+', and then everything else' : 'Drink';
+  document.getElementById('r-p-drink').innerHTML = d1 ?
+    num(d1.served)+' '+esc(d1.item)+' poured'+(d2&&d2.served?', running <strong>'+Math.round((d1.served/d2.served-1)*100)+'% ahead of '+esc(d2.item)+'</strong> in second':'')+'.' : '';
+  const odd=dr.filter(r=>r.served>=20 && r.refunded/r.served>0.3).sort((x,y)=>y.refunded-x.refunded);
+  document.getElementById('r-p-refund').innerHTML = odd.length ?
+    '<strong>'+num(t.drinksRefunded)+' drinks were refunded.</strong> They cluster oddly: '+
+    odd.slice(0,3).map(r=>esc(r.item)+' was reversed '+num(r.refunded)+' times against '+num(r.served)+' served').join(', ')+
+    '. That reads like a till mis-key or an out-of-stock line being rung and reversed, not ordinary customer returns.'
+    : num(t.drinksRefunded)+' drinks were refunded, spread evenly across the range.';
+  hBars(document.getElementById('ch-drink'),dr.map(r=>({k:r.item,served:r.served,ref:r.refunded,v:r.net})),C.drink,{
+    labelW:190,trunc:24, aria:r=>r.served+' served, '+money0(r.v)+' net',
+    tip:r=>[{k:'Served',v:num(r.served)},{k:'Refunded',v:num(r.ref)},{k:'Net revenue',v:money2(r.v)}]});
+  document.getElementById('tb-drink').innerHTML = dr.map(r=>{
+    const hot = r.served>=20 && r.refunded/r.served>0.3;
+    return '<tr><td>'+esc(r.item)+'</td><td class="n">'+num(r.served)+'</td>'+
+      '<td class="n"'+(hot?' style="color:var(--flag);font-weight:650"':'')+'>'+num(r.refunded)+'</td>'+
+      '<td class="n">'+num(r.served-r.refunded)+'</td><td class="n">'+money0(r.net)+'</td></tr>';
+  }).join('');
+  document.getElementById('tf-drink').innerHTML =
+    row(['Total',num(t.drinksServed),num(t.drinksRefunded),num(t.drinksServed-t.drinksRefunded),money0(t.drinkBarNet)],1);
+  document.getElementById('tb-cdrink').innerHTML = d.counterDrinks.map(r=>row([esc(r.item),num(r.qty),money0(r.gross)],1)).join('');
+  document.getElementById('tf-cdrink').innerHTML = row(['Total',num(t.drinkTicketQty),money0(t.drinkTicket)],1);
+
+  const m1=d.merchByProduct[0];
+  document.getElementById('r-h-merch').textContent = m1 ? m1.product+' outsold every other line' : 'Merch';
+  document.getElementById('r-p-merch').innerHTML = m1 ?
+    '<strong>'+num(m1.qty)+' '+esc(m1.product)+'</strong> make up '+pct(m1.gross,t.merchSub)+' of merch revenue on their own.' : 'No merch sales in this window.';
+  hBars(document.getElementById('ch-merch'),d.merchByProduct.map(r=>({k:r.product,q:r.qty,v:r.gross})),C.merch,{
+    labelW:200,trunc:26, aria:r=>r.q+' sold, '+money0(r.v),
+    tip:r=>[{k:'Units',v:num(r.q)},{k:'Revenue',v:money2(r.v)}]});
+  document.getElementById('tb-merch').innerHTML = d.merchByProduct.map(p=>{
+    if(!p.variants.length) return row([esc(p.product),'<span class="dim">\u2014</span>',num(p.qty),money0(p.gross)],2);
+    return p.variants.map((v,i)=>row([
+      i===0?esc(p.product):'<span class="dim" style="opacity:.45">\u21b3</span>', esc(v.variant), num(v.qty), money0(v.gross)],2)).join('')+
+      '<tr><td colspan="2" class="dim" style="font-size:12px">'+esc(p.product)+' subtotal</td>'+
+      '<td class="n dim">'+num(p.qty)+'</td><td class="n dim">'+money0(p.gross)+'</td></tr>';
+  }).join('');
+  document.getElementById('tf-merch').innerHTML = row(['Total','',num(t.merchUnits),money0(t.merchSub)],2);
+  document.getElementById('tb-merchpay').innerHTML = d.merchPay.map(r=>
+    row([esc(r.method||'\u2014'),num(r.sales),money2(r.total)],1)).join('');
+
+  const F=k=>d.flow.filter(r=>r.type===k)[0]||{n:0,amt:0};
+  const loaded=F('purchase').amt, spent=t.drinkBarNet+F('food').amt+F('merch').amt;
+  const gap=spent-loaded;
+  document.getElementById('r-h-credit').textContent = gap>0 ? 'More was spent than was loaded' : 'Wristband credit';
+  document.getElementById('r-p-credit').innerHTML =
+    'Guests loaded <strong>'+money0(loaded)+'</strong> onto wristbands across '+num(F('purchase').n)+' purchases, then spent <strong>'+money0(spent)+
+    '</strong> on drinks, food and merch'+(gap>0?' \u2014 about <strong>'+money0(gap)+' more than went in</strong>. That gap is expected: sponsor and volunteer badges carry complimentary credit that was never bought. It is still worth reconciling against the cash and card float.':'.');
+  const WHAT={purchase:'Credit loaded onto a band \u2014 money in',drink:'Drink served against credit',refund:'Drink reversed',food:'Band used at the food counter',merch:'Band used at the merch stand'};
+  document.getElementById('tb-flow').innerHTML = d.flow.map(r=>
+    row([esc(r.type.charAt(0).toUpperCase()+r.type.slice(1)),'<span class="dim">'+(WHAT[r.type]||'')+'</span>',num(r.n),money2(r.amt)],2)).join('');
+
+  const bandMerch=F('merch').amt;
+  const stand=d.merchPay.filter(r=>r.method==='wristband')[0]||{total:0,sales:0};
+  if(Math.abs(bandMerch-stand.total)>0.005){
+    document.getElementById('r-flag-merch').hidden=false;
+    document.getElementById('r-flag-merch-text').innerHTML =
+      'The bar recorded <b>'+num(F('merch').n)+' merch transactions totalling '+money2(bandMerch)+
+      '</b>, but the merch stand recorded <b>'+num(stand.sales)+' wristband sales totalling '+money2(stand.total)+
+      '</b>. The '+money2(Math.abs(bandMerch-stand.total))+' difference is most likely merch rung through the bar app.';
+  }
+
+  document.getElementById('status').hidden=true;
+  document.getElementById('report').hidden=false;
+}
+
+(function(){
+  const b=document.getElementById('themebtn'), root=document.documentElement;
+  const cur=()=>root.getAttribute('data-theme')||(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');
+  const paint=()=>{ b.textContent = cur()==='dark'?'Light':'Dark'; };
+  b.addEventListener('click',()=>{ root.setAttribute('data-theme',cur()==='dark'?'light':'dark'); paint(); });
+  paint();
+  document.getElementById('printbtn').addEventListener('click',()=>window.print());
+})();
+
+(async function load(){
+  const status=document.getElementById('status');
+  try{
+    const r=await fetch(API+'/reports/event-sales',{headers:{'Authorization':'Bearer '+localStorage.getItem('auth_token')}});
+    if(r.status===401){ location.href='login.html?expired=1'; return; }
+    if(r.status===403){
+      status.innerHTML='<p class="err">Admin access required.</p><p>This report is limited to admin accounts.</p>';
+      return;
+    }
+    if(!r.ok) throw new Error('API returned '+r.status);
+    render(await r.json());
+  }catch(e){
+    status.innerHTML='<p class="err">Could not load the sales figures.</p><p>'+esc(e.message)+'</p>';
+  }
+})();
+</script>
+</body>
+</html>
