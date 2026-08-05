@@ -221,6 +221,7 @@
         }
         .v-chip.v-low { background: #fef3e2; color: #7c4a03; border-color: #f5d9a8; }
         .v-chip.v-zero { background: #fde8e8; color: #822727; border-color: #f5b5b5; }
+        .v-chip.v-soldonly { background: #f0f0f0; color: #555; border-color: #d5d5d5; }
         .variant-grid {
             display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
             gap: 8px; max-height: 300px; overflow-y: auto;
@@ -766,6 +767,7 @@
         // ==================== MERCH INVENTORY ====================
         let merchProducts = [];
         let merchSoldById = {};
+        let merchSoldByVariant = {};
         let currentProduct = null;
 
         function asArray(v) {
@@ -803,12 +805,21 @@
 
                 // Sold counts come from merch sales history (products has no sold column)
                 merchSoldById = {};
+                merchSoldByVariant = {};
                 try {
                     const sr = await fetch(API + '/merch/sales');
                     const sd = await sr.json();
                     (sd.sales || []).forEach(sale => {
                         asArray(sale.items).forEach(it => {
-                            if (it.productId) merchSoldById[it.productId] = (merchSoldById[it.productId] || 0) + (it.qty || 1);
+                            if (!it.productId) return;
+                            const qty = it.qty || 1;
+                            merchSoldById[it.productId] = (merchSoldById[it.productId] || 0) + qty;
+                            // Merch POS items carry size/color; ticket-counter items only
+                            // carry a variant label (the size). '' = variant not recorded.
+                            const vkey = it.color && it.size ? it.color + '|' + it.size
+                                : (it.color || it.size || it.variant || '');
+                            const byV = merchSoldByVariant[it.productId] = merchSoldByVariant[it.productId] || {};
+                            byV[vkey] = (byV[vkey] || 0) + qty;
                         });
                     });
                 } catch(e) { console.warn('Could not load merch sales:', e); }
@@ -837,11 +848,22 @@
                 const entries = variantEntries(p);
                 const variants = entries ? '' : [asArray(p.colors).join(' / '), asArray(p.sizes).join(' ')]
                     .filter(Boolean).join(' · ');
-                const chips = entries ? entries.map(([k, v]) => {
+                const soldByV = merchSoldByVariant[p.id] || {};
+                const tracked = new Set();
+                let chips = entries ? entries.map(([k, v]) => {
+                    tracked.add(k);
                     const n = parseInt(v) || 0;
+                    const s = soldByV[k] || 0;
                     const cls = n <= 0 ? 'v-zero' : (n <= 5 ? 'v-low' : '');
-                    return `<span class="v-chip ${cls}">${k.replace('|', ' ')}: ${n}</span>`;
+                    return `<span class="v-chip ${cls}">${k.replace('|', ' ')}: ${n} left${s ? ` · ${s} sold` : ''}</span>`;
                 }).join('') : '';
+                if (asArray(p.colors).length || asArray(p.sizes).length) {
+                    // Sales whose variant has no matching stock key (e.g. ticket-counter
+                    // sales record only the size, or the variant was renamed)
+                    chips += Object.keys(soldByV).filter(k => k && !tracked.has(k)).map(k =>
+                        `<span class="v-chip v-soldonly">${k.replace('|', ' ')}: ${soldByV[k]} sold</span>`).join('');
+                    if (soldByV['']) chips += `<span class="v-chip v-soldonly">variant not recorded: ${soldByV['']} sold</span>`;
+                }
 
                 const row = document.createElement('tr');
                 row.innerHTML = `
