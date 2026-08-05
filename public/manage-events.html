@@ -693,14 +693,21 @@
                 headers: authHeaders()
             });
 
-            if (!res.ok) throw new Error('Failed to delete');
+            if (!res.ok) {
+                // The API explains exactly why — most often that the event still
+                // has ticket orders and staff shifts that would be destroyed
+                // along with it. Throwing that away and showing a bare "Failed to
+                // delete" left no way to tell a real safeguard from a bug.
+                const data = await res.json().catch(() => ({}));
+                throw new Error(data.error || `Delete failed (${res.status})`);
+            }
 
             showToast('Event deleted', 'success');
             closeConfirm();
             loadEvents();
         } catch (err) {
             console.error('Delete error:', err);
-            showToast('Failed to delete event', 'error');
+            showToast(err.message || 'Failed to delete event', 'error');
             closeConfirm();
         }
     }
