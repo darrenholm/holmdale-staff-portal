@@ -1,0 +1,797 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Photo Library — Holmdale Pro Rodeo</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif; background:#0c0a09; color:#e7e5e4; }
+  a { color:#00B74A; }
+
+  header { background:#1c1917; border-bottom:1px solid #292524; padding:14px 20px; position:sticky; top:0; z-index:30; }
+  .hrow { display:flex; align-items:center; gap:16px; flex-wrap:wrap; max-width:1500px; margin:0 auto; }
+  h1 { font-size:18px; color:#facc15; letter-spacing:1px; }
+  .back { font-size:13px; color:#a8a29e; text-decoration:none; }
+  .back:hover { color:#fff; }
+  .spacer { flex:1; }
+
+  .stats { display:flex; gap:14px; flex-wrap:wrap; }
+  .stat { background:#292524; border-radius:8px; padding:6px 12px; font-size:12px; color:#a8a29e; }
+  .stat b { display:block; font-size:16px; color:#fff; }
+  .stat.warn b { color:#facc15; }
+
+  main { max-width:1500px; margin:0 auto; padding:18px 20px 80px; }
+
+  .toolbar { display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-bottom:16px; }
+  .tabs { display:flex; gap:6px; flex-wrap:wrap; }
+  .tab { padding:8px 15px; border-radius:20px; border:none; background:#292524; color:#d6d3d1; font-size:13px; font-weight:600; cursor:pointer; }
+  .tab.on { background:#00B74A; color:#0c0a09; }
+  .tab .n { opacity:.7; margin-left:5px; }
+
+  select, input[type=text], input[type=search], input[type=number], textarea {
+    background:#1c1917; border:1px solid #44403c; color:#e7e5e4; border-radius:8px; padding:8px 11px; font-size:13px; font-family:inherit; }
+  select:focus, input:focus, textarea:focus { outline:none; border-color:#00B74A; }
+
+  .btn { padding:8px 15px; border:none; border-radius:8px; font-size:13px; font-weight:600; cursor:pointer; }
+  .btn-green { background:#00B74A; color:#0c0a09; }
+  .btn-grey  { background:#44403c; color:#e7e5e4; }
+  .btn-red   { background:#b91c1c; color:#fff; }
+  .btn-gold  { background:#facc15; color:#0c0a09; }
+  .btn:disabled { opacity:.45; cursor:default; }
+  .btn:hover:not(:disabled) { filter:brightness(1.12); }
+
+  .bulkbar { position:sticky; top:64px; z-index:20; display:none; gap:10px; align-items:center; flex-wrap:wrap;
+             background:#1c1917; border:1px solid #00B74A; border-radius:10px; padding:10px 14px; margin-bottom:14px; }
+  .bulkbar.on { display:flex; }
+  .bulkbar .count { font-size:13px; font-weight:700; color:#facc15; }
+
+  .grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(190px,1fr)); gap:12px; }
+  .cell { position:relative; background:#1c1917; border:2px solid transparent; border-radius:10px; overflow:hidden; cursor:pointer; }
+  .cell.sel { border-color:#00B74A; }
+  .cell .ph { width:100%; aspect-ratio:1; object-fit:cover; display:block; background:#292524; }
+  .cell .none { width:100%; aspect-ratio:1; display:flex; align-items:center; justify-content:center; background:#292524; color:#78716c; font-size:12px; text-align:center; padding:10px; }
+  .cell .meta { padding:7px 9px; font-size:11px; color:#a8a29e; }
+  .cell .meta .t { color:#e7e5e4; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .cell .check { position:absolute; top:7px; left:7px; width:22px; height:22px; accent-color:#00B74A; cursor:pointer; z-index:2; }
+  .pill { position:absolute; top:7px; right:7px; padding:2px 7px; border-radius:5px; font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.4px; }
+  .pill.pending  { background:#facc15; color:#0c0a09; }
+  .pill.rejected { background:#7f1d1d; color:#fecaca; }
+  .pill.proc     { background:#1e3a8a; color:#bfdbfe; }
+  .pill.star     { background:#00B74A; color:#0c0a09; }
+
+  .empty { text-align:center; padding:70px 20px; color:#78716c; }
+  .loading { text-align:center; padding:50px; color:#78716c; }
+  .more { text-align:center; margin-top:22px; }
+
+  /* Detail + upload overlays */
+  .overlay { position:fixed; inset:0; background:rgba(12,10,9,.94); z-index:60; display:none; overflow-y:auto; padding:24px 16px; }
+  .overlay.on { display:block; }
+  .panel { max-width:1000px; margin:0 auto; background:#1c1917; border:1px solid #292524; border-radius:14px; overflow:hidden; }
+  .panel .phead { display:flex; justify-content:space-between; align-items:center; padding:14px 18px; border-bottom:1px solid #292524; }
+  .panel .phead h2 { font-size:16px; color:#facc15; }
+  .x { background:none; border:none; color:#a8a29e; font-size:24px; cursor:pointer; line-height:1; }
+  .x:hover { color:#fff; }
+  .pbody { padding:18px; display:grid; grid-template-columns:1fr 300px; gap:20px; }
+  @media (max-width:800px) { .pbody { grid-template-columns:1fr; } }
+  .pbody img.big { width:100%; border-radius:10px; background:#0c0a09; }
+  .fld { margin-bottom:13px; }
+  .fld label { display:block; font-size:12px; font-weight:600; color:#a8a29e; margin-bottom:5px; }
+  .fld input, .fld select, .fld textarea { width:100%; }
+  .info { font-size:12px; color:#78716c; line-height:1.7; border-top:1px solid #292524; padding-top:12px; margin-top:12px; }
+  .info b { color:#a8a29e; font-weight:600; }
+  .actions { display:flex; gap:8px; flex-wrap:wrap; margin-top:14px; }
+
+  .drop { border:2px dashed #44403c; border-radius:12px; padding:28px; text-align:center; color:#a8a29e; font-size:14px; cursor:pointer; }
+  .drop:hover, .drop.over { border-color:#00B74A; background:rgba(0,183,74,.06); color:#86efac; }
+  .qlist { margin-top:14px; max-height:280px; overflow-y:auto; display:flex; flex-direction:column; gap:7px; }
+  .qrow { display:flex; align-items:center; gap:10px; background:#0c0a09; border:1px solid #292524; border-radius:8px; padding:8px 11px; font-size:12px; }
+  .qrow .nm { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .qrow .st { color:#78716c; white-space:nowrap; }
+  .qrow .st.ok { color:#00B74A; } .qrow .st.err { color:#f87171; }
+  .bar { height:3px; background:#292524; border-radius:2px; overflow:hidden; margin-top:4px; }
+  .bar i { display:block; height:100%; background:#00B74A; width:0; transition:width .2s; }
+
+  .toast { position:fixed; bottom:22px; left:50%; transform:translateX(-50%); background:#1c1917; border:1px solid #00B74A;
+           color:#e7e5e4; padding:11px 20px; border-radius:9px; font-size:14px; z-index:90; display:none; box-shadow:0 8px 30px rgba(0,0,0,.5); }
+  .toast.err { border-color:#b91c1c; }
+  .toast.on { display:block; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="hrow">
+    <a href="index.html" class="back">← Admin</a>
+    <h1>📸 PHOTO LIBRARY</h1>
+    <div class="spacer"></div>
+    <div class="stats" id="stats"></div>
+    <button class="btn btn-green" onclick="openUpload()">⬆ Upload Photos</button>
+  </div>
+</header>
+
+<main>
+  <div class="toolbar">
+    <div class="tabs" id="tabs"></div>
+    <div class="spacer"></div>
+    <select id="albumFilter" onchange="reload()"></select>
+    <input type="search" id="search" placeholder="Search caption, credit, filename…" style="width:230px">
+    <button class="btn btn-grey" onclick="openAlbums()">📁 Albums</button>
+  </div>
+
+  <div class="bulkbar" id="bulkbar">
+    <span class="count" id="bulkCount">0 selected</span>
+    <button class="btn btn-green" onclick="bulk('approve')">✓ Approve</button>
+    <button class="btn btn-grey"  onclick="bulk('reject')">✕ Reject</button>
+    <select id="bulkAlbum" style="min-width:150px"></select>
+    <button class="btn btn-grey" onclick="bulk('move')">📁 Move</button>
+    <input type="text" id="bulkTags" placeholder="tag1, tag2" style="width:150px">
+    <button class="btn btn-grey" onclick="bulk('tag')">🏷 Tag</button>
+    <button class="btn btn-gold" onclick="downloadSelected()">⬇ Download originals</button>
+    <button class="btn btn-red"  onclick="bulk('delete')">🗑 Delete</button>
+    <div class="spacer"></div>
+    <button class="btn btn-grey" onclick="clearSel()">Clear</button>
+  </div>
+
+  <div id="grid" class="grid"></div>
+  <div id="state" class="loading">Loading…</div>
+  <div class="more" id="more" style="display:none">
+    <button class="btn btn-grey" onclick="loadMore()">Load more</button>
+  </div>
+</main>
+
+<!-- Photo detail -->
+<div class="overlay" id="detail">
+  <div class="panel">
+    <div class="phead">
+      <h2 id="dTitle">Photo</h2>
+      <button class="x" onclick="closeDetail()">×</button>
+    </div>
+    <div class="pbody">
+      <div><img class="big" id="dImg" alt=""></div>
+      <div>
+        <div class="fld"><label>Caption</label><textarea id="dCaption" rows="3"></textarea></div>
+        <div class="fld"><label>Photo credit</label><input type="text" id="dCredit"></div>
+        <div class="fld"><label>Album</label><select id="dAlbum"></select></div>
+        <div class="fld"><label>Tags (comma separated)</label><input type="text" id="dTags"></div>
+        <div class="fld">
+          <label><input type="checkbox" id="dFeatured" style="width:auto;margin-right:6px">Feature at the top of the gallery</label>
+        </div>
+        <div class="actions">
+          <button class="btn btn-green" onclick="saveDetail()">Save</button>
+          <button class="btn btn-green" id="dApprove" onclick="setStatus('approved')">✓ Approve</button>
+          <button class="btn btn-grey"  id="dReject"  onclick="setStatus('rejected')">✕ Reject</button>
+        </div>
+        <div class="actions">
+          <button class="btn btn-gold" onclick="downloadOne()">⬇ Full resolution</button>
+          <button class="btn btn-grey" id="dReproc" onclick="reprocess()">↻ Reprocess</button>
+          <button class="btn btn-red"  onclick="deleteOne()">🗑 Delete</button>
+        </div>
+        <div class="info" id="dInfo"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Staff upload -->
+<div class="overlay" id="uploader">
+  <div class="panel" style="max-width:620px">
+    <div class="phead">
+      <h2>Upload photos to the library</h2>
+      <button class="x" onclick="closeUpload()">×</button>
+    </div>
+    <div style="padding:18px">
+      <div class="fld"><label>Album</label><select id="uAlbum"></select></div>
+      <div class="fld"><label>Photo credit (applied to all)</label><input type="text" id="uCredit" placeholder="e.g. Jane Smith Photography"></div>
+      <div class="fld"><label>Tags (comma separated, applied to all)</label><input type="text" id="uTags" placeholder="bull-riding, saturday"></div>
+      <div class="drop" id="drop">
+        <div style="font-size:26px;margin-bottom:6px">⬆</div>
+        <div>Click to choose photos, or drag them here</div>
+        <div style="font-size:12px;color:#78716c;margin-top:5px">Full resolution originals — up to 250 MB each</div>
+        <input type="file" id="files" accept="image/*" multiple style="display:none">
+      </div>
+      <div class="qlist" id="queue"></div>
+      <div class="actions" style="justify-content:flex-end">
+        <button class="btn btn-grey" onclick="closeUpload()" id="uClose">Close</button>
+        <button class="btn btn-green" onclick="runUploads()" id="uGo" disabled>Upload</button>
+      </div>
+      <p style="font-size:12px;color:#78716c;margin-top:10px">
+        Staff uploads are published to the gallery right away — no approval needed.
+      </p>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const API = 'https://api.holmdalerodeo.ca/api';
+
+// ─── Auth guard (same pattern as the other admin pages) ───
+const token = localStorage.getItem('auth_token');
+if (!token) location.href = 'login.html';
+try {
+  const p = JSON.parse(atob(token.split('.')[1]));
+  if (p.exp && p.exp < Math.floor(Date.now() / 1000)) location.href = 'login.html';
+} catch (e) { location.href = 'login.html'; }
+
+const hdr = () => ({ 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' });
+
+async function apiGet(path) {
+  const r = await fetch(API + path, { headers: hdr() });
+  if (r.status === 401 || r.status === 403) { location.href = 'login.html'; return null; }
+  const d = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(d.error || 'Request failed');
+  return d;
+}
+async function apiSend(method, path, body) {
+  const r = await fetch(API + path, { method, headers: hdr(), body: body ? JSON.stringify(body) : undefined });
+  const d = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(d.error || 'Request failed');
+  return d;
+}
+
+let toastTimer;
+function toast(msg, isErr) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast on' + (isErr ? ' err' : '');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { t.className = 'toast'; }, 3600);
+}
+
+// ─── State ───
+const TABS = [
+  { key: 'pending',  label: 'Needs review' },
+  { key: 'approved', label: 'Published' },
+  { key: 'rejected', label: 'Rejected' },
+  { key: 'proc',     label: 'Needs processing' }
+];
+let tab = 'pending';
+let albums = [];
+let photos = [];
+let total = 0;
+let stats = {};
+const selected = new Set();
+let current = null;
+
+// ─── Load ───
+async function loadStats() {
+  try {
+    stats = await apiGet('/photos/stats') || {};
+    document.getElementById('stats').innerHTML = `
+      <div class="stat${stats.pending ? ' warn' : ''}"><b>${stats.pending || 0}</b>to review</div>
+      <div class="stat"><b>${stats.approved || 0}</b>published</div>
+      <div class="stat"><b>${fmtBytes(stats.total_bytes || 0)}</b>stored</div>`;
+    renderTabs();
+  } catch (e) { /* header stats are cosmetic — never block the page on them */ }
+}
+
+async function loadAlbums() {
+  albums = (await apiGet('/photos/albums')) || [];
+  const opts = albums.map(a =>
+    `<option value="${a.id}">${esc(a.name)}${a.year ? ' (' + a.year + ')' : ''} — ${a.photo_count}</option>`).join('');
+
+  document.getElementById('albumFilter').innerHTML =
+    `<option value="">All albums</option><option value="none">Unsorted</option>` + opts;
+  document.getElementById('bulkAlbum').innerHTML = `<option value="">Move to…</option>` + opts;
+  document.getElementById('uAlbum').innerHTML = `<option value="">No album</option>` + opts;
+  document.getElementById('dAlbum').innerHTML = `<option value="">Unsorted</option>` + opts;
+}
+
+function query(offset) {
+  const p = new URLSearchParams({ limit: 100, offset });
+  if (tab === 'proc') p.set('needs_processing', 'true');
+  else p.set('status', tab);
+  const album = document.getElementById('albumFilter').value;
+  if (album) p.set('album', album);
+  const s = document.getElementById('search').value.trim();
+  if (s) p.set('search', s);
+  return p.toString();
+}
+
+async function reload() {
+  clearSel();
+  document.getElementById('grid').innerHTML = '';
+  const st = document.getElementById('state');
+  st.className = 'loading';
+  st.textContent = 'Loading…';
+  st.style.display = 'block';
+  try {
+    const d = await apiGet('/photos?' + query(0));
+    if (!d) return;   // 401/403 — apiGet is already redirecting to login
+    photos = d.photos; total = d.total;
+    render();
+  } catch (e) {
+    st.className = 'empty';
+    st.textContent = 'Could not load photos: ' + e.message;
+  }
+}
+
+async function loadMore() {
+  try {
+    const d = await apiGet('/photos?' + query(photos.length));
+    if (!d) return;
+    photos = photos.concat(d.photos); total = d.total;
+    render();
+  } catch (e) { toast(e.message, true); }
+}
+
+function render() {
+  const grid = document.getElementById('grid');
+  grid.innerHTML = photos.map(p => {
+    const badge =
+      p.needs_processing ? '<span class="pill proc">processing</span>' :
+      p.status === 'pending'  ? '<span class="pill pending">pending</span>' :
+      p.status === 'rejected' ? '<span class="pill rejected">rejected</span>' :
+      p.featured ? '<span class="pill star">featured</span>' : '';
+    const img = p.thumb_url
+      ? `<img class="ph" src="${p.thumb_url}" alt="" loading="lazy">`
+      : `<div class="none">No preview yet<br>(original is safe)</div>`;
+    return `<div class="cell${selected.has(p.id) ? ' sel' : ''}" id="c-${p.id}" onclick="openDetail('${p.id}')">
+        <input type="checkbox" class="check" ${selected.has(p.id) ? 'checked' : ''}
+               onclick="event.stopPropagation();toggleSel('${p.id}')">
+        ${badge}${img}
+        <div class="meta">
+          <div class="t">${esc(p.caption || p.original_filename || 'Untitled')}</div>
+          <div>${p.source === 'public' ? '👤 ' + esc(p.uploader_name || 'Public') : '⭐ Staff'}
+               · ${fmtBytes(p.original_bytes || 0)}</div>
+        </div>
+      </div>`;
+  }).join('');
+
+  const st = document.getElementById('state');
+  if (photos.length === 0) {
+    st.style.display = 'block';
+    st.className = 'empty';
+    st.textContent = tab === 'pending'
+      ? 'Nothing waiting for review. Public submissions land here.'
+      : 'No photos match this filter.';
+  } else {
+    st.style.display = 'none';
+  }
+  document.getElementById('more').style.display = photos.length < total ? 'block' : 'none';
+}
+
+function renderTabs() {
+  document.getElementById('tabs').innerHTML = TABS.map(t => {
+    const n = t.key === 'proc' ? stats.needs_processing : stats[t.key];
+    return `<button class="tab${tab === t.key ? ' on' : ''}" onclick="setTab('${t.key}')">
+        ${t.label}${n ? '<span class="n">' + n + '</span>' : ''}</button>`;
+  }).join('');
+}
+
+function setTab(k) { tab = k; renderTabs(); reload(); }
+
+// ─── Selection ───
+function toggleSel(id) {
+  selected.has(id) ? selected.delete(id) : selected.add(id);
+  document.getElementById('c-' + id)?.classList.toggle('sel', selected.has(id));
+  syncBulk();
+}
+function clearSel() {
+  selected.clear();
+  document.querySelectorAll('.cell.sel').forEach(c => c.classList.remove('sel'));
+  document.querySelectorAll('.check').forEach(c => { c.checked = false; });
+  syncBulk();
+}
+function syncBulk() {
+  document.getElementById('bulkbar').classList.toggle('on', selected.size > 0);
+  document.getElementById('bulkCount').textContent = selected.size + ' selected';
+}
+
+async function bulk(action) {
+  if (!selected.size) return;
+  const ids = [...selected];
+  const body = { ids, action };
+
+  if (action === 'move') {
+    body.album_id = document.getElementById('bulkAlbum').value || null;
+  }
+  if (action === 'tag') {
+    body.tags = document.getElementById('bulkTags').value.split(',').map(s => s.trim()).filter(Boolean);
+    if (!body.tags.length) return toast('Enter at least one tag', true);
+  }
+  if (action === 'delete' &&
+      !confirm(`Permanently delete ${ids.length} photo${ids.length === 1 ? '' : 's'}, including the full-resolution originals? This cannot be undone.`)) {
+    return;
+  }
+
+  try {
+    const d = await apiSend('POST', '/photos/bulk', body);
+    toast(`${d.updated ?? d.deleted} photo${(d.updated ?? d.deleted) === 1 ? '' : 's'} updated`);
+    await loadStats(); await loadAlbums(); await reload();
+  } catch (e) { toast(e.message, true); }
+}
+
+/**
+ * Download originals one at a time.
+ *
+ * Each presigned link is fetched then clicked as a hidden anchor, spaced out by
+ * 400ms — firing 50 downloads in a tight loop makes browsers silently drop most
+ * of them as a popup-blocker heuristic.
+ */
+async function downloadSelected() {
+  if (!selected.size) return;
+  try {
+    const d = await apiSend('POST', '/photos/download-batch', { ids: [...selected] });
+    toast(`Starting ${d.files.length} download${d.files.length === 1 ? '' : 's'}…`);
+    for (let i = 0; i < d.files.length; i++) {
+      const f = d.files[i];
+      setTimeout(() => {
+        const a = document.createElement('a');
+        a.href = f.url;
+        a.download = f.filename || 'photo.jpg';
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+      }, i * 400);
+    }
+  } catch (e) { toast(e.message, true); }
+}
+
+// ─── Detail ───
+function openDetail(id) {
+  current = photos.find(p => p.id === id);
+  if (!current) return;
+  const p = current;
+
+  document.getElementById('dTitle').textContent = p.original_filename || 'Photo';
+  document.getElementById('dImg').src = p.web_url || p.thumb_url || '';
+  document.getElementById('dImg').style.display = (p.web_url || p.thumb_url) ? 'block' : 'none';
+  document.getElementById('dCaption').value = p.caption || '';
+  document.getElementById('dCredit').value = p.credit || '';
+  document.getElementById('dAlbum').value = p.album_id || '';
+  document.getElementById('dTags').value = (p.tags || []).join(', ');
+  document.getElementById('dFeatured').checked = !!p.featured;
+  document.getElementById('dApprove').style.display = p.status === 'approved' ? 'none' : '';
+  document.getElementById('dReject').style.display = p.status === 'rejected' ? 'none' : '';
+  document.getElementById('dReproc').style.display = p.has_original ? '' : 'none';
+
+  document.getElementById('dInfo').innerHTML = `
+    <b>Status</b> ${p.status}${p.needs_processing ? ' · preview not generated yet' : ''}<br>
+    <b>From</b> ${p.source === 'public' ? esc(p.uploader_name || '') + ' &lt;' + esc(p.uploader_email || '') + '&gt;' : 'Staff upload'}<br>
+    ${p.consent ? '<b>Permission granted</b> ' + new Date(p.consent_at).toLocaleString('en-CA') + '<br>' : ''}
+    <b>Taken</b> ${p.taken_at ? new Date(p.taken_at).toLocaleString('en-CA') : 'unknown'}<br>
+    <b>Size</b> ${fmtBytes(p.original_bytes || 0)}${p.width ? ' · ' + p.width + ' × ' + p.height : ''}<br>
+    <b>Uploaded</b> ${new Date(p.created_at).toLocaleString('en-CA')}`;
+
+  document.getElementById('detail').classList.add('on');
+}
+function closeDetail() { document.getElementById('detail').classList.remove('on'); current = null; }
+
+async function patchCurrent(body) {
+  const updated = await apiSend('PATCH', '/photos/' + current.id, body);
+  const i = photos.findIndex(p => p.id === updated.id);
+  if (i >= 0) photos[i] = updated;
+  return updated;
+}
+
+async function saveDetail() {
+  try {
+    await patchCurrent({
+      caption: document.getElementById('dCaption').value,
+      credit: document.getElementById('dCredit').value,
+      album_id: document.getElementById('dAlbum').value || null,
+      tags: document.getElementById('dTags').value.split(',').map(s => s.trim()).filter(Boolean),
+      featured: document.getElementById('dFeatured').checked
+    });
+    render(); closeDetail(); toast('Saved');
+    loadAlbums();
+  } catch (e) { toast(e.message, true); }
+}
+
+async function setStatus(status) {
+  try {
+    // Save the edited fields alongside the decision so a caption typed during
+    // review isn't thrown away by clicking Approve instead of Save.
+    await patchCurrent({
+      status,
+      caption: document.getElementById('dCaption').value,
+      credit: document.getElementById('dCredit').value,
+      album_id: document.getElementById('dAlbum').value || null,
+      tags: document.getElementById('dTags').value.split(',').map(s => s.trim()).filter(Boolean),
+      featured: document.getElementById('dFeatured').checked
+    });
+    closeDetail();
+    toast(status === 'approved' ? 'Published to the gallery' : 'Rejected');
+    await loadStats(); await reload();
+  } catch (e) { toast(e.message, true); }
+}
+
+async function downloadOne() {
+  try {
+    const d = await apiSend('GET', '/photos/' + current.id + '/download');
+    const a = document.createElement('a');
+    a.href = d.url; a.download = d.filename || 'photo.jpg';
+    document.body.appendChild(a); a.click(); a.remove();
+  } catch (e) { toast(e.message, true); }
+}
+
+async function reprocess() {
+  const btn = document.getElementById('dReproc');
+  btn.disabled = true; btn.textContent = '↻ Working…';
+  try {
+    const d = await apiSend('POST', '/photos/' + current.id + '/reprocess');
+    const i = photos.findIndex(p => p.id === d.photo.id);
+    if (i >= 0) photos[i] = d.photo;
+    current = d.photo;
+    openDetail(current.id);
+    render(); loadStats();
+    toast('Preview generated');
+  } catch (e) { toast(e.message, true); }
+  finally { btn.disabled = false; btn.textContent = '↻ Reprocess'; }
+}
+
+async function deleteOne() {
+  if (!confirm('Permanently delete this photo and its full-resolution original? This cannot be undone.')) return;
+  try {
+    await apiSend('DELETE', '/photos/' + current.id);
+    closeDetail(); toast('Deleted');
+    await loadStats(); await reload();
+  } catch (e) { toast(e.message, true); }
+}
+
+// ─── Albums ───
+async function openAlbums() {
+  const name = prompt('New album name (e.g. "2026 Rodeo — Saturday"):');
+  if (!name) return;
+  const year = prompt('Year (leave blank for none):', new Date().getFullYear());
+  try {
+    await apiSend('POST', '/photos/albums', { name, year: year || null });
+    await loadAlbums();
+    toast('Album created');
+  } catch (e) { toast(e.message, true); }
+}
+
+// ═══════════════════════════════════════════════════════════
+//  Staff upload
+//
+//  Same approach as the public page: resize in the browser, then PUT the
+//  original and both derivatives straight to R2. Sizes must match
+//  WEB_MAX_EDGE / THUMB_MAX_EDGE in rodeo-fresh/routes/photos.js.
+// ═══════════════════════════════════════════════════════════
+
+const WEB_MAX = 2048, THUMB_MAX = 500;
+let queue = [];
+
+function openUpload() { document.getElementById('uploader').classList.add('on'); }
+function closeUpload() {
+  document.getElementById('uploader').classList.remove('on');
+  queue = []; renderQueue();
+  loadStats(); loadAlbums(); reload();
+}
+
+const drop = document.getElementById('drop');
+const fileInput = document.getElementById('files');
+drop.onclick = () => fileInput.click();
+drop.ondragover = e => { e.preventDefault(); drop.classList.add('over'); };
+drop.ondragleave = () => drop.classList.remove('over');
+drop.ondrop = e => { e.preventDefault(); drop.classList.remove('over'); addFiles(e.dataTransfer.files); };
+fileInput.onchange = e => { addFiles(e.target.files); e.target.value = ''; };
+
+function addFiles(list) {
+  for (const f of list) {
+    if (!f.type.startsWith('image/')) continue;
+    queue.push({ file: f, status: 'queued', progress: 0, error: null });
+  }
+  renderQueue();
+}
+
+function renderQueue() {
+  document.getElementById('queue').innerHTML = queue.map((q, i) => `
+    <div class="qrow">
+      <div class="nm">${esc(q.file.name)}
+        ${q.status === 'uploading' ? `<div class="bar"><i style="width:${Math.round(q.progress * 100)}%"></i></div>` : ''}
+        ${q.error ? `<div style="color:#f87171;font-size:11px;margin-top:3px">${esc(q.error)}</div>` : ''}
+      </div>
+      <div class="st ${q.status === 'done' ? 'ok' : q.status === 'error' ? 'err' : ''}">
+        ${q.status === 'done' ? '✓' : q.status === 'error' ? '✕' :
+          q.status === 'uploading' ? Math.round(q.progress * 100) + '%' : fmtBytes(q.file.size)}
+      </div>
+    </div>`).join('');
+  document.getElementById('uGo').disabled = !queue.some(q => q.status === 'queued');
+}
+
+async function runUploads() {
+  const album = document.getElementById('uAlbum').value || null;
+  const credit = document.getElementById('uCredit').value.trim() || null;
+  const tags = document.getElementById('uTags').value.split(',').map(s => s.trim()).filter(Boolean);
+
+  document.getElementById('uGo').disabled = true;
+  document.getElementById('uClose').disabled = true;
+
+  // Sequential: each photo holds the original plus two canvases in memory, and
+  // the uplink is the bottleneck anyway.
+  for (const q of queue) {
+    if (q.status !== 'queued') continue;
+    q.status = 'uploading'; q.progress = 0; renderQueue();
+    try {
+      await uploadOne(q, { album_id: album, credit, tags });
+      q.status = 'done'; q.progress = 1;
+    } catch (e) {
+      q.status = 'error'; q.error = e.message;
+    }
+    renderQueue();
+  }
+
+  document.getElementById('uClose').disabled = false;
+  const ok = queue.filter(q => q.status === 'done').length;
+  toast(ok ? `${ok} photo${ok === 1 ? '' : 's'} added to the library` : 'No photos uploaded', !ok);
+  renderQueue();
+}
+
+async function uploadOne(q, fields) {
+  const file = q.file;
+  const [taken, derived] = await Promise.all([readCaptureDate(file), buildDerivatives(file)]);
+  q.progress = 0.05; renderQueue();
+
+  const init = await apiSend('POST', '/photos/upload-init', {
+    ...fields,
+    filename: file.name,
+    content_type: file.type,
+    size: file.size,
+    taken_at: taken || new Date(file.lastModified).toISOString(),
+    width: derived ? derived.width : null,
+    height: derived ? derived.height : null,
+    derivatives: !!derived
+  });
+
+  await putR2(init.uploads.original.url, file, init.uploads.original.content_type,
+    p => { q.progress = 0.05 + p * 0.85; renderQueue(); });
+
+  if (derived && init.uploads.web && init.uploads.thumb) {
+    await putR2(init.uploads.web.url, derived.web, 'image/jpeg');
+    await putR2(init.uploads.thumb.url, derived.thumb, 'image/jpeg');
+  }
+  await apiSend('POST', '/photos/' + init.id + '/complete', {});
+}
+
+function putR2(url, blob, contentType, onProgress) {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open('PUT', url, true);
+    // Content-Type is part of the signature — it must match what was signed.
+    xhr.setRequestHeader('Content-Type', contentType);
+    if (onProgress) xhr.upload.onprogress = e => { if (e.lengthComputable) onProgress(e.loaded / e.total); };
+    xhr.onload = () => (xhr.status >= 200 && xhr.status < 300)
+      ? resolve() : reject(new Error('Storage rejected the upload (' + xhr.status + ')'));
+    xhr.onerror = () => reject(new Error('Network error while uploading'));
+    xhr.ontimeout = () => reject(new Error('Upload timed out'));
+    xhr.timeout = 15 * 60 * 1000;
+    xhr.send(blob);
+  });
+}
+
+async function buildDerivatives(file) {
+  let bmp;
+  try {
+    // imageOrientation honours the EXIF rotation flag, so portrait phone shots
+    // don't come out sideways.
+    bmp = await createImageBitmap(file, { imageOrientation: 'from-image' });
+  } catch (e) {
+    return null; // format the browser can't decode — the server will handle it
+  }
+  try {
+    const web = await toJpeg(bmp, WEB_MAX, 0.85);
+    const thumb = await toJpeg(bmp, THUMB_MAX, 0.75);
+    return { web, thumb, width: bmp.width, height: bmp.height };
+  } finally {
+    if (bmp.close) bmp.close();
+  }
+}
+
+async function toJpeg(bmp, maxEdge, quality) {
+  const scale = Math.min(1, maxEdge / Math.max(bmp.width, bmp.height));
+  const w = Math.max(1, Math.round(bmp.width * scale));
+  const h = Math.max(1, Math.round(bmp.height * scale));
+  const c = document.createElement('canvas');
+  c.width = w; c.height = h;
+  const ctx = c.getContext('2d');
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = 'high';
+  // Flatten transparency onto white — it would render black in a JPEG.
+  ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, w, h);
+  ctx.drawImage(bmp, 0, 0, w, h);
+  const blob = await new Promise(r => c.toBlob(r, 'image/jpeg', quality));
+  c.width = 0; c.height = 0;
+  if (!blob) throw new Error('Could not encode image');
+  return blob;
+}
+
+/**
+ * Read DateTimeOriginal from a JPEG's EXIF block so photos file by when they
+ * were taken, not when they were uploaded. Only the first 128 KB is read.
+ */
+async function readCaptureDate(file) {
+  try {
+    if (!/jpe?g/i.test(file.type)) return null;
+    const view = new DataView(await file.slice(0, 131072).arrayBuffer());
+    if (view.byteLength < 4 || view.getUint16(0) !== 0xffd8) return null;
+
+    let off = 2;
+    while (off < view.byteLength - 4) {
+      if (view.getUint8(off) !== 0xff) return null;
+      const marker = view.getUint8(off + 1);
+      const size = view.getUint16(off + 2);
+      if (marker === 0xe1) {
+        const exif = off + 4;
+        if (view.getUint32(exif) !== 0x45786966) return null; // "Exif"
+        const tiff = exif + 6;
+        const le = view.getUint16(tiff) === 0x4949;
+        return walkIfd(view, tiff, tiff + view.getUint32(tiff + 4, le), le, 0);
+      }
+      if (marker === 0xda) return null; // start of scan
+      off += 2 + size;
+    }
+    return null;
+  } catch (e) { return null; }
+}
+
+function walkIfd(view, tiff, dir, le, depth) {
+  if (depth > 2 || dir + 2 > view.byteLength) return null;
+  const count = view.getUint16(dir, le);
+  let sub = null;
+  for (let i = 0; i < count; i++) {
+    const e = dir + 2 + i * 12;
+    if (e + 12 > view.byteLength) break;
+    const tag = view.getUint16(e, le);
+    if (tag === 0x8769) sub = tiff + view.getUint32(e + 8, le);           // Exif sub-IFD
+    else if (tag === 0x9003 || tag === 0x9004 || tag === 0x0132) {        // the date tags
+      const iso = parseExifDate(view, tiff + view.getUint32(e + 8, le));
+      if (iso) return iso;
+    }
+  }
+  return sub ? walkIfd(view, tiff, sub, le, depth + 1) : null;
+}
+
+function parseExifDate(view, off) {
+  if (off + 19 > view.byteLength) return null;
+  let s = '';
+  for (let i = 0; i < 19; i++) s += String.fromCharCode(view.getUint8(off + i));
+  const m = s.match(/^(\d{4}):(\d{2}):(\d{2}) (\d{2}):(\d{2}):(\d{2})$/);
+  if (!m) return null;
+  const d = new Date(+m[1], +m[2] - 1, +m[3], +m[4], +m[5], +m[6]);
+  if (isNaN(d.getTime())) return null;
+  // Guard against a camera with a flat clock battery reporting 1980.
+  if (d.getFullYear() < 1990 || d.getFullYear() > new Date().getFullYear() + 1) return null;
+  return d.toISOString();
+}
+
+// ─── Utils ───
+function esc(s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g,
+    c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+function fmtBytes(n) {
+  n = Number(n) || 0;
+  if (n >= 1073741824) return (n / 1073741824).toFixed(1) + ' GB';
+  if (n >= 1048576) return (n / 1048576).toFixed(1) + ' MB';
+  if (n >= 1024) return Math.round(n / 1024) + ' KB';
+  return n + ' B';
+}
+
+// Debounce the search box so typing doesn't fire a query per keystroke.
+let searchTimer;
+document.getElementById('search').addEventListener('input', () => {
+  clearTimeout(searchTimer);
+  searchTimer = setTimeout(reload, 350);
+});
+
+document.addEventListener('keydown', e => {
+  if (e.key !== 'Escape') return;
+  if (document.getElementById('detail').classList.contains('on')) closeDetail();
+});
+
+(async () => {
+  renderTabs();
+  // Albums and stats are chrome. If either fails the grid must still load and
+  // show its own error — an unhandled rejection here used to leave the page
+  // sitting on "Loading…" forever with nothing explaining why.
+  try { await loadAlbums(); } catch (e) { console.error('Album load failed:', e); }
+  await loadStats();
+  await reload();
+})();
+</script>
+</body>
+</html>
