@@ -116,6 +116,7 @@
     <div class="spacer"></div>
     <select id="albumFilter" onchange="reload()"></select>
     <input type="search" id="search" placeholder="Search caption, credit, filename…" style="width:230px">
+    <button class="btn btn-grey" onclick="selectAllMatching()" id="selectAllBtn">☑ Select all</button>
     <button class="btn btn-grey" onclick="openAlbums()">📁 Albums</button>
   </div>
 
@@ -245,7 +246,12 @@ const TABS = [
   { key: 'pending',  label: 'Needs review' },
   { key: 'approved', label: 'Published' },
   { key: 'rejected', label: 'Rejected' },
-  { key: 'proc',     label: 'Needs processing' }
+  { key: 'proc',     label: 'Needs processing' },
+  // Filing photos into albums cuts across review status — a batch of unsorted
+  // shots is usually part staff uploads (already published) and part public
+  // submissions (still pending). Without this tab the same move has to be done
+  // once per status.
+  { key: 'all',      label: 'All photos' }
 ];
 let tab = 'pending';
 let albums = [];
@@ -274,7 +280,10 @@ async function loadAlbums() {
 
   document.getElementById('albumFilter').innerHTML =
     `<option value="">All albums</option><option value="none">Unsorted</option>` + opts;
-  document.getElementById('bulkAlbum').innerHTML = `<option value="">Move to…</option>` + opts;
+  // "none" is an explicit destination (unfile these); the empty placeholder means
+  // no choice made yet and is rejected by bulk('move').
+  document.getElementById('bulkAlbum').innerHTML =
+    `<option value="">Move to…</option><option value="none">— Unsorted —</option>` + opts;
   document.getElementById('uAlbum').innerHTML = `<option value="">No album</option>` + opts;
   document.getElementById('dAlbum').innerHTML = `<option value="">Unsorted</option>` + opts;
 }
@@ -282,7 +291,7 @@ async function loadAlbums() {
 function query(offset) {
   const p = new URLSearchParams({ limit: 100, offset });
   if (tab === 'proc') p.set('needs_processing', 'true');
-  else p.set('status', tab);
+  else if (tab !== 'all') p.set('status', tab);   // 'all' = no status filter
   const album = document.getElementById('albumFilter').value;
   if (album) p.set('album', album);
   const s = document.getElementById('search').value.trim();
@@ -355,7 +364,9 @@ function render() {
 
 function renderTabs() {
   document.getElementById('tabs').innerHTML = TABS.map(t => {
-    const n = t.key === 'proc' ? stats.needs_processing : stats[t.key];
+    const n = t.key === 'proc' ? stats.needs_processing
+      : t.key === 'all' ? (stats.pending || 0) + (stats.approved || 0) + (stats.rejected || 0)
+      : stats[t.key];
     return `<button class="tab${tab === t.key ? ' on' : ''}" onclick="setTab('${t.key}')">
         ${t.label}${n ? '<span class="n">' + n + '</span>' : ''}</button>`;
   }).join('');
@@ -380,13 +391,61 @@ function syncBulk() {
   document.getElementById('bulkCount').textContent = selected.size + ' selected';
 }
 
+/**
+ * Select every photo matching the current tab/album/search, not just the ones
+ * already on screen.
+ *
+ * The grid pages 100 at a time, so selecting "everything unsorted" by hand meant
+ * loading each page and ticking every box. This walks the same filtered query
+ * server-side and collects the ids, so the count matches what the tab header
+ * says rather than what happens to be rendered.
+ */
+async function selectAllMatching() {
+  const btn = document.getElementById('selectAllBtn');
+  const original = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = '☑ Selecting…';
+  try {
+    const ids = [];
+    let offset = 0;
+    // 300 is the server's per-request cap (see routes/photos.js).
+    for (;;) {
+      const params = new URLSearchParams(query(offset));
+      params.set('limit', '300');
+      params.set('offset', String(offset));
+      const d = await apiGet('/photos?' + params.toString());
+      if (!d) return;
+      d.photos.forEach(p => ids.push(p.id));
+      offset += d.photos.length;
+      if (d.photos.length === 0 || offset >= d.total) break;
+    }
+    selected.clear();
+    ids.forEach(id => selected.add(id));
+    // Re-tick whatever is currently rendered; the rest are selected in memory.
+    document.querySelectorAll('.cell').forEach(c => c.classList.add('sel'));
+    document.querySelectorAll('.check').forEach(c => { c.checked = true; });
+    syncBulk();
+    toast(`${ids.length} photo${ids.length === 1 ? '' : 's'} selected`);
+  } catch (e) {
+    toast(e.message, true);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = original;
+  }
+}
+
 async function bulk(action) {
   if (!selected.size) return;
   const ids = [...selected];
-  const body = { ids, action };
+  const body = { action };
 
   if (action === 'move') {
-    body.album_id = document.getElementById('bulkAlbum').value || null;
+    const choice = document.getElementById('bulkAlbum').value;
+    // The placeholder option is not a destination. Without this, clicking Move
+    // with nothing chosen would unfile every selected photo — the exact opposite
+    // of what someone reaching for this button wants.
+    if (choice === '') return toast('Choose an album to move these into first', true);
+    body.album_id = choice === 'none' ? null : choice;
   }
   if (action === 'tag') {
     body.tags = document.getElementById('bulkTags').value.split(',').map(s => s.trim()).filter(Boolean);
@@ -397,9 +456,16 @@ async function bulk(action) {
     return;
   }
 
+  // The bulk endpoint caps each call at 500 ids, and "select all" can now easily
+  // exceed that, so send in chunks and total the results.
+  const CHUNK = 500;
   try {
-    const d = await apiSend('POST', '/photos/bulk', body);
-    toast(`${d.updated ?? d.deleted} photo${(d.updated ?? d.deleted) === 1 ? '' : 's'} updated`);
+    let affected = 0;
+    for (let i = 0; i < ids.length; i += CHUNK) {
+      const d = await apiSend('POST', '/photos/bulk', { ...body, ids: ids.slice(i, i + CHUNK) });
+      affected += (d.updated ?? d.deleted ?? 0);
+    }
+    toast(`${affected} photo${affected === 1 ? '' : 's'} updated`);
     await loadStats(); await loadAlbums(); await reload();
   } catch (e) { toast(e.message, true); }
 }
@@ -413,11 +479,22 @@ async function bulk(action) {
  */
 async function downloadSelected() {
   if (!selected.size) return;
+  const ids = [...selected];
+  if (ids.length > 60 &&
+      !confirm(`This will start ${ids.length} separate downloads, one every 0.4 seconds. Continue?`)) {
+    return;
+  }
   try {
-    const d = await apiSend('POST', '/photos/download-batch', { ids: [...selected] });
-    toast(`Starting ${d.files.length} download${d.files.length === 1 ? '' : 's'}…`);
-    for (let i = 0; i < d.files.length; i++) {
-      const f = d.files[i];
+    // download-batch presigns at most 100 per call and silently drops the rest,
+    // so ask in chunks rather than losing everything past the first hundred.
+    const files = [];
+    for (let i = 0; i < ids.length; i += 100) {
+      const d = await apiSend('POST', '/photos/download-batch', { ids: ids.slice(i, i + 100) });
+      files.push(...d.files);
+    }
+    toast(`Starting ${files.length} download${files.length === 1 ? '' : 's'}…`);
+    for (let i = 0; i < files.length; i++) {
+      const f = files[i];
       setTimeout(() => {
         const a = document.createElement('a');
         a.href = f.url;
