@@ -1243,6 +1243,7 @@ function needsWristbandVerify() {
 
 function openWristbandScanModal(payMethod) {
   pendingPayMethod = payMethod || null;
+  fuzzyMatchBand = null;
   document.getElementById('wristbandAmountDisplay').textContent = '$' + cartCreditTotal().toFixed(2);
   const input = document.getElementById('wristbandUidInput');
   input.value = '';
@@ -1317,6 +1318,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const input = document.getElementById('wristbandUidInput');
   if (!input) return;
   input.addEventListener('input', () => {
+    fuzzyMatchBand = null; // fresh scan/typing restarts the inexact-match confirmation
     const cleaned = input.value.replace(/[^a-fA-F0-9]/g, '');
     document.getElementById('wristbandConfirmBtn').disabled = cleaned.length < 6;
   });
@@ -1329,8 +1331,20 @@ document.addEventListener('DOMContentLoaded', () => {
   renderPendingLoadsBanner();
 });
 
+// Mirror of the server's UID normalization (lib/uid.js in rodeo-fresh): strip
+// separators, drop a USB wedge reader's trailing extra byte (16/10 hex), sort
+// byte-pairs. Used only to DETECT when the server resolved the scan through its
+// fuzzy legacy/short-read fallback instead of an exact match.
+function normalizeUidLikeServer(raw) {
+  let hex = (raw || '').replace(/[^a-fA-F0-9]/g, '').toUpperCase();
+  if (hex.length === 16 || hex.length === 10) hex = hex.slice(0, hex.length - 2);
+  const bytes = hex.match(/.{2}/g);
+  return bytes ? bytes.sort().join('') : hex;
+}
+
 // Pre-payment check: look the band up, and only proceed to payment if it's registered.
 let wristbandSubmitting = false;
+let fuzzyMatchBand = null;       // band returned by a non-exact (fuzzy) UID match, awaiting cashier confirmation
 async function verifyWristband() {
   if (wristbandSubmitting) return;
   const uid = (document.getElementById('wristbandUidInput').value || '').trim();
@@ -1348,9 +1362,35 @@ async function verifyWristband() {
       document.getElementById('wristbandConfirmBtn').disabled = false;
       return;
     }
-    const r = await fetch(API_URL + '/wristbands/rfid/' + encodeURIComponent(uid), {
-      headers: { 'Accept': 'application/json', 'Authorization': 'Bearer ' + token }
-    });
+    // All-zero output means the reader FAILED to read the card — MIFARE-class
+    // USB wedge readers (e.g. VOTTAN) type 0000000000 for the 7-byte badge
+    // cards they can't represent. Never send it: the server's fuzzy fallback
+    // would resolve it to an unrelated customer's band.
+    const hexOnly = uid.replace(/[^a-fA-F0-9]/g, '');
+    if (/^0+$/.test(hexOnly)) {
+      status.style.color = '#ef4444';
+      status.textContent = '⚠️ Scanner returned all zeros — it could not read this card. Use the phone\'s NFC or type the code.';
+      document.getElementById('wristbandConfirmBtn').disabled = false;
+      return;
+    }
+
+    // Those same wedge readers type 4-byte card UIDs as a 10-digit DECIMAL
+    // number, but the API stores hex. Try the hex conversion first and fall
+    // back to the raw scan as typed.
+    const candidates = [];
+    if (/^[0-9]{10}$/.test(uid) && Number(uid) <= 0xFFFFFFFF) {
+      candidates.push(Number(uid).toString(16).toUpperCase().padStart(8, '0'));
+    }
+    candidates.push(uid);
+
+    let r = null, sentUid = uid;
+    for (const cand of candidates) {
+      r = await fetch(API_URL + '/wristbands/rfid/' + encodeURIComponent(cand), {
+        headers: { 'Accept': 'application/json', 'Authorization': 'Bearer ' + token }
+      });
+      sentUid = cand;
+      if (r.ok || r.status !== 404) break; // only a 404 falls through to the next candidate
+    }
     if (!r.ok) {
       status.style.color = '#ef4444';
       if (r.status === 401) status.textContent = '⚠️ Session expired. Log in again.';
@@ -1360,6 +1400,28 @@ async function verifyWristband() {
       return;
     }
     const band = await r.json();
+
+    // The server's resolver falls back to fuzzy byte-multiset matching when the
+    // scanned UID doesn't exact-match a stored row — that fallback can land on
+    // the WRONG customer's band (wrong name/balance on a garbled or partial
+    // read). If the stored UID it returned isn't the one we scanned, stop and
+    // make the cashier confirm the person by name instead of auto-continuing.
+    const scannedKey = normalizeUidLikeServer(sentUid);
+    const storedKey = String(band.rfid_uid || '').toUpperCase();
+    const isExactMatch = !storedKey || storedKey === scannedKey;
+    const badgeNote = band.badge_type ? ' [' + band.badge_type.toUpperCase() + ' BADGE]' : '';
+
+    if (!isExactMatch && fuzzyMatchBand !== storedKey) {
+      fuzzyMatchBand = storedKey;
+      status.style.color = '#f59e0b';
+      status.textContent = '⚠️ Inexact match: ' + (band.customer_name || 'Guest') + badgeNote +
+        ' — balance $' + (Number(band.credits) || 0).toFixed(2) +
+        '. Confirm this is the right customer, then press Verify again. If not, rescan.';
+      document.getElementById('wristbandConfirmBtn').disabled = false;
+      return;
+    }
+    fuzzyMatchBand = null;
+
     validatedWristband = {
       rfid_uid: band.rfid_uid || uid,
       customer_name: band.customer_name || '',
@@ -1367,7 +1429,7 @@ async function verifyWristband() {
     };
     renderAttachedWristband();
     status.style.color = '#22c55e';
-    status.textContent = '✓ ' + (band.customer_name || 'Guest') + ' — balance $' + (Number(band.credits) || 0).toFixed(2);
+    status.textContent = '✓ ' + (band.customer_name || 'Guest') + badgeNote + ' — balance $' + (Number(band.credits) || 0).toFixed(2);
     const resume = pendingPayMethod;
     setTimeout(() => {
       closeWristbandScanModal();
