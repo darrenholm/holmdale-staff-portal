@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Room Codes — Walkerton Livery</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text y='26' font-size='26'>%F0%9F%94%91</text></svg>">
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif; background:#111; color:#eee; min-height:100vh; }
+.header { background:#1a1a1a; border-bottom:1px solid #333; padding:16px 24px; display:flex; align-items:center; justify-content:space-between; }
+.header h1 { font-size:20px; color:#00B74A; }
+.header button { background:none; border:none; color:#888; font-size:14px; cursor:pointer; }
+.header button:hover { color:#fff; }
+.container { max-width:900px; margin:0 auto; padding:20px; }
+
+.card { background:#1a1a1a; border:1px solid #333; border-radius:12px; padding:20px; margin-bottom:20px; }
+.card h2 { font-size:14px; color:#888; text-transform:uppercase; letter-spacing:1px; margin-bottom:16px; }
+
+.rooms { display:grid; grid-template-columns:repeat(auto-fill,minmax(120px,1fr)); gap:10px; }
+.room { background:#222; border:2px solid #333; border-radius:10px; padding:14px 10px; cursor:pointer; text-align:center; transition:border-color .12s; }
+.room:hover { border-color:#555; }
+.room.sel { border-color:#00B74A; background:#00B74A15; }
+.room .rn { font-size:15px; font-weight:700; color:#fff; }
+.room .rm { font-size:10px; color:#777; margin-top:4px; }
+.room .rm.low { color:#f59e0b; }
+
+.fg { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+.fi { display:flex; flex-direction:column; gap:5px; }
+.fi.full { grid-column:1/-1; }
+.fi label { font-size:11px; color:#888; text-transform:uppercase; letter-spacing:.5px; }
+.fi input { background:#222; border:1px solid #444; border-radius:6px; padding:10px 12px; color:#fff; font-size:15px; }
+.fi input:focus { outline:none; border-color:#00B74A; }
+
+.presets { display:flex; gap:8px; flex-wrap:wrap; margin-top:2px; }
+.preset { background:#262626; border:1px solid #3a3a3a; color:#aaa; border-radius:6px; padding:6px 12px; font-size:12px; cursor:pointer; }
+.preset:hover { border-color:#00B74A; color:#fff; }
+
+.btn { padding:12px 22px; border-radius:8px; border:none; font-size:15px; font-weight:600; cursor:pointer; }
+.btn-green { background:#00B74A; color:#fff; width:100%; margin-top:18px; }
+.btn-green:hover:not(:disabled) { background:#00a040; }
+.btn:disabled { opacity:.5; cursor:not-allowed; }
+.btn-sm { padding:6px 12px; font-size:12px; border-radius:6px; }
+.btn-gray { background:#333; color:#ddd; }
+.btn-gray:hover { background:#444; }
+.btn-red { background:#3a2222; color:#ef4444; }
+.btn-red:hover { background:#4a2a2a; }
+
+.result { border-color:#00B74A; background:#00B74A0d; }
+.code { font-family:'SF Mono',Menlo,Consolas,monospace; font-size:52px; font-weight:800; color:#00B74A; letter-spacing:8px; text-align:center; padding:14px 0; }
+.rmeta { text-align:center; color:#aaa; font-size:14px; margin-bottom:14px; }
+.rmeta b { color:#fff; }
+.msg { background:#111; border:1px solid #333; border-radius:8px; padding:14px; font-size:13px; line-height:1.6; color:#ccc; white-space:pre-wrap; margin:14px 0; }
+.ractions { display:flex; gap:10px; flex-wrap:wrap; }
+.ractions .btn { flex:1; min-width:130px; }
+
+.warn { background:#f59e0b15; border:1px solid #f59e0b44; border-radius:8px; padding:12px 14px; font-size:13px; color:#f0b757; line-height:1.5; margin-top:14px; }
+
+table { width:100%; border-collapse:collapse; }
+th { color:#777; font-size:10px; text-transform:uppercase; letter-spacing:1px; padding:8px 10px; text-align:left; border-bottom:1px solid #333; }
+td { padding:10px; border-top:1px solid #282828; font-size:13px; }
+td.pw { font-family:'SF Mono',Menlo,Consolas,monospace; font-weight:700; color:#fff; }
+.pill { display:inline-block; padding:2px 8px; border-radius:4px; font-size:10px; font-weight:700; text-transform:uppercase; }
+.pill.on { background:#00B74A22; color:#00B74A; }
+.pill.soon { background:#3b82f622; color:#60a5fa; }
+.pill.off { background:#44403c44; color:#888; }
+.empty { text-align:center; padding:36px; color:#555; font-size:13px; }
+
+.err { background:#ef444418; border:1px solid #ef444455; color:#f87171; border-radius:8px; padding:12px 14px; font-size:13px; margin-bottom:16px; }
+.toast { position:fixed; bottom:20px; left:50%; transform:translateX(-50%); background:#00B74A; color:#fff; padding:12px 24px; border-radius:8px; font-weight:600; display:none; z-index:200; }
+
+.login { max-width:340px; margin:14vh auto; }
+.login h1 { color:#00B74A; font-size:24px; text-align:center; margin-bottom:6px; }
+.login p { color:#777; font-size:13px; text-align:center; margin-bottom:22px; }
+
+.hide { display:none !important; }
+@media(max-width:640px) {
+    .fg { grid-template-columns:1fr; }
+    .code { font-size:40px; letter-spacing:5px; }
+    .container { padding:12px; }
+    /* Columns are too narrow to read on a phone, so stack each code into a
+       two-column card: name/dates on the left, code/status on the right. */
+    #active thead { display:none; }
+    #active table, #active tbody, #active tr, #active td { display:block; }
+    #active tr { display:grid; grid-template-columns:1fr auto; gap:2px 12px;
+                 align-items:center; padding:12px 2px; border-top:1px solid #282828; }
+    #active td { border:none; padding:0; }
+    #active td:nth-child(1) { font-weight:600; color:#fff; }
+    #active td:nth-child(2) { grid-row:1; grid-column:2; text-align:right; font-size:17px; }
+    #active td:nth-child(3) { font-size:12px; }
+    #active td:nth-child(4) { grid-row:2; grid-column:2; text-align:right; }
+    #active td:nth-child(5):empty { display:none; }
+    #active td:nth-child(5) { grid-column:1/-1; text-align:right; margin-top:8px; }
+}
+</style>
+</head>
+<body>
+
+<!-- ------------------------------------------------------------- login -->
+<div id="loginView">
+    <div class="login">
+        <h1>Room Codes</h1>
+        <p>Walkerton Livery</p>
+        <div class="card">
+            <div id="loginErr" class="err hide"></div>
+            <div class="fi">
+                <label for="pw">Staff password</label>
+                <input id="pw" type="password" autocomplete="current-password">
+            </div>
+            <button class="btn btn-green" id="loginBtn">Sign in</button>
+        </div>
+    </div>
+</div>
+
+<!-- -------------------------------------------------------------- app -->
+<div id="appView" class="hide">
+    <div class="header">
+        <h1>🔑 Room Codes</h1>
+        <button onclick="signOut()">Sign out</button>
+    </div>
+
+    <div class="container">
+        <div id="err" class="err hide"></div>
+
+        <div class="card">
+            <h2>1 · Room</h2>
+            <div class="rooms" id="rooms"><div class="empty">Loading rooms…</div></div>
+        </div>
+
+        <div class="card">
+            <h2>2 · Stay</h2>
+            <div class="fg">
+                <div class="fi full">
+                    <label for="guest">Guest name</label>
+                    <input id="guest" placeholder="e.g. Dave Miller — Bruce Power">
+                </div>
+                <div class="fi">
+                    <label for="inDate">Check-in</label>
+                    <input id="inDate" type="date">
+                </div>
+                <div class="fi">
+                    <label for="outDate">Check-out</label>
+                    <input id="outDate" type="date">
+                </div>
+                <div class="fi full">
+                    <div class="presets">
+                        <button class="preset" onclick="nights(1)">1 night</button>
+                        <button class="preset" onclick="nights(2)">2 nights</button>
+                        <button class="preset" onclick="nights(3)">3 nights</button>
+                        <button class="preset" onclick="nights(7)">1 week</button>
+                        <button class="preset" onclick="nights(14)">2 weeks</button>
+                        <button class="preset" onclick="nights(30)">1 month</button>
+                    </div>
+                </div>
+            </div>
+            <button class="btn btn-green" id="genBtn" onclick="generate()">Create code</button>
+        </div>
+
+        <div class="card result hide" id="result"></div>
+
+        <div class="card hide" id="activeCard">
+            <h2>Codes on this room</h2>
+            <div id="active"></div>
+        </div>
+    </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const API = location.origin;
+let token = sessionStorage.getItem('rc_token');
+let rooms = [];
+let selected = null;
+let defaults = { checkinHour: 15, checkoutHour: 11 };
+
+// ------------------------------------------------------------- helpers ---
+
+function el(id) { return document.getElementById(id); }
+
+function toast(msg) {
+    const t = el('toast');
+    t.textContent = msg;
+    t.style.display = 'block';
+    setTimeout(() => { t.style.display = 'none'; }, 2200);
+}
+
+function showErr(msg) {
+    const e = el('err');
+    e.textContent = msg;
+    e.classList.remove('hide');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+function clearErr() { el('err').classList.add('hide'); }
+
+async function api(path, opts = {}) {
+    const res = await fetch(API + path, {
+        ...opts,
+        headers: {
+            'Content-Type': 'application/json',
+            ...(token ? { Authorization: 'Bearer ' + token } : {}),
+            ...(opts.headers || {}),
+        },
+    });
+    const data = await res.json().catch(() => ({}));
+    if (res.status === 401 && token) { signOut(); throw new Error('Session expired'); }
+    if (!res.ok) throw new Error(data.error || `Request failed (${res.status})`);
+    return data;
+}
+
+// A date input gives "YYYY-MM-DD"; pin it to the house check-in/out hour in
+// local time so the window the guest sees matches the window on the lock.
+function atHour(dateStr, hour) {
+    const [y, m, d] = dateStr.split('-').map(Number);
+    return new Date(y, m - 1, d, hour, 0, 0, 0).getTime();
+}
+
+function toDateInput(d) {
+    const p = n => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+}
+
+function fmt(ms) {
+    return new Date(ms).toLocaleString('en-CA', {
+        weekday: 'short', month: 'short', day: 'numeric',
+        hour: 'numeric', minute: '2-digit',
+    });
+}
+
+function fmtShort(ms) {
+    return new Date(ms).toLocaleDateString('en-CA', { month: 'short', day: 'numeric' });
+}
+
+// -------------------------------------------------------------- login ---
+
+async function signIn() {
+    const btn = el('loginBtn');
+    btn.disabled = true;
+    el('loginErr').classList.add('hide');
+    try {
+        const data = await api('/api/login', {
+            method: 'POST',
+            body: JSON.stringify({ password: el('pw').value }),
+        });
+        token = data.token;
+        defaults = data.defaults || defaults;
+        sessionStorage.setItem('rc_token', token);
+        await startApp();
+    } catch (e) {
+        const box = el('loginErr');
+        box.textContent = e.message;
+        box.classList.remove('hide');
+    } finally {
+        btn.disabled = false;
+    }
+}
+
+function signOut() {
+    token = null;
+    sessionStorage.removeItem('rc_token');
+    el('appView').classList.add('hide');
+    el('loginView').classList.remove('hide');
+    el('pw').value = '';
+}
+
+// -------------------------------------------------------------- rooms ---
+
+function renderRooms() {
+    const box = el('rooms');
+    if (!rooms.length) {
+        box.innerHTML = '<div class="empty">No locks found in this TTLock account.</div>';
+        return;
+    }
+    box.innerHTML = rooms.map(r => `
+        <div class="room ${selected === r.lockId ? 'sel' : ''}" onclick="pickRoom(${r.lockId})">
+            <div class="rn">${escapeHtml(r.name)}</div>
+            <div class="rm ${r.battery != null && r.battery <= 25 ? 'low' : ''}">
+                ${r.battery != null ? r.battery + '% battery' : '&nbsp;'}
+            </div>
+        </div>
+    `).join('');
+}
+
+function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, c => (
+        { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]
+    ));
+}
+
+function pickRoom(lockId) {
+    selected = lockId;
+    renderRooms();
+    loadActive();
+}
+
+// ----------------------------------------------------------- generate ---
+
+function nights(n) {
+    const start = el('inDate').value ? new Date(atHour(el('inDate').value, 12)) : new Date();
+    if (!el('inDate').value) el('inDate').value = toDateInput(start);
+    const out = new Date(start);
+    out.setDate(out.getDate() + n);
+    el('outDate').value = toDateInput(out);
+}
+
+async function generate() {
+    clearErr();
+    if (!selected) return showErr('Pick a room first.');
+    if (!el('guest').value.trim()) return showErr('Enter a guest name.');
+    if (!el('inDate').value || !el('outDate').value) return showErr('Set check-in and check-out dates.');
+
+    const startDate = atHour(el('inDate').value, defaults.checkinHour);
+    const endDate = atHour(el('outDate').value, defaults.checkoutHour);
+    if (endDate <= startDate) return showErr('Check-out must be after check-in.');
+
+    const btn = el('genBtn');
+    btn.disabled = true;
+    btn.textContent = 'Creating…';
+    try {
+        const r = await api('/api/passcode', {
+            method: 'POST',
+            body: JSON.stringify({
+                lockId: selected,
+                guest: el('guest').value.trim(),
+                startDate,
+                endDate,
+            }),
+        });
+        renderResult(r);
+        loadActive();
+    } catch (e) {
+        showErr(e.message);
+    } finally {
+        btn.disabled = false;
+        btn.textContent = 'Create code';
+    }
+}
+
+function guestMessage(r) {
+    return `Hi ${r.guest.split(/[\s—-]/)[0]}, you're all set at the Walkerton Livery.
+
+Room: ${r.room}
+Door code: ${r.passcode}#
+Check-in: ${fmt(r.startDate)}
+Check-out: ${fmt(r.endDate)}
+
+Enter the code on the keypad and press #. 11 Victoria St S, Walkerton.`;
+}
+
+function renderResult(r) {
+    const box = el('result');
+    box.classList.remove('hide');
+    box.innerHTML = `
+        <h2>${escapeHtml(r.room)} · ${escapeHtml(r.guest)}</h2>
+        <div class="code">${escapeHtml(r.passcode)}</div>
+        <div class="rmeta">Works <b>${fmt(r.startDate)}</b> → <b>${fmt(r.endDate)}</b></div>
+        <div class="msg" id="guestMsg">${escapeHtml(guestMessage(r))}</div>
+        <div class="ractions">
+            <button class="btn btn-sm btn-green" style="margin:0" onclick="copyText('${r.passcode}','Code copied')">Copy code</button>
+            <button class="btn btn-sm btn-gray" onclick="copyText(document.getElementById('guestMsg').textContent,'Message copied')">Copy message</button>
+            <a class="btn btn-sm btn-gray" style="text-decoration:none;text-align:center;line-height:1.6"
+               href="sms:?&body=${encodeURIComponent(guestMessage(r))}">Text guest</a>
+        </div>
+        <div class="warn">
+            The code is live on the keypad now — no gateway or Bluetooth needed.
+            It must be used once before <b>${fmt(r.useByDate)}</b> or the lock drops it.
+        </div>`;
+    box.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+async function copyText(text, msg) {
+    try {
+        await navigator.clipboard.writeText(text);
+        toast(msg);
+    } catch {
+        toast('Copy failed — select the text manually');
+    }
+}
+
+// ------------------------------------------------------ existing codes ---
+
+async function loadActive() {
+    const card = el('activeCard');
+    card.classList.remove('hide');
+    el('active').innerHTML = '<div class="empty">Loading…</div>';
+    try {
+        const { codes } = await api('/api/passcodes?lockId=' + selected);
+        renderActive(codes);
+    } catch (e) {
+        el('active').innerHTML = `<div class="empty">${escapeHtml(e.message)}</div>`;
+    }
+}
+
+function renderActive(codes) {
+    if (!codes.length) {
+        el('active').innerHTML = '<div class="empty">No dated codes on this room yet.</div>';
+        return;
+    }
+    const now = Date.now();
+    el('active').innerHTML = `
+        <table>
+            <thead><tr><th>Guest</th><th>Code</th><th>Stay</th><th></th><th></th></tr></thead>
+            <tbody>${codes.map(c => {
+                const upcoming = c.startDate > now;
+                const pill = c.expired ? '<span class="pill off">Expired</span>'
+                    : upcoming ? '<span class="pill soon">Upcoming</span>'
+                    : '<span class="pill on">Active</span>';
+                return `<tr>
+                    <td>${escapeHtml(c.name) || '<span style="color:#666">—</span>'}</td>
+                    <td class="pw">${escapeHtml(c.passcode || '••••')}</td>
+                    <td style="color:#999">${fmtShort(c.startDate)} → ${fmtShort(c.endDate)}</td>
+                    <td>${pill}</td>
+                    <td style="text-align:right">${c.expired ? '' :
+                        `<button class="btn btn-sm btn-red" onclick="revoke(${c.keyboardPwdId})">Revoke</button>`}</td>
+                </tr>`;
+            }).join('')}</tbody>
+        </table>`;
+}
+
+async function revoke(keyboardPwdId) {
+    if (!confirm('Revoke this code? The guest will not be able to get in.')) return;
+    try {
+        const r = await api('/api/passcode/delete', {
+            method: 'POST',
+            body: JSON.stringify({ lockId: selected, keyboardPwdId }),
+        });
+        toast(r.needsBluetooth
+            ? 'Removed — open the TTLock app near the lock to finish'
+            : 'Code revoked');
+        loadActive();
+    } catch (e) {
+        showErr(e.message);
+    }
+}
+
+// --------------------------------------------------------------- boot ---
+
+async function startApp() {
+    el('loginView').classList.add('hide');
+    el('appView').classList.remove('hide');
+
+    const today = new Date();
+    el('inDate').value = toDateInput(today);
+    nights(1);
+
+    try {
+        const data = await api('/api/rooms');
+        rooms = data.rooms;
+        renderRooms();
+        if (rooms.length === 1) pickRoom(rooms[0].lockId);
+    } catch (e) {
+        showErr(e.message);
+        el('rooms').innerHTML = '<div class="empty">Could not load rooms.</div>';
+    }
+}
+
+el('loginBtn').onclick = signIn;
+el('pw').addEventListener('keydown', e => { if (e.key === 'Enter') signIn(); });
+el('inDate').addEventListener('change', () => {
+    if (el('outDate').value && el('outDate').value <= el('inDate').value) nights(1);
+});
+
+if (token) startApp();
+</script>
+</body>
+</html>

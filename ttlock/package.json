@@ -1,0 +1,14 @@
+{
+  "name": "walkerton-livery-room-codes",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Generate TTLock door codes for guest stays without opening the TTLock app",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node test/smoke.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
