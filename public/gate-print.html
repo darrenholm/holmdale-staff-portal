@@ -140,6 +140,26 @@ scan.addEventListener('input', () => {
     scan.focus({ preventScroll: true });
   }, 350);
 });
+// Keep the scan box ready: the scanner only types into the focused box, so
+// after ANY tap (Clearly 19+, Reprint, …) focus goes straight back to it.
+// Exceptions: while someone is typing in a name box or the printer settings.
+function typingElsewhere() {
+  const a = document.activeElement;
+  return a && a !== scan && (a.tagName === 'INPUT' || a.tagName === 'SELECT' || a.tagName === 'TEXTAREA');
+}
+function refocus() { setTimeout(() => { if (!typingElsewhere() && !document.hidden) scan.focus({ preventScroll: true }); }, 150); }
+document.addEventListener('click', (e) => {
+  const t = e.target;
+  if (t.closest && t.closest('input, select, textarea')) return; // they meant to type there
+  refocus();
+}, true);
+scan.addEventListener('blur', refocus);
+document.addEventListener('visibilitychange', refocus);
+// Leaving a name box with Enter/Done hands focus back too.
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && e.target !== scan && e.target.tagName === 'INPUT') { e.preventDefault(); e.target.blur(); refocus(); }
+});
+
 $('typeBtn').onclick = () => {
   const c = prompt('Confirmation code (like WW-AB12CD34)');
   if (c) handleScan(c.trim());
