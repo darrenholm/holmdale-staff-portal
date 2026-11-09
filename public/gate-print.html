@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Gate - Printed Bands - Holmdale Pro Rodeo</title>
+<!--
+  Gate entry with PRINTED wristbands (replaces RFID taps, which iPhones could not do).
+  Built for the Kingtop handhelds: the scanner types into the scan box and presses Enter.
+
+  1. Scan the ticket QR (confirmation code)  -> order loads, one row per person.
+  2. Adults: scan licence, or "ID checked", or "Clearly 19+"; or "Under 19".
+     Children: print a child band.
+  3. Each band gets a 12-hex-digit code, saved as the band's rfid_uid, so the bar
+     and balance pages work unchanged (they scan the band QR instead of tapping RFID).
+     NOTE: the rodeo API keeps only hex digits and sorts the bytes of every uid, so
+     band codes MUST be plain hex. 12 digits never collides with 7-byte RFID uids.
+  4. When every band for the order is printed, the order is marked scanned.
+
+  Bands print on the shop DYMO through the label bridge (print.holmgraphics.ca)
+  until the wristband printers arrive. Bridge key + printer are saved per device.
+-->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
+<style>
+  :root { --bg:#f2f3f1; --panel:#fff; --ink:#151a17; --muted:#5d6661; --line:#d3d8d4;
+          --go:#0f7a41; --go-bg:#dcf2e5; --stop:#b3261e; --stop-bg:#fbe1de; --warn:#8a5a00; --warn-bg:#fbefd2; --accent:#1f4e79; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); font:16px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  .wrap { max-width:560px; margin:0 auto; padding:12px 14px 40px; display:flex; flex-direction:column; gap:12px; }
+  header { display:flex; align-items:center; justify-content:space-between; gap:8px; }
+  h1 { font-size:20px; margin:0; }
+  header a, .link { color:var(--accent); font-size:14px; background:none; border:0; padding:0; cursor:pointer; text-decoration:underline; }
+  .card { background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:14px; display:flex; flex-direction:column; gap:10px; }
+  .msg { font-size:22px; font-weight:800; padding:12px 14px; border-radius:10px; }
+  .m-info { background:#e8eef5; color:var(--accent); } .m-go { background:var(--go-bg); color:var(--go); }
+  .m-stop { background:var(--stop-bg); color:var(--stop); } .m-warn { background:var(--warn-bg); color:var(--warn); }
+  .sub { color:var(--muted); font-size:14px; }
+  .order-name { font-size:22px; font-weight:800; }
+  .pill { display:inline-block; font-size:12px; font-weight:700; padding:2px 8px; border-radius:999px; background:#eee; margin-right:4px; }
+  .pill.test { background:#b3261e; color:#fff; }
+  .slot { border:2px solid var(--line); border-radius:10px; padding:10px; display:flex; flex-direction:column; gap:8px; }
+  .slot.active { border-color:var(--accent); }
+  .slot.done { opacity:.6; }
+  .slot-head { display:flex; justify-content:space-between; align-items:center; font-weight:700; }
+  .slot input { font:inherit; padding:10px; border:1px solid var(--line); border-radius:8px; width:100%; }
+  .btns { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+  button.b { font:700 16px system-ui, sans-serif; padding:14px 8px; border-radius:10px; border:0; cursor:pointer; color:#fff; background:var(--accent); }
+  button.b.go { background:var(--go); } button.b.stop { background:var(--stop); } button.b.dark { background:#111; }
+  button.b.ghost { background:#e6e9e7; color:var(--ink); }
+  button.b:disabled { opacity:.4; }
+  .full { grid-column:1 / -1; }
+  textarea { width:100%; min-height:70px; font:500 16px/1.4 system-ui, sans-serif; padding:10px; border:2px dashed var(--accent); border-radius:10px; background:var(--panel); }
+  textarea:focus { outline:none; border-style:solid; }
+  label.k { font-size:12px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--muted); }
+  .set { display:flex; flex-direction:column; gap:6px; }
+  .set input, .set select { font:inherit; padding:9px; border:1px solid var(--line); border-radius:8px; width:100%; }
+  .log li { font-size:13px; color:var(--muted); }
+  .hidden { display:none !important; }
+  ol { margin:0; padding-left:18px; font-size:14px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>🎫 Gate · Printed Bands</h1>
+    <span><button class="link" id="setBtn">Printer</button> · <a href="index.html">Menu</a></span>
+  </header>
+
+  <!-- Status / order sits ABOVE the scan box: the on-screen keyboard covers the bottom half. -->
+  <section class="card" id="status"><div class="msg m-info">Scan a ticket QR</div></section>
+
+  <section class="card hidden" id="orderCard"></section>
+
+  <div style="display:flex;flex-direction:column;gap:4px">
+    <label class="k" for="scan">Scan here</label>
+    <textarea id="scan" placeholder="Tap here, then press the scan button" autocomplete="off" autocapitalize="off" spellcheck="false"></textarea>
+    <button class="link" id="typeBtn" style="align-self:flex-start">Type a confirmation code instead</button>
+  </div>
+
+  <section class="card hidden" id="settings">
+    <strong>Band printer (DYMO, for testing)</strong>
+    <div class="set"><label class="k">Label bridge address</label><input id="bUrl" value="https://print.holmgraphics.ca"></div>
+    <div class="set"><label class="k">Bridge key</label><input id="bKey" type="password" autocomplete="off" placeholder="Paste the label bridge key"></div>
+    <div class="set"><label class="k">Printer</label><select id="bPrinter"><option value="">(press Find printers)</option></select></div>
+    <div class="btns"><button class="b ghost" id="findBtn">Find printers</button><button class="b" id="saveBtn">Save</button>
+      <button class="b ghost full" id="testBtn">Print a test band</button></div>
+    <div class="sub" id="setMsg"></div>
+    <ol>
+      <li>Labels: DYMO 30252 (1⅛" × 3½").</li>
+      <li>Kingtop scanner settings: output <b>Input Box Mode</b>, end mark <b>Enter</b>, <b>QR</b> and <b>PDF417</b> on, <b>Code 39 off</b>.</li>
+    </ol>
+  </section>
+
+  <section class="card"><strong>This lane</strong><ol class="log" id="log"><li>No entries yet</li></ol></section>
+</div>
+
+<script>
+const API = 'https://api.holmdalerodeo.ca/api';
+const LS = 'gate_print_settings';
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+let token = localStorage.getItem('auth_token');
+let order = null;     // ticket_orders row
+let slots = [];       // [{ type:'adult'|'child', done, name, code, of19 }]
+let active = -1;      // index of the slot the next licence scan applies to
+let busy = false;
+let entries = [];
+
+if (!token) location.href = 'login.html?expired=1';
+
+// ─── API ────────────────────────────────────────────────────────────────────
+async function api(path, opts = {}) {
+  const r = await fetch(API + path, { ...opts, headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token, ...(opts.headers || {}) } });
+  if (r.status === 401 || r.status === 403) { localStorage.removeItem('auth_token'); location.href = 'login.html?expired=1'; throw new Error('Signed out'); }
+  let j = null; try { j = await r.json(); } catch {}
+  if (!r.ok) throw new Error((j && j.error) || ('Error ' + r.status));
+  return j;
+}
+
+// ─── Status line ────────────────────────────────────────────────────────────
+function status(kind, text, sub = '') {
+  $('status').innerHTML = `<div class="msg m-${kind}">${esc(text)}</div>${sub ? `<div class="sub">${esc(sub)}</div>` : ''}`;
+  try { $('status').scrollIntoView({ block: 'start' }); } catch {}
+}
+function logEntry(text) {
+  entries.unshift(new Date().toLocaleTimeString('en-CA', { hour: '2-digit', minute: '2-digit' }) + '  ' + text);
+  entries = entries.slice(0, 15);
+  $('log').innerHTML = entries.map((e) => `<li>${esc(e)}</li>`).join('');
+}
+
+// ─── Scan box: the Kingtop types the code and presses Enter ─────────────────
+const scan = $('scan');
+let timer = null;
+scan.addEventListener('input', () => {
+  clearTimeout(timer);
+  timer = setTimeout(() => {
+    const text = scan.value.trim();
+    scan.value = '';
+    if (text) handleScan(text);
+    scan.focus({ preventScroll: true });
+  }, 350);
+});
+$('typeBtn').onclick = () => {
+  const c = prompt('Confirmation code (like WW-AB12CD34)');
+  if (c) handleScan(c.trim());
+};
+
+function handleScan(text) {
+  if (busy) return;
+  if (/ANSI\s?\d{6}/.test(text) || /DAQ|DCS|DBB/.test(text)) return licenceScanned(text);
+  return lookup(text.toUpperCase());
+}
+
+// ─── Ticket lookup ──────────────────────────────────────────────────────────
+async function lookup(code) {
+  busy = true;
+  status('info', 'Looking up ' + code + '…');
+  try {
+    const r = await fetch(API + '/ticket-orders/confirmation/' + encodeURIComponent(code));
+    if (r.status === 404) { status('stop', 'Ticket not found', code); return clearOrder(); }
+    if (!r.ok) throw new Error('Lookup failed (' + r.status + ')');
+    order = await r.json();
+
+    // Bands already issued for this order (re-scan of a part-entered order).
+    // TODO before event day: add a by-order lookup to the API; this pulls every band.
+    const all = await api('/wristbands');
+    const issued = (Array.isArray(all) ? all : []).filter((w) => w.ticket_order_id === order.id);
+    const doneA = issued.filter((w) => (w.ticket_type || 'adult') !== 'child').length;
+    const doneC = issued.filter((w) => w.ticket_type === 'child').length;
+
+    const nA = Number(order.quantity_adult) || 0, nC = Number(order.quantity_child) || 0;
+    const [first, ...rest] = String(order.customer_name || '').trim().split(/\s+/);
+    const buyerBand = first ? (first + (rest.length ? ' ' + rest[rest.length - 1][0] + '.' : '')).toUpperCase() : '';
+    slots = [];
+    for (let i = 0; i < nA; i++) slots.push({ type: 'adult', done: i < doneA, name: i === 0 ? buyerBand : '' });
+    for (let i = 0; i < nC; i++) slots.push({ type: 'child', done: i < doneC, name: '' });
+    active = slots.findIndex((s) => !s.done);
+
+    if (!slots.length) status('stop', 'No tickets on this order', code);
+    else if (active === -1) status('stop', 'Already used', `All ${slots.length} bands were printed${order.scanned_at ? ' · entered ' + new Date(order.scanned_at).toLocaleString('en-CA') : ''}.`);
+    else if (order.status !== 'confirmed') status('warn', 'Payment not confirmed', 'Status: ' + order.status + '. Check with the ticket booth before letting them in.');
+    else status('go', 'Ticket OK', `${nA} adult${nA === 1 ? '' : 's'}, ${nC} child${nC === 1 ? '' : 'ren'}${doneA + doneC ? ` · ${doneA + doneC} band(s) already printed` : ''}`);
+    renderOrder();
+  } catch (e) {
+    status('stop', 'Lookup error', e.message);
+  } finally {
+    busy = false;
+  }
+}
+
+function clearOrder() { order = null; slots = []; active = -1; $('orderCard').classList.add('hidden'); }
+
+function renderOrder() {
+  if (!order) return clearOrder();
+  const c = $('orderCard');
+  c.classList.remove('hidden');
+  const declared = order.is_19_plus ? '<span class="pill">19+ declared</span>' : '';
+  const test = order.is_sample ? '<span class="pill test">TEST ORDER</span>' : '';
+  c.innerHTML = `<div class="order-name">${esc(order.customer_name || '(no name)')}</div>
+    <div>${test}${declared}<span class="pill">${esc(order.confirmation_code)}</span></div>` +
+    slots.map((s, i) => {
+      const label = (s.type === 'adult' ? 'Adult ' : 'Child ') + (slots.slice(0, i + 1).filter((x) => x.type === s.type).length);
+      if (s.done) return `<div class="slot done"><div class="slot-head"><span>${label}</span><span>✓ ${s.of19 ? '19+ band' : s.type === 'child' ? 'child band' : 'band'} printed</span></div>
+        ${s.code ? `<div class="sub">${esc(s.name || '')} · band ${s.code}</div><button class="b ghost" data-reprint="${i}">Reprint band</button>` : ''}</div>`;
+      const isActive = i === active;
+      const nameBox = `<input data-name="${i}" value="${esc(s.name || '')}" placeholder="Name on band (optional)" autocomplete="off">`;
+      if (!isActive) return `<div class="slot" data-pick="${i}"><div class="slot-head"><span>${label}</span><span class="sub">tap to do next</span></div></div>`;
+      if (s.type === 'child') return `<div class="slot active"><div class="slot-head"><span>${label}</span></div>${nameBox}
+        <div class="btns"><button class="b full" data-act="child" data-i="${i}">Print child band</button></div></div>`;
+      return `<div class="slot active"><div class="slot-head"><span>${label}</span><span class="sub">scan licence or choose</span></div>${nameBox}
+        <div class="btns">
+          <button class="b go" data-act="id" data-i="${i}">ID checked · 19+</button>
+          <button class="b go" data-act="obvious" data-i="${i}">Clearly 19+</button>
+          <button class="b stop full" data-act="under" data-i="${i}">Under 19 · no alcohol</button>
+        </div></div>`;
+    }).join('');
+
+  c.querySelectorAll('[data-pick]').forEach((el) => el.onclick = () => { active = +el.dataset.pick; renderOrder(); });
+  c.querySelectorAll('[data-name]').forEach((el) => el.oninput = () => { slots[+el.dataset.name].name = el.value.toUpperCase(); });
+  c.querySelectorAll('[data-act]').forEach((el) => el.onclick = () => {
+    const i = +el.dataset.i, act = el.dataset.act;
+    if (act === 'child') issue(i, { of19: false, method: 'child' });
+    if (act === 'id') issue(i, { of19: true, method: 'ID checked' });
+    if (act === 'obvious') issue(i, { of19: true, method: 'clearly 19+' });
+    if (act === 'under') issue(i, { of19: false, method: 'under 19' });
+  });
+  c.querySelectorAll('[data-reprint]').forEach((el) => el.onclick = () => reprint(+el.dataset.reprint));
+}
+
+// ─── Licence (PDF417 / AAMVA) ───────────────────────────────────────────────
+// Read once on screen. Only the band name and a 19+ yes/no are kept: no birth
+// date, address or licence number is stored or sent anywhere.
+const CODES = ['DAA','DAB','DAC','DAD','DAG','DAH','DAI','DAJ','DAK','DAL','DAM','DAN','DAO','DAP','DAQ','DAR','DAS','DAT','DAU','DAV','DAW','DAX','DAY','DAZ','DBA','DBB','DBC','DBD','DBE','DBF','DBG','DBH','DBI','DBJ','DBK','DBL','DBM','DBN','DBO','DBP','DBQ','DBR','DBS','DCA','DCB','DCD','DCE','DCF','DCG','DCH','DCI','DCJ','DCK','DCL','DCM','DCN','DCO','DCP','DCQ','DCR','DCS','DCT','DCU','DDA','DDB','DDC','DDD','DDE','DDF','DDG','DDH','DDI','DDJ','DDK','DDL'];
+function parseFields(text) {
+  const f = {}; let hits = 0;
+  for (const l of text.split(/[\r\n\x1e\x1d]+/)) { const s = l.replace(/^.*?DL(?=D[A-D][A-Z])/, ''); const c = s.slice(0, 3); if (CODES.includes(c)) { f[c] = s.slice(3).trim(); hits++; } }
+  if (hits < 3) {
+    const re = new RegExp('(' + CODES.join('|') + ')', 'g'); let m; const marks = [];
+    while ((m = re.exec(text))) marks.push([m.index, m[1]]);
+    marks.forEach(([p, c], i) => { if (!(c in f)) f[c] = text.slice(p + 3, i + 1 < marks.length ? marks[i + 1][0] : text.length).trim(); });
+  }
+  return f;
+}
+function parseDate(s) {
+  if (!s) return null; const d = s.replace(/\D/g, '').slice(0, 8); if (d.length < 8) return null;
+  const y1 = +d.slice(0, 4); let y, m, day;
+  if (y1 > 1900 && y1 < 2100) { y = y1; m = +d.slice(4, 6); day = +d.slice(6, 8); } else { m = +d.slice(0, 2); day = +d.slice(2, 4); y = +d.slice(4, 8); }
+  return (m < 1 || m > 12 || day < 1 || day > 31) ? null : { y, m, d: day };
+}
+function licenceResult(text) {
+  const f = parseFields(text);
+  const now = new Date(), on = { y: now.getFullYear(), m: now.getMonth() + 1, d: now.getDate() };
+  const dob = parseDate(f.DBB), exp = parseDate(f.DBA);
+  let age = null;
+  if (dob) { age = on.y - dob.y; if (on.m < dob.m || (on.m === dob.m && on.d < dob.d)) age--; }
+  const expired = exp ? (exp.y * 1e4 + exp.m * 100 + exp.d) < (on.y * 1e4 + on.m * 100 + on.d) : false;
+  let first = f.DAC || f.DCT || '', last = f.DCS || f.DAB || '';
+  if ((!first || !last) && f.DAA) { const p = f.DAA.split(/[,$]/); last = last || p[0]; first = first || p[1] || ''; }
+  first = (first.split(/[ ,]/)[0] || '').trim().toUpperCase(); last = last.trim().toUpperCase();
+  return { age, expired, band: first ? first + (last ? ' ' + last[0] + '.' : '') : '' };
+}
+
+function licenceScanned(text) {
+  const L = licenceResult(text);
+  text = null; // drop the raw licence data
+  if (!order || active === -1 || slots[active].type !== 'adult') {
+    return status('warn', 'Scan the ticket first', 'Then pick the adult this licence belongs to.');
+  }
+  if (L.age === null) return status('warn', 'Birth date not read', 'Scan again, or check the card and press ID checked.');
+  if (L.expired) return status('warn', 'Licence expired', 'Ask for another ID, or check by eye.');
+  if (L.band) slots[active].name = L.band;
+  if (L.age >= 19) issue(active, { of19: true, method: 'licence scan' });
+  else { renderOrder(); status('stop', 'Under 19', `${L.band || 'This person'} gets an under-19 band. Press "Under 19".`); }
+}
+
+// ─── Issue a band ───────────────────────────────────────────────────────────
+function newBandCode() {
+  // 12 hex digits. Must be hex: the API strips anything else from uids.
+  const b = new Uint8Array(6); crypto.getRandomValues(b);
+  return Array.from(b, (x) => x.toString(16).padStart(2, '0')).join('').toUpperCase();
+}
+
+async function issue(i, { of19, method }) {
+  if (busy) return;
+  const s = slots[i];
+  busy = true;
+  status('info', 'Printing band…');
+  try {
+    const code = newBandCode();
+    await api('/wristbands/link', { method: 'POST', body: JSON.stringify({ rfid_uid: code, ticket_order_id: order.id, ticket_type: s.type }) });
+    if (of19) await api('/wristbands/approve-age', { method: 'POST', body: JSON.stringify({ rfid_uid: code }) });
+    Object.assign(s, { done: true, code, of19, method });
+    logEntry(`${order.confirmation_code} · ${s.type === 'child' ? 'child' : of19 ? '19+' : 'under 19'} · ${s.name || 'no name'} · ${method}`);
+    let printed = true;
+    try { await printBand(s); } catch (e) { printed = false; status('warn', 'Band saved, but did not print', e.message + ' · use Reprint band.'); }
+    active = slots.findIndex((x) => !x.done);
+    if (active === -1) {
+      await api('/ticket-orders/' + encodeURIComponent(order.id) + '/scan', { method: 'PUT', body: JSON.stringify({ rfid_tag_id: code }) });
+      if (printed) status('go', 'Entry complete', `${slots.length} band${slots.length === 1 ? '' : 's'} printed for ${order.customer_name}.`);
+      renderOrder();
+      setTimeout(() => { if (active === -1 && !busy) { clearOrder(); status('info', 'Scan a ticket QR'); } }, 4000);
+    } else {
+      if (printed) status('go', of19 ? '19+ band printed' : s.type === 'child' ? 'Child band printed' : 'Under-19 band printed', 'Next person.');
+      renderOrder();
+    }
+  } catch (e) {
+    status('stop', 'Could not save band', e.message);
+  } finally {
+    busy = false;
+  }
+}
+
+async function reprint(i) {
+  try { await printBand(slots[i]); status('go', 'Reprinted'); } catch (e) { status('warn', 'Did not print', e.message); }
+}
+
+// ─── Band label (DYMO 30252, 3.5" x 1.125") ─────────────────────────────────
+// Drawn as one image: QR on the left; 19+ bands are solid black with white
+// lettering so the bar can tell them apart at a glance.
+function bandImage({ code, name, of19, type, test }) {
+  const W = 1050, H = 338, cv = document.createElement('canvas');
+  cv.width = W; cv.height = H;
+  const g = cv.getContext('2d');
+  g.fillStyle = '#fff'; g.fillRect(0, 0, W, H);
+  // QR
+  const q = qrcode(0, 'M'); q.addData(code); q.make();
+  const n = q.getModuleCount(), cell = Math.floor((H - 30) / n), qs = n * cell, qx = 15, qy = Math.floor((H - qs) / 2);
+  g.fillStyle = '#000';
+  for (let r = 0; r < n; r++) for (let c = 0; c < n; c++) if (q.isDark(r, c)) g.fillRect(qx + c * cell, qy + r * cell, cell, cell);
+  // Panel
+  const px = qs + 40, pw = W - px - 10;
+  if (of19) { g.fillStyle = '#000'; g.fillRect(px, 8, pw, H - 16); }
+  else { g.strokeStyle = '#000'; g.lineWidth = 8; g.strokeRect(px + 4, 12, pw - 8, H - 24); }
+  const fg = of19 ? '#fff' : '#000';
+  // VERY bold mark at the left of the panel: check = 19+, X = no alcohol.
+  const mk = H - 70, mx = px + 24, my = (H - mk) / 2;
+  g.strokeStyle = fg; g.lineCap = 'round'; g.lineJoin = 'round'; g.lineWidth = 46;
+  g.beginPath();
+  if (of19) { g.moveTo(mx + mk * 0.08, my + mk * 0.55); g.lineTo(mx + mk * 0.38, my + mk * 0.85); g.lineTo(mx + mk * 0.95, my + mk * 0.15); }
+  else { g.moveTo(mx + mk * 0.12, my + mk * 0.12); g.lineTo(mx + mk * 0.88, my + mk * 0.88); g.moveTo(mx + mk * 0.88, my + mk * 0.12); g.lineTo(mx + mk * 0.12, my + mk * 0.88); }
+  g.stroke();
+  // Words to the right of the mark.
+  const tx = mx + mk + 20, tw = px + pw - tx - 16;
+  g.fillStyle = fg; g.textAlign = 'center'; g.textBaseline = 'middle';
+  const big = of19 ? '19+' : type === 'child' ? 'CHILD' : 'UNDER 19';
+  const fit = (t, size, maxW, weight = 900) => { do { g.font = `${weight} ${size}px Arial Black, Arial, sans-serif`; size -= 4; } while (g.measureText(t).width > maxW && size > 20); };
+  fit(big, of19 ? 170 : 90, tw); g.fillText(big, tx + tw / 2, name ? 130 : H / 2);
+  if (name) { fit(name, 56, tw, 800); g.fillText(name, tx + tw / 2, 262); }
+  g.font = '700 22px Arial, sans-serif'; g.textAlign = 'left'; g.fillStyle = '#000';
+  if (test) { g.fillStyle = of19 ? '#fff' : '#000'; g.fillText('TEST', px + 16, 34); }
+  return cv.toDataURL('image/png').replace(/^data:image\/png;base64,/, '');
+}
+
+function labelXml(png) {
+  const twW = 5040, twH = 1620, pad = 60; // 3.5" x 1.125" in twips
+  return `<?xml version="1.0" encoding="utf-8"?>
+<DieCutLabel Version="8.0" Units="twips">
+  <PaperOrientation>Landscape</PaperOrientation>
+  <Id>30252</Id>
+  <PaperName>30252 Address</PaperName>
+  <DrawCommands><RoundRectangle X="0" Y="0" Width="${twH}" Height="${twW}" Rx="270" Ry="270" /></DrawCommands>
+  <ObjectInfo>
+    <ImageObject>
+      <Name>BAND</Name>
+      <ForeColor Alpha="255" Red="0" Green="0" Blue="0" />
+      <BackColor Alpha="0" Red="255" Green="255" Blue="255" />
+      <LinkedObjectName />
+      <Rotation>Rotation0</Rotation>
+      <IsMirrored>False</IsMirrored>
+      <IsVariable>False</IsVariable>
+      <Image>${png}</Image>
+      <ScaleMode>Uniform</ScaleMode>
+      <BorderWidth>0</BorderWidth>
+      <BorderColor Alpha="255" Red="0" Green="0" Blue="0" />
+      <HorizontalAlignment>Center</HorizontalAlignment>
+      <VerticalAlignment>Middle</VerticalAlignment>
+    </ImageObject>
+    <Bounds X="${pad}" Y="${pad}" Width="${twW - pad * 2}" Height="${twH - pad * 2}" />
+  </ObjectInfo>
+</DieCutLabel>`;
+}
+
+// ─── Label bridge (shop DYMO) ───────────────────────────────────────────────
+function settings() { try { return JSON.parse(localStorage.getItem(LS) || '{}'); } catch { return {}; } }
+async function bridge(path, body) {
+  const s = settings();
+  if (!s.url || !s.key) throw new Error('Band printer not set up. Tap "Printer" at the top.');
+  const r = await fetch(s.url.replace(/\/$/, '') + path, {
+    method: body ? 'POST' : 'GET',
+    headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + s.key },
+    body: body ? JSON.stringify(body) : undefined,
+  }).catch(() => { throw new Error('Label bridge not reachable (RIP computer on? this site allowed on the bridge?)'); });
+  let j = null; try { j = await r.json(); } catch {}
+  if (!r.ok) throw new Error((j && j.error) || ('Label bridge error ' + r.status));
+  return j;
+}
+async function printBand(s) {
+  const st = settings();
+  if (!st.printer) throw new Error('No DYMO printer chosen. Tap "Printer" at the top.');
+  const png = bandImage({ code: s.code, name: s.name, of19: s.of19, type: s.type, test: !!(order && order.is_sample) });
+  await bridge('/print', { printerName: st.printer, labelXml: labelXml(png), copies: 1 });
+}
+
+// Settings panel
+$('setBtn').onclick = () => { $('settings').classList.toggle('hidden'); const s = settings(); if (s.url) $('bUrl').value = s.url; if (s.key) $('bKey').value = s.key; if (s.printer) $('bPrinter').innerHTML = `<option>${esc(s.printer)}</option>`; };
+$('saveBtn').onclick = () => {
+  localStorage.setItem(LS, JSON.stringify({ url: $('bUrl').value.trim(), key: $('bKey').value.trim(), printer: $('bPrinter').value }));
+  $('setMsg').textContent = 'Saved on this device.';
+};
+$('findBtn').onclick = async () => {
+  localStorage.setItem(LS, JSON.stringify({ ...settings(), url: $('bUrl').value.trim(), key: $('bKey').value.trim() }));
+  try {
+    const { printers } = await bridge('/printers');
+    $('bPrinter').innerHTML = (printers || []).map((p) => `<option>${esc(p.name)}</option>`).join('') || '<option value="">No DYMO found</option>';
+    $('setMsg').textContent = `Found ${(printers || []).length} printer(s). Pick one and press Save.`;
+  } catch (e) { $('setMsg').textContent = e.message; }
+};
+$('testBtn').onclick = async () => {
+  try {
+    const png = bandImage({ code: 'A1B2C3D4E5F6', name: 'TEST B.', of19: true, type: 'adult', test: true });
+    await bridge('/print', { printerName: settings().printer, labelXml: labelXml(png), copies: 1 });
+    $('setMsg').textContent = 'Test band sent.';
+  } catch (e) { $('setMsg').textContent = e.message; }
+};
+
+scan.focus();
+</script>
+</body>
+</html>
