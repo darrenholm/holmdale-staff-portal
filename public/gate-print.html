@@ -172,7 +172,7 @@ function handleScan(text) {
 }
 
 // ─── Ticket lookup ──────────────────────────────────────────────────────────
-async function lookup(code) {
+async function lookup(code, { afterReset = false } = {}) {
   busy = true;
   status('info', 'Looking up ' + code + '…');
   try {
@@ -202,10 +202,18 @@ async function lookup(code) {
     for (let i = 0; i < nC; i++) slots.push({ type: 'child', name: '', done: false, ...(bandsC[i] ? fromBand(bandsC[i]) : {}) });
     active = slots.findIndex((s) => !s.done);
 
+    // TEST tickets are reusable: a fully used test order resets itself on scan.
+    if (order.is_sample && slots.length && active === -1 && !afterReset) {
+      await api('/gate-test/reset/' + encodeURIComponent(order.id), { method: 'POST' });
+      logEntry(`${order.confirmation_code} · test ticket reset`);
+      busy = false;
+      return lookup(code, { afterReset: true });
+    }
+
     if (!slots.length) status('stop', 'No tickets on this order', code);
     else if (active === -1) status('stop', 'Already used', `All ${slots.length} bands were printed${order.scanned_at ? ' · entered ' + new Date(order.scanned_at).toLocaleString('en-CA') : ''}. Use Reprint below only for a jammed or ruined band.`);
     else if (order.status !== 'confirmed') status('warn', 'Payment not confirmed', 'Status: ' + order.status + '. Check with the ticket booth before letting them in.');
-    else status('go', 'Ticket OK', `${nA} adult${nA === 1 ? '' : 's'}, ${nC} minor${nC === 1 ? '' : 's'}${doneA + doneC ? ` · ${doneA + doneC} band(s) already printed` : ''}`);
+    else status('go', afterReset ? 'Test ticket reset · OK' : 'Ticket OK', `${nA} adult${nA === 1 ? '' : 's'}, ${nC} minor${nC === 1 ? '' : 's'}${doneA + doneC ? ` · ${doneA + doneC} band(s) already printed` : ''}`);
     renderOrder();
   } catch (e) {
     status('stop', 'Lookup error', e.message);
@@ -222,8 +230,9 @@ function renderOrder() {
   c.classList.remove('hidden');
   const declared = order.is_19_plus ? '<span class="pill">19+ declared</span>' : '';
   const test = order.is_sample ? '<span class="pill test">TEST ORDER</span>' : '';
+  const resetBtn = order.is_sample ? '<button class="b ghost" id="resetTest">Reset test ticket (remove its bands)</button>' : '';
   c.innerHTML = `<div class="order-name">${esc(order.customer_name || '(no name)')}</div>
-    <div>${test}${declared}<span class="pill">${esc(order.confirmation_code)}</span></div>` +
+    <div>${test}${declared}<span class="pill">${esc(order.confirmation_code)}</span></div>${resetBtn}` +
     slots.map((s, i) => {
       const label = (s.type === 'adult' ? 'Adult ' : 'Minor ') + (slots.slice(0, i + 1).filter((x) => x.type === s.type).length);
       if (s.done) return `<div class="slot done"><div class="slot-head"><span>${label}</span><span>✓ ${s.of19 ? '19+ band' : s.type === 'child' ? 'minor band' : 'under-19 band'} printed</span></div>
@@ -252,6 +261,18 @@ function renderOrder() {
     if (act === 'under') issue(i, { of19: false, method: 'under 19' });
   });
   c.querySelectorAll('[data-reprint]').forEach((el) => el.onclick = () => reprint(+el.dataset.reprint));
+  const rb = $('resetTest');
+  if (rb) rb.onclick = async () => {
+    if (busy || !order || !order.is_sample) return;
+    busy = true;
+    try {
+      const r = await api('/gate-test/reset/' + encodeURIComponent(order.id), { method: 'POST' });
+      logEntry(`${order.confirmation_code} · test ticket reset (${r.bandsRemoved} band(s) removed)`);
+      busy = false;
+      await lookup(order.confirmation_code, { afterReset: true });
+    } catch (e) { status('stop', 'Reset failed', e.message); }
+    finally { busy = false; }
+  };
 }
 
 // ─── Licence (PDF417 / AAMVA) ───────────────────────────────────────────────
