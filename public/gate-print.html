@@ -164,20 +164,26 @@ async function lookup(code) {
     // Bands already issued for this order (re-scan of a part-entered order).
     // TODO before event day: add a by-order lookup to the API; this pulls every band.
     const all = await api('/wristbands');
-    const issued = (Array.isArray(all) ? all : []).filter((w) => w.ticket_order_id === order.id);
-    const doneA = issued.filter((w) => (w.ticket_type || 'adult') !== 'child').length;
-    const doneC = issued.filter((w) => w.ticket_type === 'child').length;
+    const issued = (Array.isArray(all) ? all : []).filter((w) => w.ticket_order_id === order.id)
+      .sort((a, b) => String(a.created_date || '').localeCompare(String(b.created_date || '')));
+    const bandsA = issued.filter((w) => (w.ticket_type || 'adult') !== 'child');
+    const bandsC = issued.filter((w) => w.ticket_type === 'child');
+    const doneA = bandsA.length, doneC = bandsC.length;
 
     const nA = Number(order.quantity_adult) || 0, nC = Number(order.quantity_child) || 0;
     const [first, ...rest] = String(order.customer_name || '').trim().split(/\s+/);
     const buyerBand = first ? (first + (rest.length ? ' ' + rest[rest.length - 1][0] + '.' : '')).toUpperCase() : '';
+    // Bands already issued keep their stored code so they can be reprinted.
+    // (The API stores uids with their bytes sorted; a QR of the stored value
+    // still scans to the same band, so reprints work.)
+    const fromBand = (w) => ({ done: true, code: String(w.rfid_uid || '').toUpperCase(), of19: !!w.alcohol_approved });
     slots = [];
-    for (let i = 0; i < nA; i++) slots.push({ type: 'adult', done: i < doneA, name: i === 0 ? buyerBand : '' });
-    for (let i = 0; i < nC; i++) slots.push({ type: 'child', done: i < doneC, name: '' });
+    for (let i = 0; i < nA; i++) slots.push({ type: 'adult', name: i === 0 && !bandsA[i] ? buyerBand : '', done: false, ...(bandsA[i] ? fromBand(bandsA[i]) : {}) });
+    for (let i = 0; i < nC; i++) slots.push({ type: 'child', name: '', done: false, ...(bandsC[i] ? fromBand(bandsC[i]) : {}) });
     active = slots.findIndex((s) => !s.done);
 
     if (!slots.length) status('stop', 'No tickets on this order', code);
-    else if (active === -1) status('stop', 'Already used', `All ${slots.length} bands were printed${order.scanned_at ? ' · entered ' + new Date(order.scanned_at).toLocaleString('en-CA') : ''}.`);
+    else if (active === -1) status('stop', 'Already used', `All ${slots.length} bands were printed${order.scanned_at ? ' · entered ' + new Date(order.scanned_at).toLocaleString('en-CA') : ''}. Use Reprint below only for a jammed or ruined band.`);
     else if (order.status !== 'confirmed') status('warn', 'Payment not confirmed', 'Status: ' + order.status + '. Check with the ticket booth before letting them in.');
     else status('go', 'Ticket OK', `${nA} adult${nA === 1 ? '' : 's'}, ${nC} child${nC === 1 ? '' : 'ren'}${doneA + doneC ? ` · ${doneA + doneC} band(s) already printed` : ''}`);
     renderOrder();
@@ -200,8 +206,9 @@ function renderOrder() {
     <div>${test}${declared}<span class="pill">${esc(order.confirmation_code)}</span></div>` +
     slots.map((s, i) => {
       const label = (s.type === 'adult' ? 'Adult ' : 'Child ') + (slots.slice(0, i + 1).filter((x) => x.type === s.type).length);
-      if (s.done) return `<div class="slot done"><div class="slot-head"><span>${label}</span><span>✓ ${s.of19 ? '19+ band' : s.type === 'child' ? 'child band' : 'band'} printed</span></div>
-        ${s.code ? `<div class="sub">${esc(s.name || '')} · band ${s.code}</div><button class="b ghost" data-reprint="${i}">Reprint band</button>` : ''}</div>`;
+      if (s.done) return `<div class="slot done"><div class="slot-head"><span>${label}</span><span>✓ ${s.of19 ? '19+ band' : s.type === 'child' ? 'child band' : 'under-19 band'} printed</span></div>
+        ${s.code ? `<input data-name="${i}" value="${esc(s.name || '')}" placeholder="Name on band (optional)" autocomplete="off">
+        <button class="b ghost" data-reprint="${i}">Reprint this band</button>` : ''}</div>`;
       const isActive = i === active;
       const nameBox = `<input data-name="${i}" value="${esc(s.name || '')}" placeholder="Name on band (optional)" autocomplete="off">`;
       if (!isActive) return `<div class="slot" data-pick="${i}"><div class="slot-head"><span>${label}</span><span class="sub">tap to do next</span></div></div>`;
@@ -297,8 +304,8 @@ async function issue(i, { of19, method }) {
     if (active === -1) {
       await api('/ticket-orders/' + encodeURIComponent(order.id) + '/scan', { method: 'PUT', body: JSON.stringify({ rfid_tag_id: code }) });
       if (printed) status('go', 'Entry complete', `${slots.length} band${slots.length === 1 ? '' : 's'} printed for ${order.customer_name}.`);
+      // Order stays on screen (with Reprint buttons) until the next ticket is scanned.
       renderOrder();
-      setTimeout(() => { if (active === -1 && !busy) { clearOrder(); status('info', 'Scan a ticket QR'); } }, 4000);
     } else {
       if (printed) status('go', of19 ? '19+ band printed' : s.type === 'child' ? 'Child band printed' : 'Under-19 band printed', 'Next person.');
       renderOrder();
@@ -310,8 +317,18 @@ async function issue(i, { of19, method }) {
   }
 }
 
+// Same band, same code: nothing new is saved, so it can't be double-counted.
 async function reprint(i) {
-  try { await printBand(slots[i]); status('go', 'Reprinted'); } catch (e) { status('warn', 'Did not print', e.message); }
+  if (busy) return;
+  busy = true;
+  const s = slots[i];
+  status('info', 'Reprinting…');
+  try {
+    await printBand(s);
+    status('go', 'Reprinted', 'Throw away the jammed band. Only the new one goes on the wrist.');
+    logEntry(`${order.confirmation_code} · REPRINT ${s.type === 'child' ? 'child' : s.of19 ? '19+' : 'under 19'} · ${s.name || 'no name'}`);
+  } catch (e) { status('warn', 'Did not print', e.message); }
+  finally { busy = false; }
 }
 
 // ─── Band label (DYMO 30252, 3.5" x 1.125") ─────────────────────────────────
