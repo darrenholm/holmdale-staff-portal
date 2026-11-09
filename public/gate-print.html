@@ -10,7 +10,7 @@
 
   1. Scan the ticket QR (confirmation code)  -> order loads, one row per person.
   2. Adults: scan licence, or "ID checked", or "Clearly 19+"; or "Under 19".
-     Children: print a child band.
+     Minors (child tickets): print a minor band. Shown as "Minor" so teens aren't called children.
   3. Each band gets a 12-hex-digit code, saved as the band's rfid_uid, so the bar
      and balance pages work unchanged (they scan the band QR instead of tapping RFID).
      NOTE: the rodeo API keeps only hex digits and sorts the bytes of every uid, so
@@ -205,7 +205,7 @@ async function lookup(code) {
     if (!slots.length) status('stop', 'No tickets on this order', code);
     else if (active === -1) status('stop', 'Already used', `All ${slots.length} bands were printed${order.scanned_at ? ' · entered ' + new Date(order.scanned_at).toLocaleString('en-CA') : ''}. Use Reprint below only for a jammed or ruined band.`);
     else if (order.status !== 'confirmed') status('warn', 'Payment not confirmed', 'Status: ' + order.status + '. Check with the ticket booth before letting them in.');
-    else status('go', 'Ticket OK', `${nA} adult${nA === 1 ? '' : 's'}, ${nC} child${nC === 1 ? '' : 'ren'}${doneA + doneC ? ` · ${doneA + doneC} band(s) already printed` : ''}`);
+    else status('go', 'Ticket OK', `${nA} adult${nA === 1 ? '' : 's'}, ${nC} minor${nC === 1 ? '' : 's'}${doneA + doneC ? ` · ${doneA + doneC} band(s) already printed` : ''}`);
     renderOrder();
   } catch (e) {
     status('stop', 'Lookup error', e.message);
@@ -225,15 +225,15 @@ function renderOrder() {
   c.innerHTML = `<div class="order-name">${esc(order.customer_name || '(no name)')}</div>
     <div>${test}${declared}<span class="pill">${esc(order.confirmation_code)}</span></div>` +
     slots.map((s, i) => {
-      const label = (s.type === 'adult' ? 'Adult ' : 'Child ') + (slots.slice(0, i + 1).filter((x) => x.type === s.type).length);
-      if (s.done) return `<div class="slot done"><div class="slot-head"><span>${label}</span><span>✓ ${s.of19 ? '19+ band' : s.type === 'child' ? 'child band' : 'under-19 band'} printed</span></div>
+      const label = (s.type === 'adult' ? 'Adult ' : 'Minor ') + (slots.slice(0, i + 1).filter((x) => x.type === s.type).length);
+      if (s.done) return `<div class="slot done"><div class="slot-head"><span>${label}</span><span>✓ ${s.of19 ? '19+ band' : s.type === 'child' ? 'minor band' : 'under-19 band'} printed</span></div>
         ${s.code ? `<input data-name="${i}" value="${esc(s.name || '')}" placeholder="Name on band (optional)" autocomplete="off">
         <button class="b ghost" data-reprint="${i}">Reprint this band</button>` : ''}</div>`;
       const isActive = i === active;
       const nameBox = `<input data-name="${i}" value="${esc(s.name || '')}" placeholder="Name on band (optional)" autocomplete="off">`;
       if (!isActive) return `<div class="slot" data-pick="${i}"><div class="slot-head"><span>${label}</span><span class="sub">tap to do next</span></div></div>`;
       if (s.type === 'child') return `<div class="slot active"><div class="slot-head"><span>${label}</span></div>${nameBox}
-        <div class="btns"><button class="b full" data-act="child" data-i="${i}">Print child band</button></div></div>`;
+        <div class="btns"><button class="b full" data-act="child" data-i="${i}">Print minor band</button></div></div>`;
       return `<div class="slot active"><div class="slot-head"><span>${label}</span><span class="sub">scan licence or choose</span></div>${nameBox}
         <div class="btns">
           <button class="b go" data-act="id" data-i="${i}">ID checked · 19+</button>
@@ -246,7 +246,7 @@ function renderOrder() {
   c.querySelectorAll('[data-name]').forEach((el) => el.oninput = () => { slots[+el.dataset.name].name = el.value.toUpperCase(); });
   c.querySelectorAll('[data-act]').forEach((el) => el.onclick = () => {
     const i = +el.dataset.i, act = el.dataset.act;
-    if (act === 'child') issue(i, { of19: false, method: 'child' });
+    if (act === 'child') issue(i, { of19: false, method: 'minor' });
     if (act === 'id') issue(i, { of19: true, method: 'ID checked' });
     if (act === 'obvious') issue(i, { of19: true, method: 'clearly 19+' });
     if (act === 'under') issue(i, { of19: false, method: 'under 19' });
@@ -317,7 +317,7 @@ async function issue(i, { of19, method }) {
     await api('/wristbands/link', { method: 'POST', body: JSON.stringify({ rfid_uid: code, ticket_order_id: order.id, ticket_type: s.type }) });
     if (of19) await api('/wristbands/approve-age', { method: 'POST', body: JSON.stringify({ rfid_uid: code }) });
     Object.assign(s, { done: true, code, of19, method });
-    logEntry(`${order.confirmation_code} · ${s.type === 'child' ? 'child' : of19 ? '19+' : 'under 19'} · ${s.name || 'no name'} · ${method}`);
+    logEntry(`${order.confirmation_code} · ${s.type === 'child' ? 'minor' : of19 ? '19+' : 'under 19'} · ${s.name || 'no name'} · ${method}`);
     let printed = true;
     try { await printBand(s); } catch (e) { printed = false; status('warn', 'Band saved, but did not print', e.message + ' · use Reprint band.'); }
     active = slots.findIndex((x) => !x.done);
@@ -327,7 +327,7 @@ async function issue(i, { of19, method }) {
       // Order stays on screen (with Reprint buttons) until the next ticket is scanned.
       renderOrder();
     } else {
-      if (printed) status('go', of19 ? '19+ band printed' : s.type === 'child' ? 'Child band printed' : 'Under-19 band printed', 'Next person.');
+      if (printed) status('go', of19 ? '19+ band printed' : s.type === 'child' ? 'Minor band printed' : 'Under-19 band printed', 'Next person.');
       renderOrder();
     }
   } catch (e) {
@@ -346,7 +346,7 @@ async function reprint(i) {
   try {
     await printBand(s);
     status('go', 'Reprinted', 'Throw away the jammed band. Only the new one goes on the wrist.');
-    logEntry(`${order.confirmation_code} · REPRINT ${s.type === 'child' ? 'child' : s.of19 ? '19+' : 'under 19'} · ${s.name || 'no name'}`);
+    logEntry(`${order.confirmation_code} · REPRINT ${s.type === 'child' ? 'minor' : s.of19 ? '19+' : 'under 19'} · ${s.name || 'no name'}`);
   } catch (e) { status('warn', 'Did not print', e.message); }
   finally { busy = false; }
 }
@@ -379,7 +379,7 @@ function bandImage({ code, name, of19, type, test }) {
   // Words to the right of the mark.
   const tx = mx + mk + 20, tw = px + pw - tx - 16;
   g.fillStyle = fg; g.textAlign = 'center'; g.textBaseline = 'middle';
-  const big = of19 ? '19+' : type === 'child' ? 'CHILD' : 'UNDER 19';
+  const big = of19 ? '19+' : type === 'child' ? 'MINOR' : 'UNDER 19';
   const fit = (t, size, maxW, weight = 900) => { do { g.font = `${weight} ${size}px Arial Black, Arial, sans-serif`; size -= 4; } while (g.measureText(t).width > maxW && size > 20); };
   fit(big, of19 ? 170 : 90, tw); g.fillText(big, tx + tw / 2, name ? 130 : H / 2);
   if (name) { fit(name, 56, tw, 800); g.fillText(name, tx + tw / 2, 262); }
