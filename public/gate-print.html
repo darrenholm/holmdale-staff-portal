@@ -381,7 +381,17 @@ function labelXml(png) {
 }
 
 // ─── Label bridge (shop DYMO) ───────────────────────────────────────────────
-function settings() { try { return JSON.parse(localStorage.getItem(LS) || '{}'); } catch { return {}; } }
+// Bridge address/key come from the rodeo server (Railway LABEL_BRIDGE_* variables)
+// so no one types the key on each handheld. Anything saved on this device wins.
+let serverBridge = {};
+async function loadServerBridge() {
+  try { serverBridge = await api('/config/label-bridge'); } catch { serverBridge = {}; }
+}
+function localSettings() { try { return JSON.parse(localStorage.getItem(LS) || '{}'); } catch { return {}; } }
+function settings() {
+  const l = localSettings();
+  return { url: l.url || serverBridge.url || '', key: l.key || serverBridge.key || '', printer: l.printer || serverBridge.printer || '' };
+}
 async function bridge(path, body) {
   const s = settings();
   if (!s.url || !s.key) throw new Error('Band printer not set up. Tap "Printer" at the top.');
@@ -402,13 +412,27 @@ async function printBand(s) {
 }
 
 // Settings panel
-$('setBtn').onclick = () => { $('settings').classList.toggle('hidden'); const s = settings(); if (s.url) $('bUrl').value = s.url; if (s.key) $('bKey').value = s.key; if (s.printer) $('bPrinter').innerHTML = `<option>${esc(s.printer)}</option>`; };
-$('saveBtn').onclick = () => {
-  localStorage.setItem(LS, JSON.stringify({ url: $('bUrl').value.trim(), key: $('bKey').value.trim(), printer: $('bPrinter').value }));
-  $('setMsg').textContent = 'Saved on this device.';
+$('setBtn').onclick = () => {
+  $('settings').classList.toggle('hidden');
+  const l = localSettings(), s = settings();
+  if (s.url) $('bUrl').value = s.url;
+  $('bKey').value = l.key || '';
+  $('bKey').placeholder = serverBridge.key ? 'Using the key from the rodeo server' : 'Paste the label bridge key';
+  if (s.printer) $('bPrinter').innerHTML = `<option>${esc(s.printer)}</option>`;
 };
+// Only store what differs from the server, so a key change in Railway reaches every device.
+function saveLocal(extra = {}) {
+  const url = $('bUrl').value.trim(), key = $('bKey').value.trim();
+  localStorage.setItem(LS, JSON.stringify({
+    ...localSettings(),
+    url: url && url !== serverBridge.url ? url : '',
+    key: key && key !== serverBridge.key ? key : '',
+    ...extra,
+  }));
+}
+$('saveBtn').onclick = () => { saveLocal({ printer: $('bPrinter').value }); $('setMsg').textContent = 'Saved on this device.'; };
 $('findBtn').onclick = async () => {
-  localStorage.setItem(LS, JSON.stringify({ ...settings(), url: $('bUrl').value.trim(), key: $('bKey').value.trim() }));
+  saveLocal();
   try {
     const { printers } = await bridge('/printers');
     $('bPrinter').innerHTML = (printers || []).map((p) => `<option>${esc(p.name)}</option>`).join('') || '<option value="">No DYMO found</option>';
@@ -423,6 +447,7 @@ $('testBtn').onclick = async () => {
   } catch (e) { $('setMsg').textContent = e.message; }
 };
 
+loadServerBridge();
 scan.focus();
 </script>
 </body>
