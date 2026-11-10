@@ -127,6 +127,7 @@ const LS = 'bar_kiosk_settings';
 // What each ticket buys, shown on the reader's keypad screens (Stripe allows 100 characters).
 const BEER_LIST = 'Miller Lite \u00b7 Coors \u00b7 Old Milwaukee \u00b7 Seltzer \u00b7 Twisted Tea \u00b7 Rye \u00b7 Rum';
 const PREMIUM_LIST = 'Caesar';
+const CART_MS = 3000; // cart preview on the reader before the pay button
 const MAX_EACH = 10, POLL_MS = 1000, DONE_MS = 4000, IDLE_STOP_MS = 15 * 60000;
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -227,6 +228,13 @@ async function oneCustomer() {
 
   lastActivity = Date.now();
   const total = beer * settings.beer + premium * settings.premium;
+  const lines = [];
+  if (beer) lines.push({ description: 'Beer ticket', amount: cents(settings.beer * beer), quantity: beer });
+  if (premium) lines.push({ description: 'Premium ticket', amount: cents(settings.premium * premium), quantity: premium });
+  // Stripe's own cart screen first, so it looks like a real sale, then the button.
+  setStatus('Reader: cart, ' + money(total));
+  try { await api(`/bar-kiosk/readers/${rid()}/display`, { method: 'POST', body: JSON.stringify({ lineItems: lines, total: cents(total) }) }); await sleep(CART_MS); } catch {}
+  if (!running) return;
   setStatus('Reader: payment screen, ' + money(total));
   const paid = await screen([{ type: 'selection',
     custom_text: { title: 'Total ' + money(total), description: `${beer} beer, ${premium} premium. Tap, insert or swipe card.` },
@@ -235,9 +243,6 @@ async function oneCustomer() {
 
   lastActivity = Date.now();
   setStatus('Printing tickets');
-  const lines = [];
-  if (beer) lines.push({ description: 'Beer ticket', amount: cents(settings.beer * beer), quantity: beer });
-  if (premium) lines.push({ description: 'Premium ticket', amount: cents(settings.premium * premium), quantity: premium });
   api(`/bar-kiosk/readers/${rid()}/display`, { method: 'POST', body: JSON.stringify({ lineItems: lines, total: cents(total) }) }).catch(() => {});
   let ok = true;
   try { await EposPrint.print(BarTickets.buildTickets({ id: BarTickets.newSaleId(), beer, premium, test: true }, { width: WIDTH })); }
