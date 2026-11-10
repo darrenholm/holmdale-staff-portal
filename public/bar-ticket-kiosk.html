@@ -17,41 +17,71 @@
 -->
 <script src="lib/epos-print.js"></script>
 <script src="lib/bar-tickets.js"></script>
+<link rel="stylesheet" href="lib/fonts.css">
 <style>
-  :root { --bg:#f2f3f1; --panel:#fff; --ink:#151a17; --muted:#5d6661; --line:#d3d8d4;
-          --go:#0f7a41; --go-bg:#dcf2e5; --stop:#b3261e; --stop-bg:#fbe1de; --accent:#1f4e79; }
+  :root {
+    --bg:#161817; --panel:#222524; --panel2:#2b2f2d; --line:#3a3f3c;
+    --ink:#eef0e4; --muted:#a8ada3; --green:#00a651; --green-hi:#1fc46b; --green-bg:rgba(0,166,81,.14);
+    --red:#e5483b; --red-bg:rgba(229,72,59,.14); --gold:#f2c14e;
+  }
   * { box-sizing:border-box; }
-  body { margin:0; background:var(--bg); color:var(--ink); font:16px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
-  .wrap { max-width:760px; margin:0 auto; padding:12px 16px 40px; display:flex; flex-direction:column; gap:14px; }
-  header { display:flex; align-items:center; justify-content:space-between; gap:8px; }
-  header a { color:var(--accent); text-decoration:none; font-size:14px; }
-  h1 { font-size:20px; margin:4px 0; }
-  .card { background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:14px; display:flex; flex-direction:column; gap:10px; }
-  h2 { font-size:15px; margin:0; text-transform:uppercase; letter-spacing:.04em; }
+  body { margin:0; min-height:100vh; color:var(--ink); font:16px/1.45 'Barlow', system-ui, sans-serif;
+         background: radial-gradient(900px 500px at 50% -120px, rgba(0,166,81,.28), transparent 70%), var(--bg); }
+  .wrap { max-width:760px; margin:0 auto; padding:14px 16px 48px; display:flex; flex-direction:column; gap:16px; }
+  .top { display:flex; justify-content:flex-end; }
+  .top a { color:var(--muted); text-decoration:none; font-size:14px; font-weight:600; letter-spacing:.04em; text-transform:uppercase; }
+  .top a:hover { color:var(--ink); }
+  .hero { text-align:center; padding:4px 0 6px; }
+  .hero img { width:min(220px, 56vw); height:auto; filter:drop-shadow(0 10px 24px rgba(0,0,0,.55)); }
+  .hero h1 { margin:6px 0 0; font:400 clamp(34px,8vw,52px)/1 'Bebas Neue', 'Barlow Condensed', sans-serif; letter-spacing:.06em; }
+  .hero h1 span { color:var(--green-hi); }
+  .hero p { margin:6px 0 0; color:var(--muted); font-size:14px; letter-spacing:.08em; text-transform:uppercase; }
+  .card { background:linear-gradient(180deg, var(--panel2), var(--panel)); border:1px solid var(--line); border-radius:14px;
+          padding:16px; display:flex; flex-direction:column; gap:12px; box-shadow:0 8px 24px rgba(0,0,0,.35); }
+  h2 { margin:0; font:700 15px/1.2 'Barlow Condensed', sans-serif; text-transform:uppercase; letter-spacing:.12em; color:var(--muted);
+       display:flex; align-items:center; gap:10px; }
+  h2::before { content:''; width:4px; height:16px; border-radius:2px; background:var(--green); }
   .row { display:flex; flex-wrap:wrap; gap:10px; align-items:flex-end; }
-  label { display:flex; flex-direction:column; gap:3px; font-size:12px; color:var(--muted); }
+  label { display:flex; flex-direction:column; gap:4px; font-size:12px; font-weight:600; color:var(--muted); text-transform:uppercase; letter-spacing:.06em; }
   label.grow { flex:1; min-width:200px; }
-  input, select { font:inherit; padding:8px 10px; border:1px solid var(--line); border-radius:8px; background:#fff; color:var(--ink); }
-  input[type=number] { width:90px; }
-  button { font:inherit; font-weight:600; padding:9px 14px; border-radius:8px; border:1px solid var(--line); background:#fff; color:var(--ink); cursor:pointer; }
-  button.primary { background:var(--stop); border-color:var(--stop); color:#fff; padding:12px 18px; }
-  button.primary.running { background:var(--ink); border-color:var(--ink); }
+  input, select { font:600 16px 'Barlow', sans-serif; padding:10px 12px; border:1px solid var(--line); border-radius:10px;
+                  background:#151716; color:var(--ink); }
+  input:focus, select:focus { outline:2px solid var(--green); outline-offset:1px; }
+  input[type=number] { width:100px; }
+  button { font:700 15px 'Barlow', sans-serif; padding:10px 16px; border-radius:10px; border:1px solid var(--line);
+           background:#151716; color:var(--ink); cursor:pointer; letter-spacing:.02em; }
+  button:hover { border-color:var(--green); }
+  button.primary { width:100%; padding:16px 18px; font:400 26px/1 'Bebas Neue', sans-serif; letter-spacing:.08em;
+                   background:linear-gradient(180deg, var(--green-hi), var(--green)); border:0; color:#fff;
+                   box-shadow:0 6px 18px rgba(0,166,81,.35); }
+  button.primary.running { background:linear-gradient(180deg, #f0645a, var(--red)); box-shadow:0 6px 18px rgba(229,72,59,.35); }
   button:disabled { opacity:.5; cursor:default; }
-  .stat { font-size:14px; margin:0; color:var(--muted); }
-  .stat.good { color:var(--go); } .stat.bad { color:var(--stop); }
-  .band { padding:9px 12px; border-radius:8px; font-size:14px; }
-  .band.ok { background:var(--go-bg); } .band.err { background:var(--stop-bg); }
-  .pill { font-size:11px; background:var(--go-bg); color:var(--go); border-radius:20px; padding:2px 8px; vertical-align:middle; }
-  .hint { font-size:13px; color:var(--muted); margin:0; }
-  table { width:100%; border-collapse:collapse; font-size:13px; }
-  th, td { text-align:left; padding:5px 6px; border-bottom:1px solid var(--line); }
+  .stat { font-size:14px; margin:0; color:var(--muted); display:flex; align-items:center; gap:8px; }
+  .stat::before { content:''; width:9px; height:9px; border-radius:50%; background:var(--muted); flex:none; }
+  .stat.good { color:var(--green-hi); } .stat.good::before { background:var(--green-hi); box-shadow:0 0 8px var(--green-hi); }
+  .stat.bad { color:var(--red); } .stat.bad::before { background:var(--red); }
+  .band { padding:10px 12px; border-radius:10px; font-size:14px; }
+  .band.ok { background:var(--green-bg); color:var(--green-hi); } .band.err { background:var(--red-bg); color:#ff8a80; }
+  .pill { font:700 11px 'Barlow', sans-serif; background:rgba(242,193,78,.15); color:var(--gold); border-radius:20px; padding:3px 9px; letter-spacing:.06em; }
+  .hint { font-size:14px; color:var(--muted); margin:0; }
+  .hint b { color:var(--ink); }
+  .now { display:flex; align-items:center; justify-content:space-between; gap:10px; padding:12px 14px; border-radius:10px;
+         background:#151716; border:1px solid var(--line); }
+  .now small { color:var(--muted); text-transform:uppercase; letter-spacing:.08em; font-size:11px; font-weight:700; }
+  .now strong { font:400 22px/1.1 'Bebas Neue', sans-serif; letter-spacing:.05em; }
+  table { width:100%; border-collapse:collapse; font-size:14px; }
+  th { text-align:left; padding:6px; color:var(--muted); font-size:11px; text-transform:uppercase; letter-spacing:.08em; border-bottom:1px solid var(--line); }
+  td { padding:7px 6px; border-bottom:1px solid #2f3331; }
+  td.ok { color:var(--green-hi); font-weight:700; } td.no { color:var(--red); font-weight:700; }
 </style>
 </head>
 <body>
 <div class="wrap">
-  <header>
-    <h1>Bar Ticket Kiosk</h1>
-    <a href="index.html">&larr; Menu</a>
+  <div class="top"><a href="index.html">&larr; Menu</a></div>
+  <header class="hero">
+    <img src="lib/rodeo-logo.png" alt="Holmdale Pro Rodeo">
+    <h1>Bar <span>Ticket</span> Kiosk</h1>
+    <p>Beer &amp; premium tickets &middot; card reader</p>
   </header>
 
   <section class="card">
@@ -81,10 +111,8 @@
       <label>Beer $<input id="beer" type="number" min="0" step="0.25"></label>
       <label>Premium $<input id="prem" type="number" min="0" step="0.25"></label>
     </div>
-    <div class="row">
-      <button id="go" class="primary">Start kiosk on reader</button>
-    </div>
-    <p class="stat"><b>Status:</b> <span id="status">Stopped</span></p>
+    <button id="go" class="primary">Start kiosk on reader</button>
+    <div class="now"><small>Reader status</small><strong id="status">Stopped</strong></div>
     <div id="kErr"></div>
     <table id="logT" hidden>
       <thead><tr><th>Time</th><th>Beer</th><th>Premium</th><th>Total</th><th>Printed</th></tr></thead>
@@ -213,7 +241,7 @@ async function oneCustomer() {
   catch (e) { ok = false; band('kErr', false, e.message); }
   log = [{ when: new Date().toLocaleTimeString('en-CA'), beer, premium, total, ok }, ...log].slice(0, 20);
   $('logT').hidden = false;
-  $('logB').innerHTML = log.map((l) => `<tr><td>${l.when}</td><td>${l.beer}</td><td>${l.premium}</td><td>${money(l.total)}</td><td>${l.ok ? 'Yes' : 'No'}</td></tr>`).join('');
+  $('logB').innerHTML = log.map((l) => `<tr><td>${l.when}</td><td>${l.beer}</td><td>${l.premium}</td><td>${money(l.total)}</td><td class="${l.ok ? 'ok' : 'no'}">${l.ok ? 'Yes' : 'No'}</td></tr>`).join('');
   setStatus(ok ? 'Paid (simulated), tickets printed' : 'Paid (simulated), but the tickets did not print');
   await sleep(DONE_MS);
 }
