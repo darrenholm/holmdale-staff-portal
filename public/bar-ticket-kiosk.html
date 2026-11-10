@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Bar Ticket Kiosk - Holmdale Pro Rodeo</title>
+<!--
+  Bar ticket kiosk on a Stripe WisePOS E card reader.
+  The customer keys in BEER and PREMIUM ticket counts on the reader, then gets a
+  payment screen. For now that screen has a "Simulate payment" button: nothing is
+  charged and no PaymentIntent is made. Tickets print on the Epson TM-m30III
+  (lib/epos-print.js), one per drink, cut apart.
+
+  Reader screens go through the rodeo API (/api/bar-kiosk), which uses
+  KIOSK_STRIPE_KEY when set (testing on the Holm Graphics counter reader) or the
+  rodeo's own Stripe key. Moved here from the shop's Rodeo Test Bed, 2026-11-10.
+-->
+<script src="lib/epos-print.js"></script>
+<script src="lib/bar-tickets.js"></script>
+<style>
+  :root { --bg:#f2f3f1; --panel:#fff; --ink:#151a17; --muted:#5d6661; --line:#d3d8d4;
+          --go:#0f7a41; --go-bg:#dcf2e5; --stop:#b3261e; --stop-bg:#fbe1de; --accent:#1f4e79; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); font:16px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  .wrap { max-width:760px; margin:0 auto; padding:12px 16px 40px; display:flex; flex-direction:column; gap:14px; }
+  header { display:flex; align-items:center; justify-content:space-between; gap:8px; }
+  header a { color:var(--accent); text-decoration:none; font-size:14px; }
+  h1 { font-size:20px; margin:4px 0; }
+  .card { background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:14px; display:flex; flex-direction:column; gap:10px; }
+  h2 { font-size:15px; margin:0; text-transform:uppercase; letter-spacing:.04em; }
+  .row { display:flex; flex-wrap:wrap; gap:10px; align-items:flex-end; }
+  label { display:flex; flex-direction:column; gap:3px; font-size:12px; color:var(--muted); }
+  label.grow { flex:1; min-width:200px; }
+  input, select { font:inherit; padding:8px 10px; border:1px solid var(--line); border-radius:8px; background:#fff; color:var(--ink); }
+  input[type=number] { width:90px; }
+  button { font:inherit; font-weight:600; padding:9px 14px; border-radius:8px; border:1px solid var(--line); background:#fff; color:var(--ink); cursor:pointer; }
+  button.primary { background:var(--stop); border-color:var(--stop); color:#fff; padding:12px 18px; }
+  button.primary.running { background:var(--ink); border-color:var(--ink); }
+  button:disabled { opacity:.5; cursor:default; }
+  .stat { font-size:14px; margin:0; color:var(--muted); }
+  .stat.good { color:var(--go); } .stat.bad { color:var(--stop); }
+  .band { padding:9px 12px; border-radius:8px; font-size:14px; }
+  .band.ok { background:var(--go-bg); } .band.err { background:var(--stop-bg); }
+  .pill { font-size:11px; background:var(--go-bg); color:var(--go); border-radius:20px; padding:2px 8px; vertical-align:middle; }
+  .hint { font-size:13px; color:var(--muted); margin:0; }
+  table { width:100%; border-collapse:collapse; font-size:13px; }
+  th, td { text-align:left; padding:5px 6px; border-bottom:1px solid var(--line); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Bar Ticket Kiosk</h1>
+    <a href="index.html">&larr; Menu</a>
+  </header>
+
+  <section class="card">
+    <h2>Ticket printer</h2>
+    <p class="stat" id="pStat">Checking the printer...</p>
+    <div class="row">
+      <label class="grow">Printer address
+        <input id="pHost" type="text" placeholder="10.10.1.19">
+      </label>
+      <button id="pCheck">Check</button>
+    </div>
+    <div class="row">
+      <button id="pCut">Test print + cuts</button>
+      <button id="pSample">Print 3 sample tickets</button>
+    </div>
+    <div id="pResult"></div>
+  </section>
+
+  <section class="card">
+    <h2>Kiosk on the card reader <span class="pill">Simulated payment</span></h2>
+    <p class="hint">Press Start. The reader asks for beer tickets, then premium tickets, then shows a payment screen with a <b>Simulate payment</b> button. Tickets print and the reader goes back to the first screen. No card is charged.</p>
+    <p class="hint" id="acct"></p>
+    <div class="row">
+      <label class="grow">Card reader
+        <select id="reader"></select>
+      </label>
+      <label>Beer $<input id="beer" type="number" min="0" step="0.25"></label>
+      <label>Premium $<input id="prem" type="number" min="0" step="0.25"></label>
+    </div>
+    <div class="row">
+      <button id="go" class="primary">Start kiosk on reader</button>
+    </div>
+    <p class="stat"><b>Status:</b> <span id="status">Stopped</span></p>
+    <div id="kErr"></div>
+    <table id="logT" hidden>
+      <thead><tr><th>Time</th><th>Beer</th><th>Premium</th><th>Total</th><th>Printed</th></tr></thead>
+      <tbody id="logB"></tbody>
+    </table>
+  </section>
+</div>
+
+<script>
+const API = 'https://api.holmdalerodeo.ca/api';
+const LS = 'bar_kiosk_settings';
+const MAX_EACH = 10, POLL_MS = 1000, DONE_MS = 4000, IDLE_STOP_MS = 15 * 60000;
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const money = (n) => '$' + Number(n).toFixed(2);
+const cents = (n) => Math.round(Number(n) * 100);
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const WIDTH = 48; // 80 mm paper
+
+const token = localStorage.getItem('auth_token');
+if (!token) location.href = 'login.html?expired=1';
+
+async function api(path, opts = {}) {
+  const r = await fetch(API + path, { ...opts, headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token, ...(opts.headers || {}) } });
+  if (r.status === 401 || r.status === 403) { localStorage.removeItem('auth_token'); location.href = 'login.html?expired=1'; throw new Error('Signed out'); }
+  const d = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(d.error || ('Server error ' + r.status));
+  return d;
+}
+
+let settings = { readerId: '', beer: 7, premium: 9 };
+try { settings = { ...settings, ...JSON.parse(localStorage.getItem(LS) || '{}') }; } catch {}
+const save = () => { try { localStorage.setItem(LS, JSON.stringify(settings)); } catch {} };
+
+// ─── Printer ────────────────────────────────────────────────────────────────
+function band(el, ok, text) { $(el).innerHTML = text ? `<div class="band ${ok ? 'ok' : 'err'}">${esc(text)}</div>` : ''; }
+
+async function checkPrinter() {
+  const s = $('pStat');
+  s.className = 'stat'; s.textContent = 'Checking ' + EposPrint.host() + '...';
+  try {
+    const r = await EposPrint.status();
+    s.className = 'stat ' + (r.problem ? 'bad' : 'good');
+    s.textContent = r.problem ? `Printer at ${EposPrint.host()} answered, but ${r.problem}.` : `Printer online at ${EposPrint.host()}.`;
+  } catch (e) { s.className = 'stat bad'; s.textContent = e.message; }
+}
+async function quick(label, bytes) {
+  band('pResult', true, '');
+  try { await EposPrint.print(bytes); band('pResult', true, label + ' sent to the printer.'); }
+  catch (e) { band('pResult', false, e.message); }
+}
+$('pHost').value = EposPrint.host();
+$('pHost').onchange = () => { EposPrint.setHost($('pHost').value); checkPrinter(); };
+$('pCheck').onclick = checkPrinter;
+$('pCut').onclick = () => quick('Cut test', BarTickets.buildCutTest({ width: WIDTH }));
+$('pSample').onclick = () => quick('3 sample tickets', BarTickets.buildTickets({ id: BarTickets.newSaleId('sample'), beer: 2, premium: 1, test: true }, { width: WIDTH }));
+
+// ─── Readers ────────────────────────────────────────────────────────────────
+async function loadReaders() {
+  try {
+    const d = await api('/bar-kiosk/readers');
+    $('acct').textContent = d.testAccount ? 'Using the test reader account (Holm Graphics).' : 'Using the rodeo Stripe account.';
+    $('reader').innerHTML = d.readers.length
+      ? d.readers.map((r) => `<option value="${esc(r.id)}">${esc(r.label || r.id)} (${esc(r.status)})</option>`).join('')
+      : '<option value="">No readers on this account</option>';
+    if (settings.readerId && d.readers.some((r) => r.id === settings.readerId)) $('reader').value = settings.readerId;
+    settings.readerId = $('reader').value;
+  } catch (e) { band('kErr', false, 'Could not list card readers: ' + e.message); }
+}
+$('reader').onchange = () => { settings.readerId = $('reader').value; save(); };
+$('beer').value = settings.beer; $('prem').value = settings.premium;
+$('beer').onchange = () => { settings.beer = Number($('beer').value) || 0; save(); };
+$('prem').onchange = () => { settings.premium = Number($('prem').value) || 0; save(); };
+
+// ─── Kiosk loop ─────────────────────────────────────────────────────────────
+let running = false, lastActivity = 0, log = [];
+const setStatus = (t) => { $('status').textContent = t; };
+const rid = () => encodeURIComponent(settings.readerId);
+
+// Puts input screens on the reader and waits. Returns the answers, or null.
+async function screen(inputs) {
+  await api(`/bar-kiosk/readers/${rid()}/inputs`, { method: 'POST', body: JSON.stringify({ inputs }) });
+  while (running) {
+    await sleep(POLL_MS);
+    if (Date.now() - lastActivity > IDLE_STOP_MS) {
+      band('kErr', false, 'Stopped after 15 minutes with no sales, so the reader is free.');
+      await stop(); return null;
+    }
+    let r; try { r = await api(`/bar-kiosk/readers/${rid()}`); } catch { continue; }
+    const a = r.action;
+    if (!a || a.type !== 'collect_inputs') return null;
+    if (a.status === 'in_progress') continue;
+    return a.status === 'succeeded' ? (a.inputs || []) : null;
+  }
+  return null;
+}
+
+const qty = (i) => { if (!i || i.skipped) return 0; const n = parseInt(i.numeric, 10); return Number.isFinite(n) ? Math.max(0, Math.min(MAX_EACH, n)) : 0; };
+
+async function oneCustomer() {
+  setStatus('Reader: choosing tickets');
+  const ans = await screen([
+    { type: 'numeric', required: false, custom_text: { title: 'How many BEER tickets?', description: `${money(settings.beer)} each. Max ${MAX_EACH}.\n19+ wristband required.`, submit_button: 'Next', skip_button: 'None' } },
+    { type: 'numeric', required: false, custom_text: { title: 'How many PREMIUM tickets?', description: `${money(settings.premium)} each. Max ${MAX_EACH}.`, submit_button: 'Next', skip_button: 'None' } },
+  ]);
+  if (!running || !ans) return;
+  const beer = qty(ans[0]), premium = qty(ans[1]);
+  if (!beer && !premium) return;
+
+  lastActivity = Date.now();
+  const total = beer * settings.beer + premium * settings.premium;
+  setStatus('Reader: payment screen, ' + money(total));
+  const paid = await screen([{ type: 'selection',
+    custom_text: { title: 'Total ' + money(total), description: `${beer} beer, ${premium} premium. Tap, insert or swipe card.` },
+    selection: { choices: [{ id: 'pay', text: 'Simulate payment', style: 'primary' }, { id: 'cancel', text: 'Cancel', style: 'secondary' }] } }]);
+  if (!running || !paid || paid[0]?.selection !== 'pay') return;
+
+  lastActivity = Date.now();
+  setStatus('Printing tickets');
+  const lines = [];
+  if (beer) lines.push({ description: 'Beer ticket', amount: cents(settings.beer * beer), quantity: beer });
+  if (premium) lines.push({ description: 'Premium ticket', amount: cents(settings.premium * premium), quantity: premium });
+  api(`/bar-kiosk/readers/${rid()}/display`, { method: 'POST', body: JSON.stringify({ lineItems: lines, total: cents(total) }) }).catch(() => {});
+  let ok = true;
+  try { await EposPrint.print(BarTickets.buildTickets({ id: BarTickets.newSaleId(), beer, premium, test: true }, { width: WIDTH })); }
+  catch (e) { ok = false; band('kErr', false, e.message); }
+  log = [{ when: new Date().toLocaleTimeString('en-CA'), beer, premium, total, ok }, ...log].slice(0, 20);
+  $('logT').hidden = false;
+  $('logB').innerHTML = log.map((l) => `<tr><td>${l.when}</td><td>${l.beer}</td><td>${l.premium}</td><td>${money(l.total)}</td><td>${l.ok ? 'Yes' : 'No'}</td></tr>`).join('');
+  setStatus(ok ? 'Paid (simulated), tickets printed' : 'Paid (simulated), but the tickets did not print');
+  await sleep(DONE_MS);
+}
+
+async function start() {
+  band('kErr', true, '');
+  if (!settings.readerId) { band('kErr', false, 'Pick a card reader first.'); return; }
+  save();
+  running = true; lastActivity = Date.now(); paintGo();
+  let quick = 0;
+  while (running) {
+    try {
+      const t = Date.now();
+      await oneCustomer();
+      quick = Date.now() - t < 3000 ? quick + 1 : 0;
+      if (quick >= 5) { band('kErr', false, 'The reader keeps closing the ticket screens. Check it is online and not in use, then Start again.'); await stop(); }
+    } catch (e) {
+      band('kErr', false, e.message);
+      setStatus('Waiting for the reader');
+      await sleep(5000);
+    }
+  }
+}
+async function stop() {
+  running = false; paintGo(); setStatus('Stopped');
+  if (settings.readerId) { try { await api(`/bar-kiosk/readers/${rid()}/cancel`, { method: 'POST' }); } catch {} }
+}
+function paintGo() {
+  $('go').textContent = running ? 'Stop kiosk' : 'Start kiosk on reader';
+  $('go').classList.toggle('running', running);
+  $('reader').disabled = running;
+}
+$('go').onclick = () => (running ? stop() : start());
+// Leaving the page must not leave the reader stuck on a kiosk screen.
+addEventListener('pagehide', () => {
+  if (!running || !settings.readerId) return;
+  running = false;
+  fetch(`${API}/bar-kiosk/readers/${rid()}/cancel`, { method: 'POST', keepalive: true, headers: { Authorization: 'Bearer ' + token } });
+});
+
+checkPrinter();
+loadReaders();
+</script>
+</body>
+</html>

@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 <title>Ticket Counter — Holmdale Rodeo</title>
+<script src="lib/epos-print.js"></script>
 <link href="lib/fonts.css" rel="stylesheet">
 <style>
   :root {
@@ -409,7 +410,7 @@
   <div class="topbar-right">
     Today: <strong id="todayTotal">$0</strong> (<span id="todayCount">0</span> sales)
     <span class="topbar-clock" id="clock">00:00</span>
-    <button id="printerBtn" onclick="connectPrinterManual()" title="Connect Printer" style="background:var(--surface2);border:1px solid var(--border);color:var(--text-dim);border-radius:8px;padding:4px 10px;font-size:13px;cursor:pointer;margin-left:8px;">🖨️</button>
+    <button id="printerBtn" onclick="connectPrinterManual()" title="Check receipt printer" style="background:var(--surface2);border:1px solid var(--border);color:var(--text-dim);border-radius:8px;padding:4px 10px;font-size:13px;cursor:pointer;margin-left:8px;">🖨️</button>
   </div>
 </div>
 
@@ -1530,14 +1531,9 @@ function showSuccess(total, method, receiptCart, receiptTotals, customerName) {
   printBtn.disabled = false;
 
   // Kick cash drawer automatically for cash sales (no receipt print)
-  if (method === 'Cash' && btChar) {
-    setTimeout(async () => {
-      try {
-        await btSend(btChar, escPos([ESC, 0x70, 0x00, 0x19, 0xFA]));
-        await new Promise(r => setTimeout(r, 100));
-        await btSend(btChar, escPos([ESC, 0x70, 0x01, 0x19, 0xFA]));
-      } catch(e) { console.warn('[Drawer]', e.message); }
-    }, 100);
+  if (method === 'Cash') {
+    // Drawer is wired to the Epson's DK port.
+    EposPrint.print(escPos([ESC, 0x70, 0x00, 0x19, 0xFA])).catch(e => console.warn('[Drawer]', e.message));
   }
 
   document.getElementById('successOverlay').classList.add('open');
@@ -1625,26 +1621,30 @@ async function connectPrinter() {
   }
 }
 
+// Receipts print on the Epson TM-m30III (network, lib/epos-print.js).
+// The button checks it; a long press changes its address on this device.
 async function connectPrinterManual() {
   const btn = document.getElementById('printerBtn');
   btn.textContent = '⏳'; btn.disabled = true;
   try {
-    btDevice = null; btChar = null; // force fresh connect
-    await connectPrinter();
-    btn.textContent = '🖨️✓'; btn.style.color = 'var(--green-light)'; btn.style.borderColor = 'var(--green)';
-    // Test print a small line
-    await btSend(btChar, escPos([ESC, 0x40], [ESC, 0x61, 0x01], 'Printer connected\n\n\n'));
+    const r = await EposPrint.status();
+    btn.textContent = r.problem ? '🖨️!' : '🖨️✓';
+    btn.style.color = r.problem ? 'var(--red)' : 'var(--green-light)';
+    btn.style.borderColor = r.problem ? 'var(--red)' : 'var(--green)';
+    btn.title = 'Epson at ' + EposPrint.host() + (r.problem ? ': ' + r.problem : '');
+    if (r.problem) alert('Printer at ' + EposPrint.host() + ': ' + r.problem);
   } catch (e) {
     btn.textContent = '🖨️✗'; btn.style.color = 'var(--red)';
-    alert('Could not connect to printer: ' + e.message);
+    const ip = prompt(e.message + '\n\nPrinter address:', EposPrint.host());
+    if (ip) EposPrint.setHost(ip);
   }
   btn.disabled = false;
 }
 
 async function printReceipt(receiptCart, totals, method, customer) {
-  if (!navigator.bluetooth) { console.warn('[Print] Web Bluetooth not supported'); return; }
-  try {
-    const char = await connectPrinter();
+  const W = 48; // 80 mm paper
+  const RULE = '-'.repeat(W) + '\n';
+  {
     const now = new Date();
     const dateStr = now.toLocaleDateString('en-CA', { year:'numeric', month:'short', day:'numeric' });
     const timeStr = now.toLocaleTimeString('en-CA', { hour:'2-digit', minute:'2-digit' });
@@ -1662,34 +1662,34 @@ async function printReceipt(receiptCart, totals, method, customer) {
     lines.push([ESC, 0x45, 0x00]);              // Bold off
     lines.push(`${dateStr}  ${timeStr}\n`);
     if (customer) lines.push(`${customer}\n`);
-    lines.push('--------------------------------\n');
+    lines.push(RULE);
 
     // Left align for items
     lines.push([ESC, 0x61, 0x00]);
     for (const item of receiptCart) {
       const lineTotal = (item.unitPrice * item.qty).toFixed(2);
       const name = item.detail ? `${item.name} (${item.detail})` : item.name;
-      // Truncate name to fit 32 chars, price right-aligned
+      // Name left, price right-aligned to the paper width
       const price = `$${lineTotal}`;
       const qty = item.qty > 1 ? `${item.qty}x ` : '';
       const label = qty + name;
-      const pad = 32 - label.length - price.length;
+      const pad = W - label.length - price.length;
       lines.push(label + (pad > 0 ? ' '.repeat(pad) : ' ') + price + '\n');
     }
 
-    lines.push('--------------------------------\n');
+    lines.push(RULE);
 
     // Totals
     const subStr = `$${totals.subtotal.toFixed(2)}`;
-    lines.push('Subtotal' + ' '.repeat(32 - 8 - subStr.length) + subStr + '\n');
+    lines.push('Subtotal' + ' '.repeat(Math.max(1, W - 8 - subStr.length)) + subStr + '\n');
     const taxStr = `$${totals.tax.toFixed(2)}`;
-    lines.push('HST (13%)' + ' '.repeat(32 - 9 - taxStr.length) + taxStr + '\n');
+    lines.push('HST (13%)' + ' '.repeat(Math.max(1, W - 9 - taxStr.length)) + taxStr + '\n');
     lines.push([ESC, 0x45, 0x01]);              // Bold on
     const totalStr = `$${totals.total.toFixed(2)}`;
-    lines.push('TOTAL' + ' '.repeat(32 - 5 - totalStr.length) + totalStr + '\n');
+    lines.push('TOTAL' + ' '.repeat(Math.max(1, W - 5 - totalStr.length)) + totalStr + '\n');
     lines.push([ESC, 0x45, 0x00]);              // Bold off
     lines.push(`Payment: ${method}\n`);
-    lines.push('--------------------------------\n');
+    lines.push(RULE);
 
     // Footer centered
     lines.push([ESC, 0x61, 0x01]);
@@ -1698,12 +1698,8 @@ async function printReceipt(receiptCart, totals, method, customer) {
     lines.push([ESC, 0x4A, 36]);                 // Feed ~0.5" before cut
     lines.push([GS, 0x56, 0x41, 0x03]);         // Partial cut
 
-    await btSend(char, escPos(...lines));
-
+    await EposPrint.print(escPos(...lines));
     console.log('[Print] Receipt sent successfully');
-    console.log('[Print] Receipt sent successfully');
-  } catch (e) {
-    if (e.name !== 'NotFoundError') console.warn('[Print] Failed:', e.message);
   }
 }
 
