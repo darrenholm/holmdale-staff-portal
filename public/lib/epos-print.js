@@ -32,13 +32,19 @@
       '<s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/"><s:Body>' +
       '<epos-print xmlns="' + NS + '">' + inner + '</epos-print></s:Body></s:Envelope>';
     var r;
+    // Chrome can hold the request while it asks "allow access to devices on
+    // your local network?" in the address bar, so give up rather than hang.
+    var ctl = new AbortController();
+    var timer = setTimeout(function () { ctl.abort(); }, timeoutMs + 5000);
     try {
       r = await fetch('https://' + h + '/cgi-bin/epos/service.cgi?devid=local_printer&timeout=' + timeoutMs, {
-        method: 'POST', headers: { 'Content-Type': 'text/xml; charset=utf-8' }, body: xml,
+        method: 'POST', headers: { 'Content-Type': 'text/xml; charset=utf-8' }, body: xml, signal: ctl.signal,
       });
     } catch (e) {
-      throw new Error("Can't reach the printer at " + h + '. Open https://' + h + ' on this device once, click Advanced > Proceed, then try again.');
-    }
+      throw new Error(e.name === 'AbortError'
+        ? 'No answer from the printer at ' + h + '. If Chrome asks to allow access to devices on your local network, click Allow.'
+        : "Can't reach the printer at " + h + '. Open https://' + h + ' on this device once, click Advanced > Proceed, then try again.');
+    } finally { clearTimeout(timer); }
     var text = await r.text();
     var code = (text.match(/code="([^"]*)"/) || [])[1] || '';
     var status = (text.match(/status="([^"]*)"/) || [])[1] || '';
