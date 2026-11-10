@@ -1642,7 +1642,7 @@ async function connectPrinterManual() {
 }
 
 async function printReceipt(receiptCart, totals, method, customer) {
-  const W = 32; // 58 mm paper
+  const W = 42; // Epson on 58 mm paper
   const RULE = '-'.repeat(W) + '\n';
   {
     const now = new Date();
