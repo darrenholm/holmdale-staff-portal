@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vendor Portal — Holmdale Pro Rodeo</title>
+<!--
+  Vendor portal for approved vendors (session from vendor-login.html, stored as
+  vendor_token). Talks to /api/vendor-portal/* on the rodeo API. Booth payment
+  uses Moneris Checkout; the server charges the balance it calculates, not an
+  amount from this page.
+-->
+<script src="https://gateway.moneris.com/chkt/js/chkt_v1.00.js"></script>
+<style>
+  :root { --ink:#1c1917; --muted:#78716c; --line:#e7e5e4; --bg:#f5f5f4; --green:#00B74A; --green-bg:#dcfce7; --gold:#facc15; --red:#b91c1c; --red-bg:#fee2e2; --amber-bg:#fef3c7; --amber:#92400e; }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--bg); color: var(--ink); min-height: 100vh; }
+  .top { background: var(--ink); color: #fff; padding: 18px 16px; }
+  .top-in { max-width: 820px; margin: 0 auto; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+  .top h1 { color: var(--gold); font-size: 15px; letter-spacing: 2px; }
+  .top .biz { font-size: 21px; font-weight: 700; margin-top: 2px; }
+  .top button { background: transparent; color: #d6d3d1; border: 1px solid #57534e; border-radius: 8px; padding: 8px 12px; font-size: 13px; cursor: pointer; }
+  .wrap { max-width: 820px; margin: 0 auto; padding: 18px 16px 60px; display: grid; gap: 16px; }
+  .card { background: #fff; border-radius: 14px; padding: 18px; box-shadow: 0 2px 10px rgba(0,0,0,.05); }
+  .card h2 { font-size: 16px; margin-bottom: 4px; display: flex; align-items: center; gap: 8px; }
+  .card .sub { font-size: 13px; color: var(--muted); margin-bottom: 14px; line-height: 1.5; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  @media (max-width: 600px) { .grid2 { grid-template-columns: 1fr; } }
+  label { display: block; font-size: 12px; font-weight: 600; color: #44403c; margin-bottom: 5px; }
+  input, select, textarea { width: 100%; padding: 11px 12px; font-size: 15px; border: 2px solid var(--line); border-radius: 9px; font-family: inherit; background: #fff; }
+  textarea { min-height: 90px; resize: vertical; }
+  input:focus, select:focus, textarea:focus { outline: none; border-color: var(--green); }
+  .btn { display: inline-block; padding: 11px 18px; font-size: 15px; font-weight: 700; border-radius: 9px; border: 0; cursor: pointer; background: var(--green); color: #fff; }
+  .btn.ghost { background: #fff; color: var(--ink); border: 2px solid var(--line); }
+  .btn.small { padding: 6px 10px; font-size: 13px; }
+  .btn:disabled { opacity: .55; cursor: default; }
+  .row { display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap; }
+  .row > .grow { flex: 1; min-width: 180px; }
+  .status { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+  .stat { background: var(--bg); border-radius: 10px; padding: 12px; }
+  .stat small { display: block; font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); font-weight: 700; }
+  .stat strong { display: block; font-size: 17px; margin-top: 3px; }
+  .pill { display: inline-block; font-size: 12px; font-weight: 700; padding: 3px 9px; border-radius: 20px; }
+  .pill.ok { background: var(--green-bg); color: #166534; }
+  .pill.due { background: var(--amber-bg); color: var(--amber); }
+  .pill.miss { background: var(--red-bg); color: var(--red); }
+  .list { list-style: none; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+  .list li { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 12px; border-top: 1px solid var(--line); font-size: 14px; }
+  .list li:first-child { border-top: 0; }
+  .list li .meta { color: var(--muted); font-size: 12px; }
+  .empty { color: var(--muted); font-size: 14px; padding: 6px 0; }
+  .logo-box { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; }
+  .logo-box .pv { width: 120px; height: 120px; border: 2px dashed var(--line); border-radius: 12px; display: grid; place-items: center; overflow: hidden; background: var(--bg); color: var(--muted); font-size: 12px; text-align: center; }
+  .logo-box .pv img { max-width: 100%; max-height: 100%; object-fit: contain; }
+  .pay { display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap; }
+  .pay .amt { font-size: 28px; font-weight: 800; }
+  .pay .amt small { font-size: 13px; font-weight: 600; color: var(--muted); }
+  #monerisBox { display: none; margin-top: 14px; }
+  #monerisCheckout { min-height: 420px; }
+  .toast { position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%); background: var(--ink); color: #fff; padding: 12px 18px; border-radius: 10px; font-size: 14px; display: none; z-index: 10; max-width: calc(100% - 32px); }
+  .toast.err { background: var(--red); }
+  .checklist { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+  #loading { text-align: center; padding: 60px 16px; color: var(--muted); }
+  #app { display: none; }
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="top-in">
+    <div><h1>🤠 HOLMDALE PRO RODEO · VENDOR PORTAL</h1><div class="biz" id="bizName">…</div></div>
+    <button onclick="signOut()">Sign out</button>
+  </div>
+</header>
+<div id="loading">Loading your booth…</div>
+
+<main class="wrap" id="app">
+  <section class="card">
+    <h2>✅ You're approved</h2>
+    <div class="sub" id="eventLine"></div>
+    <div class="status">
+      <div class="stat"><small>Booth</small><strong id="sBooth">—</strong></div>
+      <div class="stat"><small>Payment</small><strong id="sPay">—</strong></div>
+      <div class="stat"><small>Documents</small><strong id="sDocs">—</strong></div>
+      <div class="stat"><small>Gate passes</small><strong id="sPasses">—</strong></div>
+    </div>
+  </section>
+
+  <section class="card" id="payCard">
+    <h2>💳 Booth payment</h2>
+    <div class="sub" id="payNote"></div>
+    <div class="pay">
+      <div class="amt" id="payAmt"></div>
+      <button class="btn" id="payBtn" onclick="startPayment()">Pay now</button>
+    </div>
+    <div id="monerisBox"><div id="monerisCheckout"></div></div>
+  </section>
+
+  <section class="card">
+    <h2>📄 Documents</h2>
+    <div class="sub" id="docNote">Upload proof of liability insurance. Food vendors also need a food handler certificate and a health unit permit. PDF or a clear photo is fine.</div>
+    <div class="checklist" id="docChecklist"></div>
+    <ul class="list" id="docList"></ul>
+    <div class="row" style="margin-top:12px">
+      <div><label for="docKind">Type</label><select id="docKind"></select></div>
+      <div class="grow"><label for="docFile">File</label><input type="file" id="docFile" accept=".pdf,.png,.jpg,.jpeg,.webp,.heic,.doc,.docx"></div>
+      <button class="btn" id="docBtn" onclick="uploadDoc()">Upload</button>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>🎟️ Gate passes</h2>
+    <div class="sub" id="passNote"></div>
+    <ul class="list" id="passList"></ul>
+    <div class="row" style="margin-top:12px">
+      <div class="grow"><label for="passName">Name</label><input id="passName" placeholder="First and last name" maxlength="200"></div>
+      <button class="btn" id="passBtn" onclick="addPass()">Add</button>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>🖼️ Logo</h2>
+    <div class="sub">Used on rodeo signs and the website. A PNG with a clear background, or a vector file (SVG, PDF, EPS, AI), works best.</div>
+    <div class="logo-box">
+      <div class="pv" id="logoPv">No logo yet</div>
+      <div>
+        <input type="file" id="logoFile" accept=".png,.jpg,.jpeg,.webp,.gif,.svg,.pdf,.eps,.ai" style="max-width:260px">
+        <div style="margin-top:10px"><button class="btn" id="logoBtn" onclick="uploadLogo()">Upload logo</button></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>🏪 Your details</h2>
+    <div class="sub">How we'll describe you to rodeo visitors.</div>
+    <div class="grid2">
+      <div><label for="fContact">Contact name</label><input id="fContact" maxlength="200"></div>
+      <div><label for="fPhone">Phone</label><input id="fPhone" maxlength="50"></div>
+    </div>
+    <div style="margin-top:12px"><label for="fDesc">About your business</label><textarea id="fDesc" maxlength="1500" placeholder="A sentence or two for the rodeo website"></textarea></div>
+    <div style="margin-top:12px"><label for="fProduct">What you'll sell</label><textarea id="fProduct" maxlength="500" style="min-height:60px"></textarea></div>
+    <div class="grid2" style="margin-top:12px">
+      <div><label for="fWeb">Website</label><input id="fWeb" maxlength="300" placeholder="yourbusiness.ca"></div>
+      <div><label for="fFb">Facebook</label><input id="fFb" maxlength="300" placeholder="facebook.com/yourbusiness"></div>
+      <div><label for="fIg">Instagram</label><input id="fIg" maxlength="300" placeholder="instagram.com/yourbusiness"></div>
+    </div>
+    <div style="margin-top:14px"><button class="btn" id="saveBtn" onclick="saveDetails()">Save details</button></div>
+  </section>
+</main>
+<div class="toast" id="toast"></div>
+
+<script>
+  var API = 'https://api.holmdalerodeo.ca/api';
+  var store = {
+    get: function (k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
+    del: function (k) { try { localStorage.removeItem(k); } catch (e) {} }
+  };
+  var token = store.get('vendor_token');
+  if (!token) location.href = 'vendor-login.html';
+  var data = null, moneris = null;
+
+  function $(id) { return document.getElementById(id); }
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+  function money(n) { return '$' + Number(n || 0).toFixed(2); }
+  function toast(msg, err) { var t = $('toast'); t.textContent = msg; t.className = 'toast' + (err ? ' err' : ''); t.style.display = 'block'; clearTimeout(t._h); t._h = setTimeout(function () { t.style.display = 'none'; }, 3500); }
+  function signOut() { store.del('vendor_token'); location.href = 'vendor-login.html'; }
+
+  async function call(path, opts) {
+    opts = opts || {};
+    var headers = Object.assign({ Authorization: 'Bearer ' + token }, opts.body && !(opts.body instanceof FormData) ? { 'Content-Type': 'application/json' } : {});
+    var r = await fetch(API + '/vendor-portal' + path, Object.assign({}, opts, { headers: headers }));
+    var d = await r.json().catch(function () { return {}; });
+    if (r.status === 401 || r.status === 403) { store.del('vendor_token'); alert(d.error || 'Please sign in again.'); location.href = 'vendor-login.html'; throw new Error('signed out'); }
+    if (!r.ok) throw new Error(d.error || 'Something went wrong.');
+    return d;
+  }
+
+  async function load() {
+    try { data = await call('/me'); render(); }
+    catch (e) { if (e.message !== 'signed out') { $('loading').textContent = e.message; } }
+  }
+
+  function render() {
+    var v = data.vendor, p = data.payment;
+    $('loading').style.display = 'none'; $('app').style.display = 'grid';
+    $('bizName').textContent = v.name;
+    $('eventLine').textContent = data.event.dates + ' · ' + data.event.location;
+    $('sBooth').textContent = ({ '10x10': '10 x 10', '10x20': '10 x 20', food_vendor: 'Food spot', custom: 'Custom' })[v.booth_size] || v.booth_size || 'To be confirmed';
+    $('sPay').innerHTML = p.in_kind ? '<span class="pill ok">In-kind</span>' : p.paid ? '<span class="pill ok">Paid</span>' : p.amount_due ? '<span class="pill due">' + money(p.amount_due) + ' due</span>' : '<span class="pill ok">Nothing due</span>';
+
+    // Payment card
+    if (p.amount_due > 0) {
+      $('payCard').style.display = '';
+      $('payNote').textContent = 'Booth fee ' + money(p.booth_price) + ' + HST (13%). Pay securely by card.';
+      $('payAmt').innerHTML = money(p.amount_due) + ' <small>incl. HST</small>';
+      $('payBtn').style.display = '';
+    } else if (p.paid) {
+      $('payCard').style.display = '';
+      $('payNote').textContent = 'Thank you, your booth fee is paid' + (p.paid_on ? ' (' + new Date(p.paid_on).toLocaleDateString('en-CA') + ')' : '') + '.';
+      $('payAmt').innerHTML = '<span class="pill ok">Paid</span>';
+      $('payBtn').style.display = 'none';
+    } else {
+      $('payCard').style.display = 'none';
+    }
+
+    // Documents
+    var kinds = data.document_kinds, have = {};
+    data.documents.forEach(function (d) { have[d.kind] = true; });
+    var needed = ['insurance'].concat(v.vendor_type === 'food' ? ['food_handler', 'health_permit'] : []);
+    $('docChecklist').innerHTML = needed.map(function (k) { return '<span class="pill ' + (have[k] ? 'ok' : 'miss') + '">' + (have[k] ? '✓ ' : '✗ ') + esc(kinds[k]) + '</span>'; }).join('');
+    var missing = needed.filter(function (k) { return !have[k]; }).length;
+    $('sDocs').innerHTML = missing ? '<span class="pill miss">' + missing + ' needed</span>' : '<span class="pill ok">All in</span>';
+    $('docKind').innerHTML = Object.keys(kinds).map(function (k) { return '<option value="' + k + '"' + (k === (needed.find(function (n) { return !have[n]; }) || 'other') ? ' selected' : '') + '>' + esc(kinds[k]) + '</option>'; }).join('');
+    $('docList').innerHTML = data.documents.length ? data.documents.map(function (d) {
+      return '<li><div><strong>' + esc(d.kind_label) + '</strong><div class="meta">' + esc(d.filename) + ' · ' + new Date(d.uploaded_at).toLocaleDateString('en-CA') + '</div></div>' +
+        '<div style="display:flex;gap:6px"><button class="btn ghost small" onclick="openDoc(' + d.id + ')">View</button><button class="btn ghost small" onclick="delDoc(' + d.id + ')">Remove</button></div></li>';
+    }).join('') : '<li class="empty">No documents uploaded yet.</li>';
+
+    // Passes
+    var cap = v.max_passes;
+    $('passNote').textContent = 'Add everyone working your booth so their gate passes are ready at check-in.' + (cap != null ? ' Your booth includes ' + cap + '.' : '');
+    $('sPasses').textContent = data.passes.length + (cap != null ? ' of ' + cap : '');
+    $('passList').innerHTML = data.passes.length ? data.passes.map(function (p) {
+      return '<li><span>' + esc(p.name) + '</span><button class="btn ghost small" onclick="delPass(' + p.id + ')">Remove</button></li>';
+    }).join('') : '<li class="empty">No names added yet.</li>';
+    var full = cap != null && data.passes.length >= cap;
+    $('passName').disabled = full; $('passBtn').disabled = full;
+    $('passName').placeholder = full ? 'All passes used. Email us if you need more.' : 'First and last name';
+
+    // Logo
+    var logo = data.logos[0];
+    $('logoPv').innerHTML = logo ? (/\.(png|jpe?g|webp|gif|svg)$/i.test(logo.blob_url) ? '<img src="' + esc(logo.blob_url) + '" alt="Your logo">' : '📎<br>' + esc(logo.filename)) : 'No logo yet';
+
+    // Details
+    $('fContact').value = v.contact_name || ''; $('fPhone').value = v.phone || '';
+    $('fDesc').value = v.description || ''; $('fProduct').value = v.product || '';
+    $('fWeb').value = v.website || ''; $('fFb').value = v.facebook || ''; $('fIg').value = v.instagram || '';
+  }
+
+  async function busy(btn, fn) { btn.disabled = true; try { await fn(); } catch (e) { if (e.message !== 'signed out') toast(e.message, true); } finally { btn.disabled = false; } }
+
+  function saveDetails() {
+    busy($('saveBtn'), async function () {
+      await call('/me', { method: 'PUT', body: JSON.stringify({ contact_name: $('fContact').value, phone: $('fPhone').value, description: $('fDesc').value, product: $('fProduct').value, website: $('fWeb').value, facebook: $('fFb').value, instagram: $('fIg').value }) });
+      toast('Details saved'); await load();
+    });
+  }
+
+  function uploadFile(inputId, path, extra) {
+    var f = $(inputId).files[0];
+    if (!f) throw new Error('Choose a file first.');
+    if (f.size > 15 * 1024 * 1024) throw new Error('That file is over 15 MB. Try a smaller copy.');
+    var fd = new FormData(); fd.append('file', f);
+    Object.keys(extra || {}).forEach(function (k) { fd.append(k, extra[k]); });
+    return call(path, { method: 'POST', body: fd });
+  }
+  function uploadLogo() { busy($('logoBtn'), async function () { await uploadFile('logoFile', '/logo'); $('logoFile').value = ''; toast('Logo uploaded'); await load(); }); }
+  function uploadDoc() { busy($('docBtn'), async function () { await uploadFile('docFile', '/documents', { kind: $('docKind').value }); $('docFile').value = ''; toast('Document uploaded'); await load(); }); }
+  async function openDoc(id) { try { var d = await call('/documents/' + id); window.open(d.url, '_blank'); } catch (e) { toast(e.message, true); } }
+  async function delDoc(id) { if (!confirm('Remove this document?')) return; try { await call('/documents/' + id, { method: 'DELETE' }); await load(); } catch (e) { toast(e.message, true); } }
+
+  function addPass() {
+    var name = $('passName').value.trim(); if (!name) { toast('Enter a name.', true); return; }
+    busy($('passBtn'), async function () { await call('/passes', { method: 'POST', body: JSON.stringify({ name: name }) }); $('passName').value = ''; await load(); });
+  }
+  $('passName').addEventListener('keydown', function (e) { if (e.key === 'Enter') addPass(); });
+  async function delPass(id) { try { await call('/passes/' + id, { method: 'DELETE' }); await load(); } catch (e) { toast(e.message, true); } }
+
+  // ── Moneris card payment ──
+  async function startPayment() {
+    var btn = $('payBtn'), code = 'P' + Date.now().toString(36).toUpperCase();
+    btn.disabled = true; btn.textContent = 'Opening secure checkout…';
+    try {
+      var r = await fetch(API + '/moneris/vendor-checkout', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ vendor_id: data.vendor.id, confirmation_code: code }) });
+      var d = await r.json();
+      if (!r.ok) throw new Error(d.error || 'Could not start the payment.');
+      $('monerisBox').style.display = 'block'; btn.style.display = 'none';
+      moneris = new window.monerisCheckout();
+      moneris.setMode('prod');
+      moneris.setCheckoutDiv('monerisCheckout');
+      var close = function (msg, err) { moneris = null; $('monerisBox').style.display = 'none'; $('monerisCheckout').innerHTML = ''; btn.style.display = ''; btn.disabled = false; btn.textContent = 'Pay now'; if (msg) toast(msg, err); };
+      moneris.setCallback('cancel_transaction', function () { close('Payment cancelled.'); });
+      moneris.setCallback('error_event', function () { close('Payment error. Please try again or email info@holmdalerodeo.ca.', true); });
+      moneris.setCallback('payment_complete', async function () {
+        try {
+          var c = await fetch(API + '/moneris/vendor-confirm', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ confirmation_code: code, vendor_id: data.vendor.id }) });
+          close(c.ok ? 'Payment received. Thank you!' : 'We could not confirm the payment. Please email info@holmdalerodeo.ca.', !c.ok);
+        } catch (e) { close('We could not confirm the payment. Please email info@holmdalerodeo.ca.', true); }
+        await load();
+      });
+      moneris.startCheckout(d.ticket);
+    } catch (e) { toast(e.message, true); btn.disabled = false; btn.textContent = 'Pay now'; }
+  }
+
+  load();
+</script>
+</body>
+</html>

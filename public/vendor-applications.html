@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vendor Applications — Holmdale Pro Rodeo</title>
+<!-- Staff review of vendor applications (admin/manager). API: /api/vendor-applications -->
+<script>
+  (function () {
+    var t = localStorage.getItem('auth_token');
+    if (!t) { location.href = 'login.html'; return; }
+    try { var p = JSON.parse(atob(t.split('.')[1])); if (p.exp && p.exp < Date.now() / 1000) location.href = 'login.html'; } catch (e) { location.href = 'login.html'; }
+  })();
+</script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f5f5f4; color: #1c1917; }
+  .top { background: #1c1917; color: #fff; padding: 16px; }
+  .top-in { max-width: 1100px; margin: 0 auto; display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+  .top h1 { font-size: 19px; } .top a { color: #facc15; text-decoration: none; font-size: 14px; }
+  .wrap { max-width: 1100px; margin: 0 auto; padding: 16px; }
+  .tabs { display: flex; gap: 8px; margin-bottom: 14px; flex-wrap: wrap; }
+  .tab { padding: 9px 14px; border-radius: 20px; border: 2px solid #e7e5e4; background: #fff; font-weight: 700; font-size: 14px; cursor: pointer; }
+  .tab.on { background: #1c1917; color: #fff; border-color: #1c1917; }
+  .tab .n { display: inline-block; min-width: 20px; padding: 0 6px; margin-left: 4px; border-radius: 10px; background: #facc15; color: #1c1917; font-size: 12px; }
+  table { width: 100%; border-collapse: collapse; background: #fff; border-radius: 12px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,.05); }
+  th, td { text-align: left; padding: 10px 12px; font-size: 14px; border-top: 1px solid #f0efee; vertical-align: middle; }
+  th { background: #fafaf9; font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: #78716c; border-top: 0; }
+  tr.row { cursor: pointer; } tr.row:hover { background: #fafaf9; }
+  .muted { color: #78716c; font-size: 12px; }
+  .pill { display: inline-block; font-size: 12px; font-weight: 700; padding: 2px 8px; border-radius: 20px; }
+  .p-applied { background: #fef3c7; color: #92400e; } .p-approved, .p-ok { background: #dcfce7; color: #166534; } .p-declined, .p-miss { background: #fee2e2; color: #991b1b; }
+  .scroll { overflow-x: auto; }
+  .empty { text-align: center; padding: 40px; color: #78716c; background: #fff; border-radius: 12px; }
+  /* Drawer */
+  .shade { position: fixed; inset: 0; background: rgba(0,0,0,.4); display: none; z-index: 5; }
+  .drawer { position: fixed; top: 0; right: 0; bottom: 0; width: min(560px, 100%); background: #fff; overflow-y: auto; display: none; z-index: 6; box-shadow: -4px 0 20px rgba(0,0,0,.15); }
+  .dh { position: sticky; top: 0; background: #1c1917; color: #fff; padding: 16px; display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+  .dh h2 { font-size: 18px; } .dh button { background: none; border: 0; color: #fff; font-size: 24px; cursor: pointer; }
+  .db { padding: 16px; display: grid; gap: 16px; }
+  .box { border: 1px solid #e7e5e4; border-radius: 10px; padding: 14px; }
+  .box h3 { font-size: 13px; text-transform: uppercase; letter-spacing: .05em; color: #78716c; margin-bottom: 10px; }
+  dl { display: grid; grid-template-columns: 110px 1fr; gap: 6px 10px; font-size: 14px; } dt { color: #78716c; } dd { word-break: break-word; }
+  label { display: block; font-size: 12px; font-weight: 600; color: #44403c; margin: 8px 0 4px; }
+  input, select, textarea { width: 100%; padding: 9px 10px; font-size: 14px; border: 2px solid #e7e5e4; border-radius: 8px; font-family: inherit; }
+  .g3 { display: grid; grid-template-columns: 1.4fr 1fr 1fr; gap: 8px; }
+  .btns { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+  .btn { padding: 10px 14px; font-size: 14px; font-weight: 700; border: 0; border-radius: 8px; cursor: pointer; background: #00B74A; color: #fff; }
+  .btn.red { background: #b91c1c; } .btn.ghost { background: #fff; color: #1c1917; border: 2px solid #e7e5e4; } .btn.small { padding: 5px 9px; font-size: 12px; }
+  .btn:disabled { opacity: .5; }
+  ul.l { list-style: none; font-size: 14px; } ul.l li { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 6px 0; border-top: 1px solid #f0efee; } ul.l li:first-child { border-top: 0; }
+  .logo { max-width: 160px; max-height: 100px; object-fit: contain; background: #f5f5f4; border-radius: 8px; padding: 6px; }
+  .check { display: flex; align-items: center; gap: 8px; font-size: 14px; margin-top: 8px; } .check input { width: auto; }
+  .toast { position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%); background: #1c1917; color: #fff; padding: 11px 16px; border-radius: 10px; font-size: 14px; display: none; z-index: 9; }
+  .toast.err { background: #b91c1c; }
+</style>
+</head>
+<body>
+<header class="top"><div class="top-in"><h1>🏪 Vendor Applications</h1><a href="index.html">← Staff Portal</a></div></header>
+<div class="wrap">
+  <div class="tabs" id="tabs"></div>
+  <div class="scroll" id="listWrap"></div>
+</div>
+<div class="shade" id="shade" onclick="closeDrawer()"></div>
+<aside class="drawer" id="drawer"><div class="dh"><h2 id="dTitle"></h2><button onclick="closeDrawer()" aria-label="Close">×</button></div><div class="db" id="dBody"></div></aside>
+<div class="toast" id="toast"></div>
+
+<script>
+  var API = 'https://api.holmdalerodeo.ca/api/vendor-applications';
+  var PRICES = { '10x10': 300, '10x20': 500, 'food_vendor': 700, 'custom': 0 };
+  var SIZE_LABEL = { '10x10': '10 x 10', '10x20': '10 x 20', 'food_vendor': 'Food spot', 'custom': 'Custom' };
+  var all = [], tab = 'applied', cur = null;
+
+  function $(id) { return document.getElementById(id); }
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+  function money(n) { return '$' + Number(n || 0).toFixed(2); }
+  function day(d) { return d ? new Date(d).toLocaleDateString('en-CA', { month: 'short', day: 'numeric', year: 'numeric' }) : ''; }
+  function toast(m, err) { var t = $('toast'); t.textContent = m; t.className = 'toast' + (err ? ' err' : ''); t.style.display = 'block'; clearTimeout(t._h); t._h = setTimeout(function () { t.style.display = 'none'; }, 3500); }
+
+  async function call(path, opts) {
+    opts = opts || {};
+    var r = await fetch(API + path, Object.assign({}, opts, { headers: { Authorization: 'Bearer ' + localStorage.getItem('auth_token'), 'Content-Type': 'application/json' } }));
+    if (r.status === 401) { location.href = 'login.html'; throw new Error('signed out'); }
+    var d = await r.json().catch(function () { return {}; });
+    if (r.status === 403) throw new Error('Admins and managers only.');
+    if (!r.ok) throw new Error(d.error || 'Something went wrong.');
+    return d;
+  }
+
+  async function load() {
+    try { all = await call(''); renderList(); }
+    catch (e) { $('listWrap').innerHTML = '<div class="empty">' + esc(e.message) + '</div>'; }
+  }
+
+  function payPill(v) {
+    if (v.in_kind) return '<span class="pill p-ok">In-kind</span>';
+    if (v.paid || v.payment_status === 'paid') return '<span class="pill p-ok">Paid</span>';
+    if (v.amount_due) return '<span class="pill p-applied">' + money(v.amount_due) + ' due</span>';
+    return '<span class="muted">—</span>';
+  }
+
+  function renderList() {
+    var counts = { applied: 0, approved: 0, declined: 0 };
+    all.forEach(function (v) { counts[v.application_status] = (counts[v.application_status] || 0) + 1; });
+    $('tabs').innerHTML = [['applied', 'New applications'], ['approved', 'Approved'], ['declined', 'Declined']].map(function (t) {
+      return '<button class="tab' + (tab === t[0] ? ' on' : '') + '" onclick="tab=\'' + t[0] + '\';renderList()">' + t[1] + (counts[t[0]] ? '<span class="n">' + counts[t[0]] + '</span>' : '') + '</button>';
+    }).join('');
+    var rows = all.filter(function (v) { return v.application_status === tab; });
+    if (!rows.length) { $('listWrap').innerHTML = '<div class="empty">Nothing here.</div>'; return; }
+    var approved = tab === 'approved';
+    $('listWrap').innerHTML = '<table><thead><tr><th>Business</th><th>Type</th><th>Booth</th>' +
+      (approved ? '<th>Payment</th><th>Docs</th><th>Passes</th>' : '<th>Applied</th>') + '</tr></thead><tbody>' +
+      rows.map(function (v) {
+        return '<tr class="row" onclick="openVendor(' + v.id + ')"><td><strong>' + esc(v.name) + '</strong><div class="muted">' + esc(v.contact_name || '') + ' · ' + esc(v.email || '') + '</div></td>' +
+          '<td>' + esc(v.vendor_type || '') + '</td><td>' + esc(SIZE_LABEL[v.booth_size] || v.booth_size || '') + '</td>' +
+          (approved ? '<td>' + payPill(v) + '</td><td>' + v.doc_count + '</td><td>' + v.pass_count + (v.max_passes != null ? ' / ' + v.max_passes : '') + '</td>'
+                    : '<td>' + day(v.applied_at || v.created_at) + '</td>') + '</tr>';
+      }).join('') + '</tbody></table>';
+  }
+
+  async function openVendor(id) {
+    $('shade').style.display = 'block'; $('drawer').style.display = 'block';
+    $('dTitle').textContent = 'Loading…'; $('dBody').innerHTML = '';
+    try { cur = await call('/' + id); renderDrawer(); } catch (e) { $('dBody').innerHTML = '<p>' + esc(e.message) + '</p>'; }
+  }
+  function closeDrawer() { $('shade').style.display = 'none'; $('drawer').style.display = 'none'; cur = null; }
+
+  function renderDrawer() {
+    var v = cur.vendor, st = v.application_status, h = '';
+    $('dTitle').textContent = v.name;
+    h += '<div class="box"><h3>Application <span class="pill p-' + st + '">' + st + '</span></h3><dl>' +
+      '<dt>Contact</dt><dd>' + esc(v.contact_name) + '</dd>' +
+      '<dt>Email</dt><dd><a href="mailto:' + esc(v.email) + '">' + esc(v.email) + '</a></dd>' +
+      '<dt>Phone</dt><dd>' + esc(v.phone) + '</dd>' +
+      '<dt>Town</dt><dd>' + esc([v.city, v.province].filter(Boolean).join(', ')) + '</dd>' +
+      '<dt>Type</dt><dd>' + esc(v.vendor_type) + '</dd>' +
+      '<dt>Asked for</dt><dd>' + esc(SIZE_LABEL[v.booth_size] || v.booth_size) + '</dd>' +
+      '<dt>Selling</dt><dd>' + esc(v.product) + '</dd>' +
+      (v.description ? '<dt>About</dt><dd>' + esc(v.description) + '</dd>' : '') +
+      (v.website ? '<dt>Website</dt><dd><a href="' + esc(v.website) + '" target="_blank" rel="noopener">' + esc(v.website) + '</a></dd>' : '') +
+      (v.facebook ? '<dt>Facebook</dt><dd>' + esc(v.facebook) + '</dd>' : '') +
+      (v.instagram ? '<dt>Instagram</dt><dd>' + esc(v.instagram) + '</dd>' : '') +
+      (v.comment ? '<dt>Notes</dt><dd>' + esc(v.comment) + '</dd>' : '') +
+      '<dt>Applied</dt><dd>' + day(v.applied_at || v.created_at) + '</dd>' +
+      (v.decision_note ? '<dt>Decision note</dt><dd>' + esc(v.decision_note) + '</dd>' : '') +
+      '</dl></div>';
+
+    var sizes = ['10x10', '10x20', 'food_vendor', 'custom'];
+    var size = v.booth_size || '';
+    var price = v.booth_price != null ? v.booth_price : (PRICES[size] != null ? PRICES[size] : '');
+    var boothFields = '<div class="g3"><div><label>Booth</label><select id="eSize" onchange="sizeChanged()">' +
+      sizes.concat(sizes.indexOf(size) < 0 && size ? [size] : []).map(function (s) { return '<option value="' + esc(s) + '"' + (s === size ? ' selected' : '') + '>' + esc(SIZE_LABEL[s] || s) + '</option>'; }).join('') +
+      '</select></div><div><label>Price (before HST)</label><input id="ePrice" type="number" min="0" step="1" value="' + esc(price) + '"></div>' +
+      '<div><label>Gate passes</label><input id="ePasses" type="number" min="0" step="1" value="' + esc(v.max_passes != null ? v.max_passes : 4) + '"></div></div>';
+
+    if (st === 'approved') {
+      h += '<div class="box"><h3>Booth &amp; payment</h3>' + boothFields +
+        '<p class="muted" style="margin-top:8px">Owing: <strong>' + (v.amount_due ? money(v.amount_due) + ' incl. HST' : 'nothing') + '</strong></p>' +
+        '<label class="check"><input type="checkbox" id="ePaid"' + (v.paid || v.payment_status === 'paid' ? ' checked' : '') + '> Paid (cash / cheque / e-transfer)</label>' +
+        '<label class="check"><input type="checkbox" id="eKind"' + (v.in_kind ? ' checked' : '') + '> In-kind (no charge)</label>' +
+        '<div class="btns"><button class="btn" onclick="saveBooth(this)">Save</button><button class="btn ghost" onclick="sendLink(this)">Re-send portal link</button></div></div>';
+
+      var have = {}; cur.documents.forEach(function (d) { have[d.kind] = true; });
+      var need = ['insurance'].concat(v.vendor_type === 'food' ? ['food_handler', 'health_permit'] : []);
+      var labels = { insurance: 'Insurance', food_handler: 'Food handler', health_permit: 'Health permit' };
+      h += '<div class="box"><h3>Documents</h3><div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">' +
+        need.map(function (k) { return '<span class="pill ' + (have[k] ? 'p-ok' : 'p-miss') + '">' + (have[k] ? '✓ ' : '✗ ') + labels[k] + '</span>'; }).join('') + '</div>' +
+        (cur.documents.length ? '<ul class="l">' + cur.documents.map(function (d) {
+          return '<li><span><strong>' + esc(d.kind_label) + '</strong><br><span class="muted">' + esc(d.filename) + ' · ' + day(d.uploaded_at) + '</span></span><button class="btn ghost small" onclick="openDoc(' + d.id + ')">Open</button></li>';
+        }).join('') + '</ul>' : '<p class="muted">Nothing uploaded yet.</p>') + '</div>';
+
+      h += '<div class="box"><h3>Gate passes (' + cur.passes.length + (v.max_passes != null ? ' of ' + v.max_passes : '') + ')</h3>' +
+        (cur.passes.length ? '<ul class="l">' + cur.passes.map(function (p) { return '<li>' + esc(p.name) + '</li>'; }).join('') + '</ul>' : '<p class="muted">No names yet.</p>') + '</div>';
+
+      var logo = cur.logos[0];
+      h += '<div class="box"><h3>Logo</h3>' + (logo ? (/\.(png|jpe?g|webp|gif|svg)$/i.test(logo.blob_url) ? '<img class="logo" src="' + esc(logo.blob_url) + '" alt="">' : '') +
+        '<p style="margin-top:6px"><a href="' + esc(logo.blob_url) + '" target="_blank" rel="noopener">' + esc(logo.filename || 'Download') + '</a></p>' : '<p class="muted">No logo yet.</p>') + '</div>';
+
+      h += '<div class="box"><h3>Remove from this year</h3><label>Note to vendor (optional)</label><textarea id="eNote" rows="2"></textarea>' +
+        '<label class="check"><input type="checkbox" id="eMail" checked> Email them</label>' +
+        '<div class="btns"><button class="btn red" onclick="decline(this)">Decline</button></div></div>';
+    } else {
+      h += '<div class="box"><h3>' + (st === 'declined' ? 'Approve anyway' : 'Decision') + '</h3>' + boothFields +
+        '<label>Note (goes in the decline email; kept on file if approved)</label><textarea id="eNote" rows="2"></textarea>' +
+        '<label class="check"><input type="checkbox" id="eMail" checked> Email the vendor</label>' +
+        '<div class="btns"><button class="btn" onclick="approve(this)">Approve &amp; open portal</button>' +
+        (st === 'applied' ? '<button class="btn red" onclick="decline(this)">Decline</button>' : '') + '</div></div>';
+    }
+    $('dBody').innerHTML = h;
+  }
+
+  function sizeChanged() { var s = $('eSize').value; if (PRICES[s] != null) $('ePrice').value = PRICES[s]; }
+
+  async function act(btn, fn) { btn.disabled = true; try { await fn(); } catch (e) { if (e.message !== 'signed out') toast(e.message, true); } finally { btn.disabled = false; } }
+  function refresh(id) { return load().then(function () { if (id) return openVendor(id); }); }
+
+  function approve(btn) {
+    act(btn, async function () {
+      var id = cur.vendor.id;
+      var d = await call('/' + id + '/approve', { method: 'POST', body: JSON.stringify({ booth_size: $('eSize').value, booth_price: $('ePrice').value, max_passes: $('ePasses').value, note: $('eNote').value, send_email: $('eMail').checked }) });
+      toast(d.emailed ? 'Approved. Portal link emailed.' : 'Approved.' + ($('eMail').checked ? ' (Email did not send.)' : ''));
+      tab = 'approved'; await refresh(id);
+    });
+  }
+  function decline(btn) {
+    if (!confirm('Decline ' + cur.vendor.name + '?')) return;
+    act(btn, async function () {
+      var d = await call('/' + cur.vendor.id + '/decline', { method: 'POST', body: JSON.stringify({ note: $('eNote').value, send_email: $('eMail').checked }) });
+      toast(d.emailed ? 'Declined. Vendor emailed.' : 'Declined.'); closeDrawer(); await load();
+    });
+  }
+  function saveBooth(btn) {
+    act(btn, async function () {
+      var id = cur.vendor.id;
+      await call('/' + id, { method: 'PATCH', body: JSON.stringify({ booth_size: $('eSize').value, booth_price: $('ePrice').value, max_passes: $('ePasses').value, paid: $('ePaid').checked, in_kind: $('eKind').checked }) });
+      toast('Saved'); await refresh(id);
+    });
+  }
+  function sendLink(btn) { act(btn, async function () { var d = await call('/' + cur.vendor.id + '/send-link', { method: 'POST' }); toast(d.emailed ? 'Portal link emailed.' : 'Email did not send.', !d.emailed); }); }
+  async function openDoc(id) { try { var d = await call('/documents/' + id); window.open(d.url, '_blank'); } catch (e) { toast(e.message, true); } }
+
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closeDrawer(); });
+  load();
+</script>
+</body>
+</html>
