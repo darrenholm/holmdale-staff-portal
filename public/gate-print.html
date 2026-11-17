@@ -78,12 +78,24 @@
   </div>
 
   <section class="card hidden" id="settings">
-    <strong>Band printer (DYMO, for testing)</strong>
+    <strong>Band printer</strong>
+    <div class="set"><label class="k">Print on</label><select id="bMode">
+      <option value="lane">Band printer lane (wristband printer + print agent)</option>
+      <option value="dymo">DYMO via label bridge (old test setup)</option>
+    </select></div>
+    <div id="laneSet">
+      <div class="set"><label class="k">Lane</label><select id="bLane"><option value="">(press Find lanes)</option></select></div>
+      <div class="btns"><button class="b ghost" id="findLaneBtn">Find lanes</button><button class="b" id="saveLaneBtn">Save</button>
+        <button class="b ghost full" id="testLaneBtn">Print a test band</button></div>
+      <div class="sub">Only lanes whose print agent is running right now are listed.</div>
+    </div>
+    <div id="dymoSet">
     <div class="set"><label class="k">Label bridge address</label><input id="bUrl" value="https://print.holmgraphics.ca"></div>
     <div class="set"><label class="k">Bridge key</label><input id="bKey" type="password" autocomplete="off" placeholder="Paste the label bridge key"></div>
     <div class="set"><label class="k">Printer</label><select id="bPrinter"><option value="">(press Find printers)</option></select></div>
     <div class="btns"><button class="b ghost" id="findBtn">Find printers</button><button class="b" id="saveBtn">Save</button>
       <button class="b ghost full" id="testBtn">Print a test band</button></div>
+    </div>
     <div class="sub" id="setMsg"></div>
     <ol>
       <li>Labels: DYMO 30252 (1⅛" × 3½").</li>
@@ -180,6 +192,7 @@ async function lookup(code, { afterReset = false } = {}) {
     if (r.status === 404) { status('stop', 'Ticket not found', code); return clearOrder(); }
     if (!r.ok) throw new Error('Lookup failed (' + r.status + ')');
     order = await r.json();
+    order._day = await ticketDay(order);
 
     // Bands already issued for this order (re-scan of a part-entered order).
     // TODO before event day: add a by-order lookup to the API; this pulls every band.
@@ -462,7 +475,47 @@ async function bridge(path, body) {
   if (!r.ok) throw new Error((j && j.error) || ('Label bridge error ' + r.status));
   return j;
 }
+// ─── Band printer lane (wristband printer + print agent) ───────────────────
+// The handheld queues the band on the rodeo API; the print agent on the PC
+// beside that lane's printer prints it (rodeo-fresh/print-agent). Works the
+// same on the event network: everything goes through api.holmdalerodeo.ca.
+// A handheld already set up for the DYMO stays on it until someone switches.
+function laneSettings() { const l = localSettings(); return { mode: l.mode || (l.printer ? 'dymo' : 'lane'), lane: l.lane || '' }; }
+
+// fri / sat / sun from the order's event date (dates are stored as UTC
+// midnight, so read them at noon UTC to get the right day).
+async function ticketDay(o) {
+  try {
+    if (!o.event_id) return 'weekend';
+    const ev = await fetch(API + '/events/' + encodeURIComponent(o.event_id)).then((r) => (r.ok ? r.json() : null));
+    if (!ev || !ev.date) return 'weekend';
+    const d = new Date(String(ev.date).slice(0, 10) + 'T12:00:00.000Z').getUTCDay();
+    return d === 5 ? 'fri' : d === 6 ? 'sat' : d === 0 ? 'sun' : 'weekend';
+  } catch { return 'weekend'; }
+}
+
+async function printOnLane(band) {
+  const { lane } = laneSettings();
+  if (!lane) throw new Error('No band printer lane chosen. Tap "Printer" at the top.');
+  const { id } = await api('/band-print/jobs', { method: 'POST', body: JSON.stringify({ lane, ...band }) });
+  // Wait for the print agent to say it printed (up to ~20 s).
+  for (let i = 0; i < 40; i++) {
+    await new Promise((r) => setTimeout(r, 500));
+    const j = await api('/band-print/jobs/' + id);
+    if (j.status === 'done') return;
+    if (j.status === 'failed') throw new Error('Printer: ' + (j.error || 'print failed'));
+    if (j.status === 'expired') break;
+  }
+  throw new Error(`Lane "${lane}" didn't print. Is its print agent running?`);
+}
+
+function bandKind(s) { return s.of19 ? '19plus' : s.type === 'child' ? 'minor' : 'under19'; }
+
 async function printBand(s) {
+  if (laneSettings().mode === 'lane') {
+    return printOnLane({ kind: bandKind(s), name: s.name || '', day: (order && order._day) || 'weekend',
+                         code: s.code, test: !!(order && order.is_sample) });
+  }
   const st = settings();
   if (!st.printer) throw new Error('No DYMO printer chosen. Tap "Printer" at the top.');
   const png = bandImage({ code: s.code, name: s.name, of19: s.of19, type: s.type, test: !!(order && order.is_sample) });
@@ -502,6 +555,37 @@ $('testBtn').onclick = async () => {
     const png = bandImage({ code: 'A1B2C3D4E5F6', name: 'TEST B.', of19: true, type: 'adult', test: true });
     await bridge('/print', { printerName: settings().printer, labelXml: labelXml(png), copies: 1 });
     $('setMsg').textContent = 'Test band sent.';
+  } catch (e) { $('setMsg').textContent = e.message; }
+};
+
+// Lane settings UI
+function showMode() {
+  const m = $('bMode').value;
+  $('laneSet').classList.toggle('hidden', m !== 'lane');
+  $('dymoSet').classList.toggle('hidden', m !== 'dymo');
+}
+(function initLaneUi() {
+  const { mode, lane } = laneSettings();
+  $('bMode').value = mode;
+  if (lane) $('bLane').innerHTML = `<option>${esc(lane)}</option>`;
+  showMode();
+})();
+$('bMode').onchange = () => { saveLocal({ mode: $('bMode').value }); showMode(); };
+$('findLaneBtn').onclick = async () => {
+  try {
+    const { lanes } = await api('/band-print/lanes');
+    const cur = laneSettings().lane;
+    $('bLane').innerHTML = (lanes || []).map((l) => `<option${l === cur ? ' selected' : ''}>${esc(l)}</option>`).join('')
+      || '<option value="">No print agents running</option>';
+    $('setMsg').textContent = lanes && lanes.length ? `Found ${lanes.length} lane(s). Pick one and press Save.` : 'No lanes found. Start the print agent on the PC beside the printer.';
+  } catch (e) { $('setMsg').textContent = e.message; }
+};
+$('saveLaneBtn').onclick = () => { saveLocal({ mode: 'lane', lane: $('bLane').value }); $('setMsg').textContent = `Saved: this device prints on lane "${$('bLane').value}".`; };
+$('testLaneBtn').onclick = async () => {
+  $('setMsg').textContent = 'Sending test band…';
+  try {
+    await printOnLane({ kind: '19plus', name: 'TEST B.', day: 'sat', code: 'A1B2C3D4E5F6', test: true });
+    $('setMsg').textContent = 'Test band printed.';
   } catch (e) { $('setMsg').textContent = e.message; }
 };
 
