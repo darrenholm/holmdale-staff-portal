@@ -9,7 +9,7 @@
   A tablet or laptop + a Stripe WisePOS E card reader + a band printer lane.
 
   1. Open a shift: terminal name, day being sold, band printer lane, card reader, cash float.
-  2. Tap tickets; for each adult tap ID checked / Clearly 19+ / Under 19 (names optional).
+  2. Tap tickets; for each adult tap ID checked / Clearly 19+ / No ID · no alcohol (names optional).
   3. Cash (type what they gave you, see the change) or Card (customer pays on the reader).
   4. The sale is saved and every band prints on the lane at once.
   5. Close shift: count the drawer, see expected vs counted.
@@ -86,6 +86,9 @@
   <section class="card hidden" id="saleCard">
     <div class="shiftbar" id="shiftBar"></div>
     <div class="tix" id="tix"></div>
+    <div class="set"><label class="k">Youth band → adult 19+ (collects the difference)</label>
+      <div style="display:flex;gap:8px"><input id="upBand" placeholder="Scan or type the band code" autocomplete="off" autocapitalize="characters">
+        <button class="b ghost sm" id="upAdd" style="white-space:nowrap">Add upgrade</button></div></div>
   </section>
 
   <section class="card hidden" id="peopleCard">
@@ -233,6 +236,15 @@ function render() {
   // People: one row per wristband.
   let html = '', k = 0;
   units.forEach((u, ui) => {
+    if (u.code === 'youth_upgrade') {
+      k += 1;
+      html += `<div class="person${u.age ? '' : ' need'}"><div class="person-head"><span>${k}. Upgrade band ${esc(u.band)} to adult · ${money(u.priceCents)}</span>
+        <button class="link" data-unup="${ui}">Remove</button></div>
+        <div class="sub">${esc(u.who)} · check ID before choosing</div>
+        <div class="btns"><button class="b sm go${u.age === 'id' ? ' on' : ''}" data-upage="${ui}:id">ID checked · 19+</button>
+          <button class="b sm go${u.age === 'obvious' ? ' on' : ''}" data-upage="${ui}:obvious">Clearly 19+</button></div></div>`;
+      return;
+    }
     const t = types.find((x) => x.code === u.code);
     u.people.forEach((p, pi) => {
       k += 1;
@@ -243,14 +255,14 @@ function render() {
         ${isAdult ? `<div class="btns3">
           <button class="b sm go${p.age === 'id' ? ' on' : ''}" data-age="${ui}:${pi}:id">ID checked · 19+</button>
           <button class="b sm go${p.age === 'obvious' ? ' on' : ''}" data-age="${ui}:${pi}:obvious">Clearly 19+</button>
-          <button class="b sm stop${p.age === 'under19' ? ' on' : ''}" data-age="${ui}:${pi}:under19">Under 19</button></div>`
+          <button class="b sm stop${p.age === 'under19' ? ' on' : ''}" data-age="${ui}:${pi}:under19">No ID · no alcohol</button></div>`
           : '<div class="sub">Gets a minor band</div>'}</div>`;
     });
   });
   $('people').innerHTML = html;
-  const total = units.reduce((n, u) => n + (types.find((x) => x.code === u.code)?.priceCents || 0), 0);
+  const total = totalNow();
   $('totalAmt').textContent = money(total);
-  const ready = units.length && units.every((u) => u.people.every((p) => p.kind !== 'adult' || p.age));
+  const ready = units.length && units.every((u) => (u.code === 'youth_upgrade' ? !!u.age : u.people.every((p) => p.kind !== 'adult' || p.age)));
   $('cashBtn').disabled = !ready; $('cardBtn').disabled = !ready || !shift.reader_id || total < 50;
   show('saleCard', ...(units.length ? ['peopleCard', 'payCard'] : []));
 }
@@ -264,15 +276,38 @@ document.addEventListener('click', (e) => {
     const i = units.map((u) => u.code).lastIndexOf(t.dataset.rm); if (i >= 0) units.splice(i, 1); render();
   } else if (t.dataset.age) {
     const [ui, pi, age] = t.dataset.age.split(':'); units[ui].people[pi].age = age; render();
+  } else if (t.dataset.upage) {
+    const [ui, age] = t.dataset.upage.split(':'); units[ui].age = age; render();
+  } else if (t.dataset.unup) {
+    units.splice(+t.dataset.unup, 1); render();
   }
 });
+// Youth band upgrade: look the band up, add the difference to this sale.
+$('upAdd').onclick = async () => {
+  const code = $('upBand').value.trim();
+  if (!code || busy) return;
+  try {
+    const b = await api('/band-fix/' + encodeURIComponent(code));
+    if (!b.youth) { status('warn', 'Not a youth band', 'This is an adult band. Use Change a Band to make it 19+ (no charge).'); return; }
+    if (b.youthDifferenceCents == null) { status('stop', 'No price for the difference', 'Adult and youth prices need setting first.'); return; }
+    if (units.some((u) => u.code === 'youth_upgrade' && u.band === b.code)) return;
+    units.push({ code: 'youth_upgrade', band: b.code, priceCents: b.youthDifferenceCents, age: null, people: [],
+                 who: [b.name || 'No name on band', b.orderCode].filter(Boolean).join(' · ') });
+    $('upBand').value = '';
+    status('info', 'Upgrade added', 'Check their ID, then take ' + money(b.youthDifferenceCents) + '.');
+    render();
+  } catch (e) { status('stop', 'Band not found', e.message); }
+};
+$('upBand').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); $('upAdd').click(); } });
 document.addEventListener('input', (e) => {
   const n = e.target.dataset && e.target.dataset.name; if (!n) return;
   const [ui, pi] = n.split(':'); units[ui].people[pi].name = e.target.value;
 });
 $('clearBtn').onclick = () => newSale();
-const items = () => units.map((u) => ({ code: u.code, attendees: u.people.map((p) => ({ name: p.name.trim(), age: p.kind === 'adult' ? p.age : undefined })) }));
-const totalNow = () => units.reduce((n, u) => n + (types.find((x) => x.code === u.code)?.priceCents || 0), 0);
+const items = () => units.map((u) => (u.code === 'youth_upgrade'
+  ? { code: 'youth_upgrade', band: u.band, age: u.age }
+  : { code: u.code, attendees: u.people.map((p) => ({ name: p.name.trim(), age: p.kind === 'adult' ? p.age : undefined })) }));
+const totalNow = () => units.reduce((n, u) => n + (u.code === 'youth_upgrade' ? u.priceCents : (types.find((x) => x.code === u.code)?.priceCents || 0)), 0);
 
 // ── Cash ────────────────────────────────────────────────────────────────
 $('cashBtn').onclick = () => {

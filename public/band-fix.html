@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Change a Band - Holmdale Pro Rodeo</title>
+<!--
+  Change a Band: fix a wristband after it was printed.
+  - An adult who said they wouldn't drink got a NO ALCOHOL band, and now wants
+    a drink: scan the band, check ID, print a 19+ band (same code). Cut the old one off.
+  - A 19+ band given by mistake: take 19+ off, print a NO ALCOHOL band.
+  - Youth tickets can't be switched here: the difference is paid at Gate Sales.
+  Scan with the Kingtop (types into the box) or the phone camera.
+  API: rodeo-fresh routes/bandFix.js (/api/band-fix), bands via /api/band-print.
+-->
+<script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js" defer></script>
+<style>
+  :root { --bg:#f2f3f1; --panel:#fff; --ink:#151a17; --muted:#5d6661; --line:#d3d8d4;
+          --go:#0f7a41; --go-bg:#dcf2e5; --stop:#b3261e; --stop-bg:#fbe1de; --warn:#8a5a00; --warn-bg:#fbefd2; --accent:#1f4e79; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); font:16px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  .wrap { max-width:560px; margin:0 auto; padding:12px 14px 40px; display:flex; flex-direction:column; gap:12px; }
+  header { display:flex; align-items:center; justify-content:space-between; gap:8px; }
+  h1 { font-size:20px; margin:0; }
+  header a, .link { color:var(--accent); font-size:14px; background:none; border:0; padding:0; cursor:pointer; text-decoration:underline; }
+  .card { background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:14px; display:flex; flex-direction:column; gap:10px; }
+  .msg { font-size:20px; font-weight:800; padding:12px 14px; border-radius:10px; }
+  .m-info { background:#e8eef5; color:var(--accent); } .m-go { background:var(--go-bg); color:var(--go); }
+  .m-stop { background:var(--stop-bg); color:var(--stop); } .m-warn { background:var(--warn-bg); color:var(--warn); }
+  .sub { color:var(--muted); font-size:14px; }
+  .btns { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+  button.b { font:700 16px system-ui, sans-serif; padding:14px 8px; border-radius:10px; border:0; cursor:pointer; color:#fff; background:var(--accent); }
+  button.b.go { background:var(--go); } button.b.stop { background:var(--stop); } button.b.dark { background:#111; }
+  button.b.ghost { background:#e6e9e7; color:var(--ink); }
+  button.b:disabled { opacity:.4; }
+  .full { grid-column:1 / -1; }
+  textarea { width:100%; min-height:60px; font:500 16px/1.4 system-ui, sans-serif; padding:10px; border:2px dashed var(--accent); border-radius:10px; background:var(--panel); }
+  label.k { font-size:12px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--muted); }
+  select { font:inherit; padding:9px; border:1px solid var(--line); border-radius:8px; width:100%; }
+  .hidden { display:none !important; }
+  .band { font-size:22px; font-weight:800; }
+  .pill { display:inline-block; font-size:13px; font-weight:800; padding:3px 10px; border-radius:999px; }
+  .p19 { background:#111; color:#fff; } .pno { background:var(--stop-bg); color:var(--stop); } .pyouth { background:var(--warn-bg); color:var(--warn); }
+  #camView { position:fixed; inset:0; background:#000; z-index:50; display:flex; flex-direction:column; }
+  #camVideo { flex:1; width:100%; object-fit:cover; }
+  .cam-bar { display:flex; gap:10px; align-items:center; justify-content:space-between; padding:12px 14px; background:#111; color:#fff; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header><h1>🔁 Change a Band</h1><span><button class="link" id="setBtn">Printer</button> · <a href="index.html">Menu</a></span></header>
+
+  <section class="card" id="status"><div class="msg m-info">Scan the wristband</div></section>
+  <section class="card hidden" id="bandCard"></section>
+
+  <div style="display:flex;flex-direction:column;gap:6px">
+    <label class="k" for="scan">Scan the band's QR</label>
+    <textarea id="scan" placeholder="Tap here, then press the scan button" autocomplete="off" autocapitalize="off" spellcheck="false"></textarea>
+    <button class="b dark" id="camBtn">📷 Scan with camera</button>
+  </div>
+
+  <section class="card hidden" id="settings">
+    <strong>Band printer lane</strong>
+    <select id="lane"><option value="">(press Find lanes)</option></select>
+    <div class="btns"><button class="b ghost" id="findLanes">Find lanes</button><button class="b" id="saveLane">Save</button></div>
+    <div class="sub" id="setMsg">The replacement band prints here. Only lanes whose print agent is running are listed.</div>
+  </section>
+
+  <div id="camView" class="hidden"><video id="camVideo" playsinline muted></video>
+    <div class="cam-bar"><span>Point at the QR on the band</span><button class="b ghost" id="camClose">Close</button></div></div>
+</div>
+
+<script>
+const API = 'https://api.holmdalerodeo.ca/api';
+const LS = 'band_fix_lane';
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const money = (c) => '$' + (c / 100).toFixed(c % 100 ? 2 : 0);
+const DAY = { fri: 'Friday', sat: 'Saturday', sun: 'Sunday', weekend: 'Weekend pass' };
+let token = localStorage.getItem('auth_token');
+if (!token) location.href = 'login.html?expired=1';
+let band = null, busy = false;
+// Same lane as the gate page on this device, unless set here.
+const lane = () => localStorage.getItem(LS) || (() => { try { return JSON.parse(localStorage.getItem('gate_print_settings') || '{}').lane || ''; } catch { return ''; } })();
+
+async function api(path, opts = {}) {
+  const r = await fetch(API + path, { ...opts, headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token, ...(opts.headers || {}) } });
+  if (r.status === 401) { localStorage.removeItem('auth_token'); location.href = 'login.html?expired=1'; throw new Error('Signed out'); }
+  let j = null; try { j = await r.json(); } catch {}
+  if (!r.ok) { const e = new Error((j && j.error) || ('Error ' + r.status)); e.status = r.status; e.data = j; throw e; }
+  return j;
+}
+function status(kind, text, sub = '') { $('status').innerHTML = `<div class="msg m-${kind}">${esc(text)}</div>${sub ? `<div class="sub">${esc(sub)}</div>` : ''}`; }
+
+// ── Scan ──
+let timer = null;
+$('scan').addEventListener('input', () => {
+  clearTimeout(timer);
+  timer = setTimeout(() => { const t = $('scan').value.trim(); $('scan').value = ''; if (t) lookup(t); }, 350);
+});
+async function lookup(code) {
+  if (busy) return;
+  status('info', 'Looking up band…');
+  try { band = await api('/band-fix/' + encodeURIComponent(code)); showBand(); }
+  catch (e) { band = null; $('bandCard').classList.add('hidden'); status('stop', 'Band not found', e.message); }
+}
+function showBand() {
+  const b = band;
+  const pill = b.youth ? '<span class="pill pyouth">YOUTH · MINOR</span>' : b.is19 ? '<span class="pill p19">19+</span>' : '<span class="pill pno">NO ALCOHOL</span>';
+  let actions = '';
+  if (b.youth) {
+    actions = `<div class="msg m-warn">Youth ticket</div><div class="sub">To make this person 19+, sell the upgrade at <b>Gate Sales</b>
+      (${b.youthDifferenceCents != null ? money(b.youthDifferenceCents) + ' difference' : 'difference to an adult ticket'}). Gate Sales prints the new band.</div>`;
+  } else if (!b.is19) {
+    actions = `<div class="sub">Check their ID, then:</div><div class="btns">
+      <button class="b go" data-to19="id">ID checked · make 19+</button><button class="b go" data-to19="obvious">Clearly 19+ · make 19+</button></div>`;
+  } else {
+    actions = `<div class="sub">Already 19+. Only if this band was given by mistake:</div>
+      <button class="b stop" id="noAlc">Take 19+ off · print NO ALCOHOL band</button>`;
+  }
+  $('bandCard').innerHTML = `<div class="band">${esc(b.name || 'No name on band')}</div>
+    <div>${pill} <span class="sub">${esc(DAY[b.day] || b.day)}${b.orderCode ? ' · ' + esc(b.orderCode) : ''}${b.buyer ? ' · bought by ' + esc(b.buyer) : ''}</span></div>
+    <div class="sub">Band ${esc(b.code)}</div>${actions}`;
+  $('bandCard').classList.remove('hidden');
+  status(b.is19 ? 'go' : b.youth ? 'warn' : 'info', b.is19 ? '19+ band' : b.youth ? 'Youth band' : 'No-alcohol band');
+  $('bandCard').querySelectorAll('[data-to19]').forEach((el) => el.onclick = () => change('to19', { method: el.dataset.to19 }));
+  if ($('noAlc')) $('noAlc').onclick = () => {
+    const reason = prompt('Why is 19+ being taken off? (e.g. wrong button, under 19)');
+    if (reason !== null) change('no-alcohol', { reason });
+  };
+}
+async function change(kind, body) {
+  if (busy) return;
+  if (!lane()) { status('stop', 'No band printer chosen', 'Pick a lane under Printer first.'); openSettings(); return; }
+  busy = true;
+  status('info', 'Changing the band…');
+  try {
+    const r = await api(`/band-fix/${encodeURIComponent(band.code)}/${kind}`, { method: 'POST', body: JSON.stringify({ lane: lane(), ...body }) });
+    status('info', 'Printing the new band…');
+    for (let i = 0; i < 40; i++) {
+      await new Promise((ok) => setTimeout(ok, 600));
+      const j = await api('/band-print/jobs/' + r.jobId);
+      if (j.status === 'done') {
+        status('go', kind === 'to19' ? 'New 19+ band printed' : 'NO ALCOHOL band printed', 'Cut the old band off and keep it. Only the new band goes on the wrist.');
+        band = await api('/band-fix/' + encodeURIComponent(band.code)); showBand();
+        status('go', kind === 'to19' ? 'New 19+ band printed' : 'NO ALCOHOL band printed', 'Cut the old band off and keep it. Only the new band goes on the wrist.');
+        return;
+      }
+      if (j.status === 'failed' || j.status === 'expired') throw new Error('Saved, but the band did not print: ' + (j.error || 'is the print agent running?') + ' Scan the band again to reprint.');
+    }
+    throw new Error(`Saved, but lane "${lane()}" didn't print. Is its print agent running?`);
+  } catch (e) {
+    if (e.data && e.data.youth) { band.youth = true; showBand(); }
+    status('stop', 'Not done', e.message);
+  } finally { busy = false; }
+}
+
+// ── Printer lane ──
+function openSettings() { $('settings').classList.remove('hidden'); setTimeout(() => $('settings').scrollIntoView({ behavior: 'smooth' }), 50); }
+$('setBtn').onclick = () => { if ($('settings').classList.contains('hidden')) openSettings(); else $('settings').classList.add('hidden'); };
+if (lane()) $('lane').innerHTML = `<option>${esc(lane())}</option>`;
+$('findLanes').onclick = async () => {
+  try {
+    const { lanes } = await api('/band-print/lanes');
+    $('lane').innerHTML = (lanes || []).map((l) => `<option${l === lane() ? ' selected' : ''}>${esc(l)}</option>`).join('') || '<option value="">No print agents running</option>';
+  } catch (e) { $('setMsg').textContent = e.message; }
+};
+$('saveLane').onclick = () => { localStorage.setItem(LS, $('lane').value); $('setMsg').textContent = `Saved: replacement bands print on "${$('lane').value}".`; };
+
+// ── Camera (phones). Band QRs are plain codes; jsQR reads them everywhere. ──
+let camOn = false, camStream = null, camT = null;
+$('camBtn').onclick = async () => {
+  try { camStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' } }, audio: false }); }
+  catch (e) { status('stop', 'Camera not available', e.message); return; }
+  camOn = true; $('camView').classList.remove('hidden');
+  const v = $('camVideo'); v.srcObject = camStream; await v.play().catch(() => {});
+  const c = document.createElement('canvas'), g = c.getContext('2d', { willReadFrequently: true });
+  const tick = () => {
+    if (!camOn) return;
+    if (v.readyState >= 2 && window.jsQR) {
+      c.width = v.videoWidth; c.height = v.videoHeight; g.drawImage(v, 0, 0);
+      const r = window.jsQR(g.getImageData(0, 0, c.width, c.height).data, c.width, c.height, { inversionAttempts: 'dontInvert' });
+      if (r && r.data) { if (navigator.vibrate) navigator.vibrate(80); stopCam(); lookup(r.data.trim()); return; }
+    }
+    camT = setTimeout(tick, 150);
+  };
+  tick();
+};
+function stopCam() { camOn = false; clearTimeout(camT); if (camStream) camStream.getTracks().forEach((t) => t.stop()); $('camView').classList.add('hidden'); }
+$('camClose').onclick = stopCam;
+</script>
+</body>
+</html>
