@@ -56,6 +56,10 @@
   .set input, .set select { font:inherit; padding:9px; border:1px solid var(--line); border-radius:8px; width:100%; }
   .log li { font-size:13px; color:var(--muted); }
   .hidden { display:none !important; }
+  #camView { position:fixed; inset:0; background:#000; z-index:50; display:flex; flex-direction:column; }
+  #camVideo { flex:1; width:100%; object-fit:cover; }
+  .cam-frame { position:absolute; left:10%; right:10%; top:22%; height:40%; border:4px solid #fff; border-radius:16px; box-shadow:0 0 0 2000px rgba(0,0,0,.35); pointer-events:none; }
+  .cam-bar { display:flex; gap:10px; align-items:center; justify-content:space-between; padding:12px 14px calc(12px + env(safe-area-inset-bottom)); background:#111; color:#fff; font-size:15px; }
   ol { margin:0; padding-left:18px; font-size:14px; }
 </style>
 </head>
@@ -74,6 +78,7 @@
   <div style="display:flex;flex-direction:column;gap:4px">
     <label class="k" for="scan">Scan here</label>
     <textarea id="scan" placeholder="Tap here, then press the scan button" autocomplete="off" autocapitalize="off" spellcheck="false"></textarea>
+    <button class="b dark" id="camBtn">📷 Scan with camera</button>
     <button class="link" id="typeBtn" style="align-self:flex-start">Type a confirmation code instead</button>
   </div>
 
@@ -102,6 +107,14 @@
       <li>Kingtop scanner settings: output <b>Input Box Mode</b>, end mark <b>Enter</b>, <b>QR</b> and <b>PDF417</b> on, <b>Code 39 off</b>.</li>
     </ol>
   </section>
+
+  <!-- Camera scanner (phones). Ticket QR or the barcode on the back of a licence. -->
+  <div id="camView" class="hidden">
+    <video id="camVideo" playsinline muted></video>
+    <div class="cam-frame"></div>
+    <div class="cam-bar"><span id="camMsg">Point at the ticket QR or the back of the licence</span>
+      <button class="b ghost" id="camClose">Close</button></div>
+  </div>
 
   <section class="card"><strong>This lane</strong><ol class="log" id="log"><li>No entries yet</li></ol></section>
 </div>
@@ -144,6 +157,8 @@ function logEntry(text) {
 const scan = $('scan');
 let timer = null;
 scan.addEventListener('input', () => {
+  // Text arriving in the box means a hardware scanner (Kingtop): back to its mode.
+  if (phoneMode) { phoneMode = false; localStorage.removeItem(PHONE_KEY); }
   clearTimeout(timer);
   timer = setTimeout(() => {
     const text = scan.value.trim();
@@ -159,7 +174,82 @@ function typingElsewhere() {
   const a = document.activeElement;
   return a && a !== scan && (a.tagName === 'INPUT' || a.tagName === 'SELECT' || a.tagName === 'TEXTAREA');
 }
-function refocus() { setTimeout(() => { if (!typingElsewhere() && !document.hidden) scan.focus({ preventScroll: true }); }, 150); }
+// Phones scan with the camera, so don't keep pulling focus into the scan box
+// (that pops the on-screen keyboard over everything). Set once the camera
+// button is used on this device; the Kingtop never sets it.
+const PHONE_KEY = 'gate_camera_mode';
+let phoneMode = localStorage.getItem(PHONE_KEY) === '1';
+function refocus() { setTimeout(() => { if (!phoneMode && !camOn && !typingElsewhere() && !document.hidden) scan.focus({ preventScroll: true }); }, 150); }
+
+// ─── Camera scanner ─────────────────────────────────────────────────────────
+// Chrome on Android has BarcodeDetector (QR + PDF417 licence barcodes). Other
+// browsers fall back to jsQR, which reads ticket QRs only.
+let camOn = false, camStream = null, camDetector = null, camTimer = null, jsQRLoaded = null;
+async function getDetector() {
+  if ('BarcodeDetector' in window) {
+    try {
+      const have = await BarcodeDetector.getSupportedFormats();
+      const want = ['qr_code', 'pdf417'].filter((f) => have.includes(f));
+      if (want.includes('qr_code')) return { kind: 'native', licence: want.includes('pdf417'), d: new BarcodeDetector({ formats: want }) };
+    } catch {}
+  }
+  jsQRLoaded = jsQRLoaded || new Promise((ok, bad) => {
+    const s = document.createElement('script');
+    s.src = 'https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js';
+    s.onload = ok; s.onerror = () => bad(new Error('Could not load the camera scanner'));
+    document.head.appendChild(s);
+  });
+  await jsQRLoaded;
+  return { kind: 'jsqr', licence: false };
+}
+async function startCamera() {
+  if (camOn) return;
+  phoneMode = true; localStorage.setItem(PHONE_KEY, '1'); scan.blur();
+  try {
+    camDetector = await getDetector();
+    camStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1080 } }, audio: false });
+  } catch (e) {
+    status('stop', 'Camera not available', e.name === 'NotAllowedError' ? 'Allow camera access for this site in the browser settings.' : e.message);
+    return;
+  }
+  camOn = true;
+  $('camMsg').textContent = camDetector.licence ? 'Point at the ticket QR or the back of the licence' : 'Point at the ticket QR (licences: tap ID checked instead)';
+  $('camView').classList.remove('hidden');
+  const v = $('camVideo'); v.srcObject = camStream; await v.play().catch(() => {});
+  const canvas = document.createElement('canvas'), ctx = canvas.getContext('2d', { willReadFrequently: true });
+  const tick = async () => {
+    if (!camOn) return;
+    let text = null;
+    try {
+      if (v.readyState >= 2) {
+        if (camDetector.kind === 'native') {
+          const found = await camDetector.d.detect(v);
+          if (found.length) text = found[0].rawValue;
+        } else {
+          canvas.width = v.videoWidth; canvas.height = v.videoHeight;
+          ctx.drawImage(v, 0, 0);
+          const r = window.jsQR(ctx.getImageData(0, 0, canvas.width, canvas.height).data, canvas.width, canvas.height, { inversionAttempts: 'dontInvert' });
+          if (r) text = r.data;
+        }
+      }
+    } catch {}
+    if (text && text.trim()) {
+      if (navigator.vibrate) navigator.vibrate(80);
+      stopCamera();
+      handleScan(text.trim());
+      return;
+    }
+    camTimer = setTimeout(tick, 150);
+  };
+  tick();
+}
+function stopCamera() {
+  camOn = false; clearTimeout(camTimer);
+  if (camStream) camStream.getTracks().forEach((t) => t.stop());
+  camStream = null; $('camView').classList.add('hidden');
+}
+$('camBtn').onclick = startCamera;
+$('camClose').onclick = stopCamera;
 document.addEventListener('click', (e) => {
   const t = e.target;
   if (t.closest && t.closest('input, select, textarea')) return; // they meant to type there
@@ -590,7 +680,7 @@ $('testLaneBtn').onclick = async () => {
 };
 
 loadServerBridge();
-scan.focus();
+if (!phoneMode) scan.focus();
 </script>
 </body>
 </html>
