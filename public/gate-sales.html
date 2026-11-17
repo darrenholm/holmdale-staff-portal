@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Gate Sales - Holmdale Pro Rodeo</title>
+<!--
+  Walk-up ticket sales at the gate (rodeo-fresh SPEC-2027-named-tickets.md "Gate sales").
+  A tablet or laptop + a Stripe WisePOS E card reader + a band printer lane.
+
+  1. Open a shift: terminal name, day being sold, band printer lane, card reader, cash float.
+  2. Tap tickets; for each adult tap ID checked / Clearly 19+ / Under 19 (names optional).
+  3. Cash (type what they gave you, see the change) or Card (customer pays on the reader).
+  4. The sale is saved and every band prints on the lane at once.
+  5. Close shift: count the drawer, see expected vs counted.
+
+  API: rodeo-fresh routes/gateSales.js (/api/gate-sales), bands via /api/band-print.
+-->
+<style>
+  :root { --bg:#f2f3f1; --panel:#fff; --ink:#151a17; --muted:#5d6661; --line:#d3d8d4;
+          --go:#0f7a41; --go-bg:#dcf2e5; --stop:#b3261e; --stop-bg:#fbe1de; --warn:#8a5a00; --warn-bg:#fbefd2; --accent:#1f4e79; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); font:16px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  .wrap { max-width:640px; margin:0 auto; padding:12px 14px 40px; display:flex; flex-direction:column; gap:12px; }
+  header { display:flex; align-items:center; justify-content:space-between; gap:8px; }
+  h1 { font-size:20px; margin:0; }
+  header a, .link { color:var(--accent); font-size:14px; background:none; border:0; padding:0; cursor:pointer; text-decoration:underline; }
+  .card { background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:14px; display:flex; flex-direction:column; gap:10px; }
+  .msg { font-size:20px; font-weight:800; padding:12px 14px; border-radius:10px; }
+  .m-info { background:#e8eef5; color:var(--accent); } .m-go { background:var(--go-bg); color:var(--go); }
+  .m-stop { background:var(--stop-bg); color:var(--stop); } .m-warn { background:var(--warn-bg); color:var(--warn); }
+  .sub { color:var(--muted); font-size:14px; }
+  .btns { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+  .btns3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:6px; }
+  button.b { font:700 16px system-ui, sans-serif; padding:14px 8px; border-radius:10px; border:0; cursor:pointer; color:#fff; background:var(--accent); }
+  button.b.go { background:var(--go); } button.b.stop { background:var(--stop); } button.b.dark { background:#111; }
+  button.b.ghost { background:#e6e9e7; color:var(--ink); }
+  button.b.sm { padding:10px 6px; font-size:14px; }
+  button.b.on { outline:3px solid #111; outline-offset:1px; }
+  button.b:disabled { opacity:.4; }
+  .full { grid-column:1 / -1; }
+  label.k { font-size:12px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--muted); }
+  .set { display:flex; flex-direction:column; gap:6px; }
+  input, select { font:inherit; padding:10px; border:1px solid var(--line); border-radius:8px; width:100%; }
+  .hidden { display:none !important; }
+  .shiftbar { display:flex; flex-wrap:wrap; gap:6px 14px; font-size:14px; color:var(--muted); align-items:center; }
+  .shiftbar b { color:var(--ink); }
+  .tix { display:flex; flex-direction:column; gap:8px; }
+  .tix .row { display:flex; align-items:center; justify-content:space-between; gap:8px; border:1px solid var(--line); border-radius:10px; padding:8px 10px; }
+  .tix .row .p { color:var(--go); font-weight:800; }
+  .qty { display:flex; align-items:center; gap:8px; }
+  .qty button { width:44px; height:44px; border-radius:50%; border:0; font:800 22px system-ui; cursor:pointer; background:#e6e9e7; }
+  .qty button.add { background:var(--accent); color:#fff; }
+  .qty span { min-width:22px; text-align:center; font-weight:800; font-size:18px; }
+  .person { border:2px solid var(--line); border-radius:10px; padding:10px; display:flex; flex-direction:column; gap:8px; }
+  .person.need { border-color:var(--warn); }
+  .person-head { display:flex; justify-content:space-between; font-weight:700; font-size:14px; }
+  .total { display:flex; justify-content:space-between; align-items:baseline; font-size:28px; font-weight:900; }
+  .big { font-size:40px; font-weight:900; text-align:center; }
+  .bands li { font-size:14px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>💵 Gate Sales</h1>
+    <span><a href="index.html">Menu</a></span>
+  </header>
+
+  <section class="card" id="status"><div class="msg m-info">Loading…</div></section>
+
+  <!-- Open a shift -->
+  <section class="card hidden" id="openCard">
+    <strong>Open a shift</strong>
+    <div class="set"><label class="k">This terminal</label><input id="oTerminal" placeholder="e.g. Gate sales 1" maxlength="40"></div>
+    <div class="set"><label class="k">Selling tickets for</label>
+      <select id="oDay"><option value="fri">Friday, July 30</option><option value="sat">Saturday, July 31</option><option value="sun">Sunday, August 1</option></select></div>
+    <div class="set"><label class="k">Band printer lane</label><select id="oLane"><option value="">(press Find)</option></select></div>
+    <div class="set"><label class="k">Card reader</label><select id="oReader"><option value="">No card reader (cash only)</option></select></div>
+    <div class="btns"><button class="b ghost" id="findBtn">Find printers &amp; readers</button><span></span></div>
+    <div class="set"><label class="k">Cash float in the drawer ($)</label><input id="oFloat" type="number" inputmode="decimal" min="0" step="0.01" placeholder="200.00"></div>
+    <button class="b go" id="openBtn">Open shift</button>
+  </section>
+
+  <!-- Selling -->
+  <section class="card hidden" id="saleCard">
+    <div class="shiftbar" id="shiftBar"></div>
+    <div class="tix" id="tix"></div>
+  </section>
+
+  <section class="card hidden" id="peopleCard">
+    <strong>Who's getting a band</strong>
+    <div class="sub">Names are optional. Every adult needs a 19+ choice.</div>
+    <div id="people" style="display:flex;flex-direction:column;gap:8px"></div>
+  </section>
+
+  <section class="card hidden" id="payCard">
+    <div class="total"><span>Total</span><span id="totalAmt">$0</span></div>
+    <div class="sub">HST included</div>
+    <label class="sub" style="display:flex;gap:8px;align-items:center"><input type="checkbox" id="testSale" style="width:auto"> Test sale (prints TEST, kept out of totals)</label>
+    <div class="btns">
+      <button class="b go" id="cashBtn">Cash</button>
+      <button class="b" id="cardBtn">Card</button>
+      <button class="b ghost full" id="clearBtn">Clear sale</button>
+    </div>
+  </section>
+
+  <!-- Cash -->
+  <section class="card hidden" id="cashCard">
+    <strong>Cash</strong>
+    <div class="total"><span>Due</span><span id="cashDue"></span></div>
+    <div class="set"><label class="k">Customer gave you ($)</label><input id="tendered" type="number" inputmode="decimal" min="0" step="0.01"></div>
+    <div class="btns3" id="quick"></div>
+    <div class="big" id="change"></div>
+    <div class="btns"><button class="b ghost" id="cashBack">Back</button><button class="b go" id="cashDone" disabled>Cash taken · Print bands</button></div>
+  </section>
+
+  <!-- Card -->
+  <section class="card hidden" id="cardCard">
+    <strong>Card</strong>
+    <div class="big" id="cardMsg">Customer taps or inserts on the reader</div>
+    <div class="btns"><button class="b stop full" id="cardCancel">Cancel card payment</button></div>
+  </section>
+
+  <!-- Done -->
+  <section class="card hidden" id="doneCard">
+    <div class="msg m-go" id="doneMsg">Sale complete</div>
+    <ol class="bands" id="bandList"></ol>
+    <button class="b go" id="nextBtn">Next sale</button>
+  </section>
+
+  <!-- Close shift -->
+  <section class="card hidden" id="closeCard">
+    <strong>Close shift</strong>
+    <div id="closeSummary" class="sub"></div>
+    <div class="set"><label class="k">Cash counted in the drawer ($)</label><input id="counted" type="number" inputmode="decimal" min="0" step="0.01"></div>
+    <div class="set"><label class="k">Note (optional)</label><input id="closeNote" maxlength="500"></div>
+    <div class="btns"><button class="b ghost" id="closeBack">Back to selling</button><button class="b dark" id="closeDo">Close shift</button></div>
+    <div id="closeResult"></div>
+  </section>
+</div>
+
+<script>
+const API = 'https://api.holmdalerodeo.ca/api';
+const LS = 'gate_sales_settings';
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const money = (c) => '$' + (c / 100).toFixed(c % 100 ? 2 : 0);
+const cents = (v) => Math.round(parseFloat(String(v).replace(/[^0-9.]/g, '')) * 100);
+const DAYNAME = { fri: 'Friday', sat: 'Saturday', sun: 'Sunday' };
+let token = localStorage.getItem('auth_token');
+if (!token) location.href = 'login.html?expired=1';
+
+let shift = null, types = [], units = [], busy = false, cardPi = null, cardTimer = null;
+const local = () => { try { return JSON.parse(localStorage.getItem(LS) || '{}'); } catch { return {}; } };
+const saveLocal = (x) => localStorage.setItem(LS, JSON.stringify({ ...local(), ...x }));
+
+async function api(path, opts = {}) {
+  const r = await fetch(API + path, { ...opts, headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token, ...(opts.headers || {}) } });
+  if (r.status === 401) { localStorage.removeItem('auth_token'); location.href = 'login.html?expired=1'; throw new Error('Signed out'); }
+  let j = null; try { j = await r.json(); } catch {}
+  if (!r.ok) { const e = new Error((j && j.error) || ('Error ' + r.status)); e.status = r.status; throw e; }
+  return j;
+}
+function status(kind, text, sub = '') { $('status').innerHTML = `<div class="msg m-${kind}">${esc(text)}</div>${sub ? `<div class="sub">${esc(sub)}</div>` : ''}`; }
+function show(...ids) {
+  for (const id of ['openCard', 'saleCard', 'peopleCard', 'payCard', 'cashCard', 'cardCard', 'doneCard', 'closeCard']) $(id).classList.toggle('hidden', !ids.includes(id));
+}
+
+// ── Shift ────────────────────────────────────────────────────────────────
+async function start() {
+  const l = local();
+  $('oTerminal').value = l.terminal || '';
+  // Default day: today if it's an event day, else what was used last.
+  const today = new Date().toISOString().slice(0, 10);
+  $('oDay').value = { '2027-07-30': 'fri', '2027-07-31': 'sat', '2027-08-01': 'sun' }[today] || l.day || 'sat';
+  if (l.lane) $('oLane').innerHTML = `<option>${esc(l.lane)}</option>`;
+  if (l.reader) $('oReader').innerHTML += `<option value="${esc(l.reader)}" selected>${esc(l.readerLabel || l.reader)}</option>`;
+  if (l.terminal) {
+    try { const r = await api('/gate-sales/shift?terminal=' + encodeURIComponent(l.terminal)); if (r.shift) return useShift(r.shift); } catch (e) { status('stop', 'Could not reach the server', e.message); }
+  }
+  status('info', 'Open a shift to start selling');
+  show('openCard');
+}
+
+$('findBtn').onclick = async () => {
+  try {
+    const { lanes } = await api('/band-print/lanes');
+    $('oLane').innerHTML = (lanes || []).map((x) => `<option${x === local().lane ? ' selected' : ''}>${esc(x)}</option>`).join('') || '<option value="">No band printers running</option>';
+  } catch (e) { $('oLane').innerHTML = `<option value="">${esc(e.message)}</option>`; }
+  try {
+    const { readers } = await api('/gate-sales/readers');
+    $('oReader').innerHTML = '<option value="">No card reader (cash only)</option>' + (readers || []).map((r) =>
+      `<option value="${esc(r.id)}"${r.id === local().reader ? ' selected' : ''}>${esc(r.label)} (${esc(r.status)})</option>`).join('');
+  } catch (e) { $('oReader').innerHTML = `<option value="">Cash only (${esc(e.message)})</option>`; }
+};
+
+$('openBtn').onclick = async () => {
+  const body = { terminal: $('oTerminal').value.trim(), sellDay: $('oDay').value, lane: $('oLane').value,
+                 readerId: $('oReader').value || null, floatCents: cents($('oFloat').value || '0') };
+  try {
+    const { shift: s } = await api('/gate-sales/shift/open', { method: 'POST', body: JSON.stringify(body) });
+    saveLocal({ terminal: body.terminal, day: body.sellDay, lane: body.lane, reader: body.readerId || '',
+                readerLabel: $('oReader').selectedOptions[0]?.text || '' });
+    useShift(s);
+  } catch (e) { status('stop', 'Could not open the shift', e.message); }
+};
+
+async function useShift(s) {
+  shift = s;
+  $('shiftBar').innerHTML = `<span>Selling <b>${esc(DAYNAME[s.sell_day])}</b></span><span>Lane <b>${esc(s.lane)}</b></span>
+    <span>${s.reader_id ? 'Card reader on' : '<b>Cash only</b>'}</span><span>${esc(s.staff_name)}</span>
+    <button class="link" id="closeShiftBtn">Close shift</button>`;
+  $('closeShiftBtn').onclick = openClose;
+  $('cardBtn').disabled = !s.reader_id;
+  const c = await api('/gate-sales/catalog?day=' + s.sell_day);
+  types = c.types;
+  newSale();
+}
+
+// ── Building a sale ─────────────────────────────────────────────────────
+function newSale() {
+  units = []; cardPi = null; busy = false; $('testSale').checked = false;
+  status('info', 'New sale', 'Tap the tickets they want.');
+  render();
+}
+function render() {
+  $('tix').innerHTML = types.map((t) => {
+    const n = units.filter((u) => u.code === t.code).length;
+    return `<div class="row"><div><div><b>${esc(t.label)}</b></div><div class="p">${t.priceCents ? money(t.priceCents) : 'Free'}</div></div>
+      <div class="qty"><button data-rm="${esc(t.code)}"${n ? '' : ' disabled'}>−</button><span>${n}</span><button class="add" data-add="${esc(t.code)}">+</button></div></div>`;
+  }).join('') || '<div class="sub">No ticket prices set for this day.</div>';
+  // People: one row per wristband.
+  let html = '', k = 0;
+  units.forEach((u, ui) => {
+    const t = types.find((x) => x.code === u.code);
+    u.people.forEach((p, pi) => {
+      k += 1;
+      const isAdult = p.kind === 'adult';
+      const need = isAdult && !p.age;
+      html += `<div class="person${need ? ' need' : ''}"><div class="person-head"><span>${k}. ${esc(t.label)} · ${isAdult ? 'Adult' : 'Youth'}</span></div>
+        <input placeholder="Name on band (optional)" maxlength="40" value="${esc(p.name)}" data-name="${ui}:${pi}">
+        ${isAdult ? `<div class="btns3">
+          <button class="b sm go${p.age === 'id' ? ' on' : ''}" data-age="${ui}:${pi}:id">ID checked · 19+</button>
+          <button class="b sm go${p.age === 'obvious' ? ' on' : ''}" data-age="${ui}:${pi}:obvious">Clearly 19+</button>
+          <button class="b sm stop${p.age === 'under19' ? ' on' : ''}" data-age="${ui}:${pi}:under19">Under 19</button></div>`
+          : '<div class="sub">Gets a minor band</div>'}</div>`;
+    });
+  });
+  $('people').innerHTML = html;
+  const total = units.reduce((n, u) => n + (types.find((x) => x.code === u.code)?.priceCents || 0), 0);
+  $('totalAmt').textContent = money(total);
+  const ready = units.length && units.every((u) => u.people.every((p) => p.kind !== 'adult' || p.age));
+  $('cashBtn').disabled = !ready; $('cardBtn').disabled = !ready || !shift.reader_id || total < 50;
+  show('saleCard', ...(units.length ? ['peopleCard', 'payCard'] : []));
+}
+document.addEventListener('click', (e) => {
+  const t = e.target.closest('button'); if (!t || busy) return;
+  if (t.dataset.add) {
+    const ty = types.find((x) => x.code === t.dataset.add);
+    units.push({ code: ty.code, people: [...Array(ty.adults).fill('adult'), ...Array(ty.children).fill('child')].map((kind) => ({ kind, name: '', age: null })) });
+    render();
+  } else if (t.dataset.rm) {
+    const i = units.map((u) => u.code).lastIndexOf(t.dataset.rm); if (i >= 0) units.splice(i, 1); render();
+  } else if (t.dataset.age) {
+    const [ui, pi, age] = t.dataset.age.split(':'); units[ui].people[pi].age = age; render();
+  }
+});
+document.addEventListener('input', (e) => {
+  const n = e.target.dataset && e.target.dataset.name; if (!n) return;
+  const [ui, pi] = n.split(':'); units[ui].people[pi].name = e.target.value;
+});
+$('clearBtn').onclick = () => newSale();
+const items = () => units.map((u) => ({ code: u.code, attendees: u.people.map((p) => ({ name: p.name.trim(), age: p.kind === 'adult' ? p.age : undefined })) }));
+const totalNow = () => units.reduce((n, u) => n + (types.find((x) => x.code === u.code)?.priceCents || 0), 0);
+
+// ── Cash ────────────────────────────────────────────────────────────────
+$('cashBtn').onclick = () => {
+  const due = totalNow();
+  $('cashDue').textContent = money(due); $('tendered').value = ''; $('change').textContent = '';
+  const quick = [...new Set([due, ...[20, 50, 100].map((d) => d * 100).filter((v) => v >= due), Math.ceil(due / 2000) * 2000])].sort((a, b) => a - b).slice(0, 3);
+  $('quick').innerHTML = quick.map((v) => `<button class="b ghost sm" data-tender="${v}">${v === due ? 'Exact' : money(v)}</button>`).join('');
+  $('quick').querySelectorAll('[data-tender]').forEach((b) => b.onclick = () => { $('tendered').value = (b.dataset.tender / 100).toFixed(2); cashChange(); });
+  $('cashDone').disabled = due > 0; if (due === 0) $('change').textContent = 'Nothing to pay';
+  show('cashCard'); status('info', 'Take the cash');
+  $('tendered').focus();
+};
+function cashChange() {
+  const due = totalNow(), got = cents($('tendered').value || '0');
+  if (!got && due) { $('change').textContent = ''; $('cashDone').disabled = true; return; }
+  if (got < due) { $('change').textContent = 'Short ' + money(due - got); $('cashDone').disabled = true; return; }
+  $('change').textContent = 'Change: ' + money(got - due); $('cashDone').disabled = false;
+}
+$('tendered').addEventListener('input', cashChange);
+$('cashBack').onclick = () => render();
+$('cashDone').onclick = () => complete({ method: 'cash' });
+
+// ── Card ────────────────────────────────────────────────────────────────
+$('cardBtn').onclick = async () => {
+  busy = true; show('cardCard'); $('cardMsg').textContent = 'Sending ' + money(totalNow()) + ' to the reader…';
+  try {
+    const r = await api('/gate-sales/card/start', { method: 'POST', body: JSON.stringify({ shiftId: shift.id, items: items() }) });
+    cardPi = r.paymentIntent;
+    $('cardMsg').textContent = 'Customer taps or inserts on the reader · ' + money(r.totalCents);
+    status('info', 'Waiting for the card…');
+    pollCard();
+  } catch (e) { busy = false; status('stop', 'Card payment did not start', e.message); render(); }
+};
+function pollCard() {
+  clearTimeout(cardTimer);
+  cardTimer = setTimeout(async () => {
+    try {
+      const s = await api('/gate-sales/card/' + cardPi);
+      if (s.status === 'succeeded') return complete({ method: 'card', paymentIntent: cardPi });
+      if (s.reader && s.reader.status === 'failed') {
+        busy = false; status('stop', 'Card declined or failed', s.reader.failure || 'Try again, or take cash.'); return render();
+      }
+      if (s.status === 'canceled') { busy = false; status('warn', 'Card payment cancelled'); return render(); }
+    } catch (e) { /* keep waiting; network blips happen */ }
+    pollCard();
+  }, 1200);
+}
+$('cardCancel').onclick = async () => {
+  clearTimeout(cardTimer);
+  try { if (cardPi) await api('/gate-sales/card/' + cardPi + '/cancel', { method: 'POST' }); } catch {}
+  busy = false; cardPi = null; status('warn', 'Card payment cancelled'); render();
+};
+
+// ── Finish: save the sale, print the bands ──────────────────────────────
+async function complete(payment) {
+  busy = true; clearTimeout(cardTimer);
+  status('info', 'Saving the sale…');
+  try {
+    const r = await api('/gate-sales/complete', { method: 'POST', body: JSON.stringify({ shiftId: shift.id, items: items(), payment: { ...payment, test: $('testSale').checked } }) });
+    if (r.duplicate) { status('go', 'Already saved', 'This card payment was already recorded.'); show('doneCard'); return; }
+    $('doneMsg').textContent = `Sale ${r.confirmationCode} · ${money(r.totalCents)} ${payment.method}`;
+    $('bandList').innerHTML = r.jobs.map((j, i) => `<li id="job${j}">Band ${i + 1}: printing…</li>`).join('');
+    show('doneCard'); status('go', payment.method === 'cash' ? 'Paid in cash · printing bands' : 'Card approved · printing bands');
+    watchBands(r.jobs);
+  } catch (e) {
+    busy = false;
+    status('stop', 'Sale not saved', e.message + (payment.method === 'card' ? ' · The card WAS charged: press Cash/Card again only after checking with a manager.' : ''));
+    render();
+  }
+}
+async function watchBands(jobs) {
+  const left = new Set(jobs);
+  for (let i = 0; i < 40 && left.size; i++) {
+    await new Promise((r) => setTimeout(r, 600));
+    for (const j of [...left]) {
+      try {
+        const s = await api('/band-print/jobs/' + j);
+        if (s.status === 'done') { $('job' + j).textContent = $('job' + j).textContent.replace('printing…', '✓ printed'); left.delete(j); }
+        if (s.status === 'failed' || s.status === 'expired') { $('job' + j).textContent = $('job' + j).textContent.replace('printing…', '✗ ' + (s.error || 'did not print')); left.delete(j); }
+      } catch {}
+    }
+  }
+  if (left.size) status('warn', 'Some bands did not print', 'Is the print agent for lane "' + shift.lane + '" running? Reprint from Gate · Printed Bands.');
+  busy = false;
+}
+$('nextBtn').onclick = () => newSale();
+
+// ── Close shift ─────────────────────────────────────────────────────────
+async function openClose() {
+  if (busy) return;
+  show('closeCard'); $('closeResult').innerHTML = ''; $('counted').value = '';
+  try {
+    const t = await api(`/gate-sales/shift/${shift.id}/totals`);
+    $('closeSummary').innerHTML = `${t.sales} sale(s), ${t.people} people · Cash ${money(t.cash)} · Card ${money(t.card)}<br>
+      Float ${money(t.floatCents)} + cash sales ${money(t.cash)} = <b>${money(t.floatCents + t.cash)} should be in the drawer</b>`;
+  } catch (e) { $('closeSummary').textContent = e.message; }
+  status('info', 'Count the drawer');
+}
+$('closeBack').onclick = () => render();
+$('closeDo').onclick = async () => {
+  if (!$('counted').value) { $('closeResult').innerHTML = '<div class="msg m-warn">Enter the cash you counted</div>'; return; }
+  try {
+    const r = await api(`/gate-sales/shift/${shift.id}/close`, { method: 'POST', body: JSON.stringify({ countedCents: cents($('counted').value), note: $('closeNote').value }) });
+    const d = r.differenceCents;
+    $('closeResult').innerHTML = `<div class="msg ${d === 0 ? 'm-go' : 'm-warn'}">${d === 0 ? 'Drawer balances' : d > 0 ? 'Over by ' + money(d) : 'Short by ' + money(-d)}</div>
+      <div class="sub">Expected ${money(r.expectedCents)} · counted ${money(r.countedCents)} · card sales ${money(r.card)}</div>
+      <button class="b go" onclick="location.reload()">Open a new shift</button>`;
+    $('closeDo').disabled = true; $('closeBack').disabled = true;
+    status('go', 'Shift closed');
+  } catch (e) { $('closeResult').innerHTML = `<div class="msg m-stop">${esc(e.message)}</div>`; }
+};
+
+start();
+</script>
+</body>
+</html>
