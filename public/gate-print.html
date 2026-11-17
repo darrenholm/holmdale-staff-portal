@@ -434,6 +434,14 @@ function newBandCode() {
 async function issue(i, { of19, method }) {
   if (busy) return;
   const s = slots[i];
+  // No printer set on this device: stop BEFORE saving a band, or the person
+  // shows as done with nothing on their wrist.
+  const ls = laneSettings();
+  if ((ls.mode === 'lane' && !ls.lane) || (ls.mode === 'dymo' && !settings().printer)) {
+    status('stop', 'No band printer chosen', 'Pick one in the Printer settings below, then tap the button again.');
+    openSettings();
+    return;
+  }
   busy = true;
   status('info', 'Printing band…');
   try {
@@ -613,8 +621,13 @@ async function printBand(s) {
 }
 
 // Settings panel
+function openSettings() {
+  $('settings').classList.remove('hidden');
+  // The panel sits below the scan box: bring it on screen (phones showed nothing).
+  setTimeout(() => { try { $('settings').scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch {} }, 50);
+}
 $('setBtn').onclick = () => {
-  $('settings').classList.toggle('hidden');
+  if ($('settings').classList.contains('hidden')) openSettings(); else $('settings').classList.add('hidden');
   const l = localSettings(), s = settings();
   if (s.url) $('bUrl').value = s.url;
   $('bKey').value = l.key || '';
